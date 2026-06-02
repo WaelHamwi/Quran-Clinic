@@ -1,36 +1,16 @@
 {
   "cli": {
-    "version": ">= 20.0.0",
-    "appVersionSource": "local"
+    "version": ">= 16.0.0"
   },
   "build": {
-    "development": {
-      "developmentClient": true,
-      "distribution": "internal",
-      "android": {
-        "buildType": "apk"
-      }
-    },
     "preview": {
-      "distribution": "internal",
       "android": {
         "buildType": "apk"
-      },
-      "env": {
-        "EXPO_PUBLIC_API_URL_WEB": "https://mashfa.odooclick.com/api",
-        "EXPO_PUBLIC_API_URL_ANDROID": "https://mashfa.odooclick.com/api",
-        "EXPO_PUBLIC_API_URL_IOS": "https://mashfa.odooclick.com/api"
       }
     },
     "production": {
-      "autoIncrement": true,
       "android": {
         "buildType": "app-bundle"
-      },
-      "env": {
-        "EXPO_PUBLIC_API_URL_WEB": "https://mashfa.odooclick.com/api",
-        "EXPO_PUBLIC_API_URL_ANDROID": "https://mashfa.odooclick.com/api",
-        "EXPO_PUBLIC_API_URL_IOS": "https://mashfa.odooclick.com/api"
       }
     }
   },
