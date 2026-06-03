@@ -163,6 +163,7 @@ export const en = {
     title: 'Tahsinat',
     self: 'Self-fortification',
     forOthers: 'For others',
+    both: 'Self & others',
     repetitions: (n: number) => `Repeat ${n}×`,
     hint: 'Hint',
     empty: 'No items in this section',

@@ -170,6 +170,7 @@ export const ar: Translations = {
     title: 'التحصينات',
     self: 'تحصين النفس',
     forOthers: 'تحصين الغير',
+    both: 'النفس والغير',
     repetitions: (n: number) => `كرّر ${n}×`,
     hint: 'إرشاد',
     empty: 'لا توجد عناصر في هذا القسم',

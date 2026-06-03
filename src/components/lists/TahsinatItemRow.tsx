@@ -1,5 +1,6 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/context/ThemeContext';
 import { useLanguage } from '@/context/LanguageContext';
@@ -29,12 +30,38 @@ function TahsinatItemRowBase({ item, count, onCount }: TahsinatItemRowProps) {
   const toggleHint = useCallback(() => setShowHint((v) => !v), []);
 
   const label = pickText(item.label, isArabic);
+  const text = pickText(item.text, true);
   const hint = pickText(item.hint, isArabic);
+  const applicabilityLabel = {
+    self: t.tahsinat.self,
+    others: t.tahsinat.forOthers,
+    both: t.tahsinat.both,
+  }[item.applicability];
 
   return (
     <View style={[styles.card, done && styles.cardDone]}>
-      {label ? <Text style={styles.label}>{label}</Text> : null}
-      <Text style={styles.arabic}>{item.text.ar}</Text>
+      <View style={styles.header}>
+        {label ? <Text style={styles.label}>{label}</Text> : <View />}
+        {applicabilityLabel ? (
+          <View style={styles.badge}>
+            <Text style={styles.badgeText}>{applicabilityLabel}</Text>
+          </View>
+        ) : null}
+      </View>
+
+      {item.image_url ? (
+        <Image
+          source={{
+            uri: item.image_url,
+            // ngrok free tier blocks requests without this header (see CLAUDE.md).
+            headers: { 'ngrok-skip-browser-warning': 'true' },
+          }}
+          style={styles.image}
+          contentFit="contain"
+        />
+      ) : null}
+
+      {text ? <Text style={styles.arabic}>{text}</Text> : null}
 
       <View style={styles.actions}>
         <Pressable onPress={handleCount} style={[styles.counter, done && styles.counterDone]}>
@@ -72,7 +99,16 @@ function createStyles(theme: Theme) {
       borderColor: theme.border,
     },
     cardDone: { borderColor: theme.primary },
-    label: { fontSize: fontSize.sm, fontWeight: fontWeight.bold, color: theme.primary },
+    header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+    label: { fontSize: fontSize.sm, fontWeight: fontWeight.bold, color: theme.primary, flexShrink: 1 },
+    badge: {
+      paddingHorizontal: spacing.sm,
+      paddingVertical: 2,
+      borderRadius: radius.pill,
+      backgroundColor: theme.primaryLight,
+    },
+    badgeText: { fontSize: fontSize.xs, fontWeight: fontWeight.semibold, color: theme.primaryDark },
+    image: { width: '100%', height: 200, borderRadius: radius.md },
     arabic: {
       fontFamily: fontFamily.arabic,
       fontSize: 22,

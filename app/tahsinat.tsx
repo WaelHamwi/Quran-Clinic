@@ -8,6 +8,7 @@ import { TahsinatList } from '@/components/lists/TahsinatList';
 import { useTahsinatCategories, useTahsinatItems } from '@/hooks/useTahsinat';
 import { useLanguage } from '@/context/LanguageContext';
 import { pickText } from '@/utils/formatters';
+import { flattenSectioned } from '@/utils/sections';
 
 export default function TahsinatScreen() {
   const { t, isArabic } = useLanguage();
@@ -15,11 +16,9 @@ export default function TahsinatScreen() {
     useTahsinatCategories();
   const [activeSlug, setActiveSlug] = useState('');
   const effectiveSlug = activeSlug || categories[0]?.slug || '';
-  const activeCategory = categories.find((c) => c.slug === effectiveSlug);
-  const { items, isLoading: itemsLoading } = useTahsinatItems(
-    effectiveSlug,
-    activeCategory?.random_order ?? false,
-  );
+  const { category, isLoading: itemsLoading } = useTahsinatItems(effectiveSlug);
+  // Flatten sections → items per view; `order_randomly` sections reshuffle here.
+  const items = useMemo(() => flattenSectioned(category), [category]);
   const [counters, setCounters] = useState<Record<number, number>>({});
 
   const onCount = useCallback((id: number, reps: number) => {

@@ -50,6 +50,12 @@
       "expo-notifications",
       "expo-audio"
     ],
-    "owner": "wael_hamwi"
+    "owner": "wael_hamwi",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/efcf776d-ba62-46a2-b48b-afb4b881394a"
+    }
   }
 }

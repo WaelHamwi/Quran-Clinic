@@ -1,9 +1,7 @@
-import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { cacheKeys } from '@/utils/cacheKeys';
 import { tahsinatService } from '@/services/tahsinatService';
 import { cachedFetch } from '@/services/contentCache';
-import type { TahsinatItem } from '@/types/tahsinat';
 
 const FIVE_MIN = 1000 * 60 * 5;
 
@@ -22,8 +20,12 @@ export function useTahsinatCategories() {
   };
 }
 
-/** Items for one tahsinat category. `randomOrder` shuffles them once per mount. */
-export function useTahsinatItems(slug: string, randomOrder = false) {
+/**
+ * One tahsinat category with its sections + items. The raw (un-shuffled)
+ * category is returned so the screen can apply per-section randomization fresh
+ * on every view — see `flattenSectioned`.
+ */
+export function useTahsinatItems(slug: string) {
   const query = useQuery({
     queryKey: cacheKeys.tahsinatItems(slug),
     queryFn: () => cachedFetch(`tahsinat_items_${slug}`, () => tahsinatService.getItems(slug)),
@@ -31,19 +33,8 @@ export function useTahsinatItems(slug: string, randomOrder = false) {
     staleTime: FIVE_MIN,
   });
 
-  const items = useMemo<TahsinatItem[]>(() => {
-    const list = query.data ?? [];
-    if (!randomOrder) return list;
-    const shuffled = [...list];
-    for (let i = shuffled.length - 1; i > 0; i -= 1) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-    }
-    return shuffled;
-  }, [query.data, randomOrder]);
-
   return {
-    items,
+    category: query.data ?? null,
     isLoading: query.isLoading,
     error: query.error,
     refetch: query.refetch,
