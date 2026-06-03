@@ -20,10 +20,25 @@ export const getApiUrl = (): string => {
 
 export const API_URL = getApiUrl();*/
 import { Platform } from 'react-native';
+import Constants from 'expo-constants';
+
+const PRODUCTION_API_URL = 'https://mashfa.odooclick.com/api';
 
 export const getApiUrl = (): string => {
-  // Use your ngrok URL
-  return 'https://theatrics-filth-slab.ngrok-free.dev/api';
+  // Prefer the value baked into app.json -> expo.extra.API_BASE_URL.
+  const fromExtra = (Constants.expoConfig?.extra as { API_BASE_URL?: string } | undefined)?.API_BASE_URL;
+  if (fromExtra) return fromExtra;
+
+  if (Platform.OS === 'web') {
+    return process.env.EXPO_PUBLIC_API_URL_WEB || PRODUCTION_API_URL;
+  }
+  if (Platform.OS === 'android') {
+    return process.env.EXPO_PUBLIC_API_URL_ANDROID || PRODUCTION_API_URL;
+  }
+  if (Platform.OS === 'ios') {
+    return process.env.EXPO_PUBLIC_API_URL_IOS || PRODUCTION_API_URL;
+  }
+  return PRODUCTION_API_URL;
 };
 
 export const API_URL = getApiUrl();
@@ -31,5 +46,4 @@ export const API_URL = getApiUrl();
 export const API_HEADERS: HeadersInit = {
   'Accept': 'application/json',
   'Content-Type': 'application/json',
-  'ngrok-skip-browser-warning': 'true',
 };

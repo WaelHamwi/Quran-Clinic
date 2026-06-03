@@ -41,8 +41,6 @@ export const apiClient: AxiosInstance = axios.create({
   headers: {
     Accept: 'application/json',
     'Content-Type': 'application/json',
-    // ngrok free tier shows an interstitial without this — see CLAUDE.md.
-    'ngrok-skip-browser-warning': 'true',
   },
 });
 
