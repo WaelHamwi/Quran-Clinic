@@ -3,6 +3,7 @@ import {
   persistReducer,
   persistStore,
   createTransform,
+  createMigrate,
   type PersistConfig,
   FLUSH,
   REHYDRATE,
@@ -48,12 +49,23 @@ const onboardingTransform = createTransform<OnboardingSlice, OnboardingPersisted
   { whitelist: ['onboarding'] },
 );
 
-// Typing the config as PersistConfig<RootState> lets persistReducer infer
-// the state type from here (not from the untyped object literal).
+// v2: reset hasCompletedOnboarding so all existing devices see onboarding on next launch.
+const migrations = {
+  2: (state: any) => ({
+    ...state,
+    onboarding: {
+      hasCompletedOnboarding: false,
+      sponsorShownThisSession: false,
+      currentStep: 0,
+    },
+  }),
+};
+
 const persistConfig: PersistConfig<RootState> = {
   key: 'root',
-  version: 1,
+  version: 2,
   storage: AsyncStorage,
+  migrate: createMigrate(migrations as any, { debug: false }),
   // `player` and `ui` are intentionally ephemeral.
   whitelist: ['auth', 'favorites', 'readings', 'features', 'onboarding', 'notifications', 'downloads', 'offlineQueue'],
   transforms: [downloadsTransform, onboardingTransform],
