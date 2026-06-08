@@ -7,6 +7,8 @@ export interface TahsinatCategory {
   id: number;
   name: Translatable;
   slug: string;
+  /** Absolute URL to the uploaded icon (SVG/PNG), or null. */
+  icon?: string | null;
   display_order: number;
   items_count?: number;
   /** Nested sub-sections, each carrying its own items + randomization flag. */
@@ -31,7 +33,6 @@ export interface TahsinatItem {
   section_id: number | null;
   label: Translatable;
   text: Translatable;
-  image_url: string | null;
   repetitions: number;
   hint: Translatable;
   applicability: TahsinatApplicability;

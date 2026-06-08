@@ -1,6 +1,5 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
-import { Image } from 'expo-image';
 import { useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Screen } from '@/components/layout/Screen';
@@ -95,19 +94,8 @@ export default function AdhkarItemsScreen() {
         {/* ── Dhikr card ─────────────────────────────── */}
         <View style={s.cardWrapper}>
           <View style={s.card}>
-            {/* Image and/or text + hint + optional daleel + circular counter */}
+            {/* Text + hint + optional daleel + circular counter */}
             <View style={s.cardContent}>
-              {item.image_url ? (
-                <Image
-                  source={{
-                    uri: item.image_url,
-                    // ngrok free tier blocks requests without this header (see CLAUDE.md).
-                    headers: { 'ngrok-skip-browser-warning': 'true' },
-                  }}
-                  style={s.image}
-                  contentFit="contain"
-                />
-              ) : null}
               {arabic ? <Text style={s.arabicText}>{arabic}</Text> : null}
               {hint ? <Text style={s.hintText}>{hint}</Text> : null}
               {showDaleel && daleel ? (
@@ -123,7 +111,7 @@ export default function AdhkarItemsScreen() {
             {/* Daleel toggle button — pinned to card bottom */}
             {daleel ? (
               <Pressable onPress={toggleDaleel} style={s.daleelBtn}>
-                <Ionicons name="chevron-back" size={14} color={palette.brand[500]} />
+                <Ionicons name={isArabic ? 'chevron-back' : 'chevron-forward'} size={14} color={palette.brand[500]} />
                 <Text style={s.daleelBtnLabel}>{t.adhkar.daleel}</Text>
               </Pressable>
             ) : null}

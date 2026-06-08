@@ -1,7 +1,9 @@
 import axios, { AxiosError, type AxiosInstance, type AxiosRequestConfig } from 'axios';
-import { API_URL } from '@/services/api';
+import * as api from '@/services/api';
 import { TokenManager } from '@/lib/tokenManager';
 import type { ApiEnvelope, Paginated, PaginationMeta } from '@/types/api';
+
+type RetryableConfig = AxiosRequestConfig & { _localFallbackAttempted?: boolean };
 
 /**
  * Shared axios client for all NEW services. The existing `quranService.ts`
@@ -36,7 +38,6 @@ export class ApiError extends Error {
 }
 
 export const apiClient: AxiosInstance = axios.create({
-  baseURL: API_URL,
   timeout: 20000,
   headers: {
     Accept: 'application/json',
@@ -45,6 +46,16 @@ export const apiClient: AxiosInstance = axios.create({
 });
 
 apiClient.interceptors.request.use(async (config) => {
+  // On a fallback retry _localFallbackAttempted is already true and baseURL has
+  // been set to PRODUCTION_API_URL by the error interceptor — don't overwrite it.
+  if (!(config as RetryableConfig)._localFallbackAttempted) {
+    config.baseURL = api.API_URL;
+    // Short timeout for local so the production fallback kicks in within 5 s
+    // when the dev server isn't running, instead of waiting the full 20 s.
+    if (__DEV__ && config.baseURL === api.LOCAL_API_URL) {
+      config.timeout = 5000;
+    }
+  }
   const token = await TokenManager.getToken();
   if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
@@ -53,6 +64,27 @@ apiClient.interceptors.request.use(async (config) => {
 apiClient.interceptors.response.use(
   (response) => response,
   (error: AxiosError<ApiEnvelope<unknown>>) => {
+    const config = error.config as RetryableConfig | undefined;
+
+    // Per-request fallback: if we were hitting local and it is unreachable or
+    // returns 404 (endpoint not yet implemented locally), retry once against
+    // production. Auth errors (401/403) and validation errors (422) are NOT
+    // retried — those are real failures, not missing-endpoint problems.
+    if (
+      config &&
+      !config._localFallbackAttempted &&
+      config.baseURL === api.LOCAL_API_URL &&
+      (!error.response || error.response.status === 404)
+    ) {
+      config._localFallbackAttempted = true;
+      config.baseURL = api.PRODUCTION_API_URL;
+      if (__DEV__) {
+        const reason = error.response ? '404 on local' : 'local unreachable';
+        console.log(`[api] ${reason} → retrying against production (${config.url})`);
+      }
+      return apiClient.request(config);
+    }
+
     // No response → connectivity failure; let offline fallbacks run in the hook layer.
     if (!error.response) {
       return Promise.reject(

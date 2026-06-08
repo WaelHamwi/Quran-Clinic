@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Screen } from '@/components/layout/Screen';
@@ -8,15 +8,18 @@ import { Loader } from '@/components/common/Loader';
 import { EmptyState } from '@/components/common/EmptyState';
 import { AudioPlayer } from '@/components/players/AudioPlayer';
 import { FeedbackControl } from '@/components/forms/FeedbackControl';
+import { KaraokeText } from '@/components/players/KaraokeText';
 import { useDisease } from '@/hooks/useDisease';
 import { useRecordings, type AccessibleRecording } from '@/hooks/useRecordings';
 import { usePlayer } from '@/hooks/usePlayer';
+import { useGeneralRuqyah } from '@/hooks/useGeneralRuqyah';
 import { useDownloadManager } from '@/hooks/useDownloadManager';
 import { useRefresh } from '@/hooks/useRefresh';
 import { useLanguage } from '@/context/LanguageContext';
-import { useAppDispatch } from '@/store/hooks';
+import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { palette } from '@/theme/colors';
 import { enqueue } from '@/store/slices/offlineQueueSlice';
+import { selectPlayerDiseaseId } from '@/store/slices/playerSlice';
 import { ruqyahService } from '@/services/ruqyahService';
 import { feedbackService } from '@/services/feedbackService';
 import { pickText } from '@/utils/formatters';
@@ -39,8 +42,13 @@ export default function DiseaseDetailScreen() {
   );
   const { refreshing, onRefresh } = useRefresh(refetchAll);
   const player = usePlayer();
+  const { stop: playerStop } = player;
+  const { playNext: generalNext, playPrevious: generalPrev, hasPrevious: generalHasPrev, hasNext: generalHasNext, isGeneralMode } = useGeneralRuqyah();
+  const playerDiseaseId = useAppSelector(selectPlayerDiseaseId);
   const { getLocalUri } = useDownloadManager();
   const [feedbackDone, setFeedbackDone] = useState(false);
+  const [alertDismissed, setAlertDismissed] = useState(false);
+  const hasAutoPlayed = useRef(false);
 
   const currentIndex = useMemo(
     () => recordings.findIndex((r) => player.isCurrent(r.id)),
@@ -74,6 +82,33 @@ export default function DiseaseDetailScreen() {
     const next = recordings[currentIndex + 1];
     if (next) handlePlay(next);
   }, [currentIndex, recordings, handlePlay]);
+
+  useEffect(() => {
+    if (isGeneralMode || hasAutoPlayed.current || recordings.length === 0) return;
+    if (currentIndex >= 0) {
+      hasAutoPlayed.current = true;
+      return;
+    }
+    const first = recordings[0];
+    if (!first?.accessible) return;
+    hasAutoPlayed.current = true;
+    handlePlay(first);
+  }, [recordings, currentIndex, handlePlay, isGeneralMode]);
+
+  // When the admin overrides the free session, the cached data refreshes every 30 s.
+  // If the currently-playing recording just became locked, switch immediately to the
+  // new free session (recordings[0] after the sort — is_free first).
+  useEffect(() => {
+    if (isGeneralMode || recordings.length === 0 || currentIndex < 0) return;
+    const active = recordings[currentIndex];
+    if (!active || active.accessible) return;
+    const freeRecording = recordings[0];
+    if (freeRecording?.accessible) {
+      handlePlay(freeRecording);
+    } else {
+      playerStop();
+    }
+  }, [recordings, currentIndex, handlePlay, playerStop, isGeneralMode]);
 
   const handleFeedback = useCallback(
     ({ useful, comment }: { useful: boolean; comment: string }) => {
@@ -122,10 +157,9 @@ export default function DiseaseDetailScreen() {
         {recordings.length > 0 && (
           <View style={s.tabsWrap}>
             <View style={s.tabGroup}>
-              {recordings.map((r) => {
+              {recordings.map((r, idx) => {
                 const active = player.isCurrent(r.id);
-                const label =
-                  pickText(r.title, isArabic) || t.disease.session(r.session_number);
+                const label = t.disease.session(idx + 1);
                 return (
                   <Pressable
                     key={r.id}
@@ -148,40 +182,95 @@ export default function DiseaseDetailScreen() {
           </View>
         )}
 
+        {/* Advisory alert — shown for first wird only (Figma node 18024:1107) */}
+        {!alertDismissed && recordings.length > 0 && (currentIndex === 0 || currentIndex === -1) && (
+          <View style={s.alert}>
+            {isArabic ? (
+              <Pressable onPress={() => setAlertDismissed(true)} hitSlop={8}>
+                <Ionicons name="close" size={14} color={palette.system.warning[900]} />
+              </Pressable>
+            ) : (
+              <Ionicons name="alert-circle-outline" size={20} color={palette.system.warning[900]} />
+            )}
+            <View style={s.alertContent}>
+              <Text style={[s.alertTitle, { textAlign: isArabic ? 'right' : 'left' }]}>
+                {t.disease.alertTitle}
+              </Text>
+              <Text style={[s.alertBody, { textAlign: isArabic ? 'right' : 'left' }]}>
+                {t.disease.alertBody}
+              </Text>
+            </View>
+            {isArabic ? (
+              <Ionicons name="alert-circle-outline" size={20} color={palette.system.warning[900]} />
+            ) : (
+              <Pressable onPress={() => setAlertDismissed(true)} hitSlop={8}>
+                <Ionicons name="close" size={14} color={palette.system.warning[900]} />
+              </Pressable>
+            )}
+          </View>
+        )}
+
         {/* Section card — Figma node 18032:3107 */}
-        <View style={s.sectionCard}>
-          <ScrollView
-            contentContainerStyle={s.cardScroll}
-            showsVerticalScrollIndicator={false}
-            refreshControl={
+        <View style={[s.sectionCard, player.isDarkMode && { backgroundColor: palette.brand[700] }]}>
+          {(() => {
+            const active = currentIndex >= 0 ? recordings[currentIndex] : recordings[0];
+            const refreshCtrl = (
               <RefreshControl
                 refreshing={refreshing}
                 onRefresh={onRefresh}
                 tintColor={palette.brand[500]}
                 colors={[palette.brand[500]]}
               />
+            );
+            if (!active) {
+              return (
+                <ScrollView contentContainerStyle={s.cardScroll} showsVerticalScrollIndicator={false} refreshControl={refreshCtrl}>
+                  <View style={s.feedbackWrap}>
+                    <FeedbackControl onSubmit={handleFeedback} submitted={feedbackDone} />
+                  </View>
+                </ScrollView>
+              );
             }
-          >
-            {disease.description ? (
-              <Text style={s.descText}>{pickText(disease.description, isArabic)}</Text>
-            ) : (
-              <Text style={s.emptyText}>{t.disease.noRecordings}</Text>
-            )}
-
-            <View style={s.feedbackWrap}>
-              <FeedbackControl onSubmit={handleFeedback} submitted={feedbackDone} />
-            </View>
-          </ScrollView>
+            const hasSegments = (active.segments?.length ?? 0) > 0;
+            if (hasSegments) {
+              return (
+                <>
+                  <KaraokeText segments={active.segments!} refreshing={refreshing} onRefresh={onRefresh} />
+                  <View style={s.feedbackWrap}>
+                    <FeedbackControl onSubmit={handleFeedback} submitted={feedbackDone} />
+                  </View>
+                </>
+              );
+            }
+            return (
+              <ScrollView contentContainerStyle={s.cardScroll} showsVerticalScrollIndicator={false} refreshControl={refreshCtrl}>
+                {active.description && (
+                  <Text style={[s.descText, { color: player.textColor, fontSize: player.fontSize, lineHeight: player.fontSize * 1.5 }]}>{pickText(active.description, isArabic)}</Text>
+                )}
+                <View style={s.feedbackWrap}>
+                  <FeedbackControl onSubmit={handleFeedback} submitted={feedbackDone} />
+                </View>
+              </ScrollView>
+            );
+          })()}
         </View>
       </View>
 
       {/* ── Bottom audio player panel — Figma node 18032:3119 ─── */}
-      {player.currentRecording && (
+      {player.currentRecording && !isGeneralMode && playerDiseaseId === diseaseId && (
         <AudioPlayer
           onPrevious={handlePrevious}
           onNext={handleNext}
           hasPrevious={currentIndex > 0}
           hasNext={currentIndex < recordings.length - 1}
+        />
+      )}
+      {player.currentRecording && isGeneralMode && (
+        <AudioPlayer
+          onPrevious={generalPrev}
+          onNext={generalNext}
+          hasPrevious={generalHasPrev}
+          hasNext={generalHasNext}
         />
       )}
     </Screen>

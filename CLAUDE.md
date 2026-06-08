@@ -1,5 +1,31 @@
 # Mobile — Claude Rules
 
+## API URL Priority Rule
+
+**Local backend always has priority in dev. Production (Mashfa) is the fallback — never the default.**
+
+The resolution order, implemented in `src/services/api.ts` and `src/services/apiClient.ts`:
+
+1. **Hard override** — if `EXPO_PUBLIC_API_URL` is set in `.env`, that URL is used everywhere, no other logic runs.
+2. **Release build** — always production; no local logic.
+3. **Dev build** — `API_URL` is always set to `LOCAL_API_URL` at startup. There is **no reachability probe** — probing was removed because it produced false negatives (e.g. `localhost` on Android refers to the device, not the host machine).
+4. **Per-request fallback** — if a request to local fails with a network error or 404, `apiClient.ts` retries it once against production. Auth errors (401/403) and validation errors (422) are **never** retried — they are real failures.
+
+### `LOCAL_API_URL` resolution (native)
+
+- **Android emulator**: `localhost`/`127.0.0.1` → remapped to `10.0.2.2` (AVD's alias for the host machine's loopback)
+- **Physical device**: host IP derived from Expo dev-server `hostUri` or `linkingUri`
+- **Explicit override**: set `EXPO_PUBLIC_API_URL_LOCAL` to a non-localhost URL (e.g. `http://192.168.1.x:8000/api`) if auto-detection fails on physical device
+
+### Rules for Claude
+
+- **Never hardcode** any URL in a service or hook file. All requests go through `apiClient.ts` which reads `api.API_URL` at call time.
+- **Never add a startup reachability probe** — it was removed intentionally. Probes cause false negatives on native where `localhost` is not the dev machine.
+- **Never set `EXPO_PUBLIC_API_URL`** in `.env` permanently — it disables local dev entirely.
+- Do not change the per-request fallback conditions without understanding the auth/validation exclusion.
+
+---
+
 ## Color Convention
 
 **Never define hex color literals in style or component files.**

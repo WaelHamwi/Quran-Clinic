@@ -47,6 +47,7 @@ function SegmentedTabsBase({ tabs, activeKey, onChange }: SegmentedTabsProps) {
     <ScrollView
       horizontal
       showsHorizontalScrollIndicator={false}
+      style={styles.scroll}
       contentContainerStyle={styles.row}
     >
       {tabs.map((tab) => (
@@ -62,7 +63,10 @@ function SegmentedTabsBase({ tabs, activeKey, onChange }: SegmentedTabsProps) {
 }
 
 const styles = StyleSheet.create({
-  row: { gap: 8, paddingHorizontal: 16, paddingVertical: 8 },
+  // flexGrow:0 stops the horizontal ScrollView from stretching to fill the
+  // screen's vertical space (which made the tab strip render huge on first layout).
+  scroll: { flexGrow: 0, flexShrink: 0 },
+  row: { gap: 8, paddingHorizontal: 16, paddingVertical: 8, alignItems: 'center' },
   pill: {
     paddingHorizontal: 12,
     paddingVertical: 6,

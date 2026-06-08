@@ -28,6 +28,10 @@ export const subcategoryCardStyles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  subcategoryCard__iconImage: {
+    width: 48,
+    height: 48,
+  },
   subcategoryCard__name: {
     fontFamily: fontFamily.alexandria,
     fontSize: 14,

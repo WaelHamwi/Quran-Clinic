@@ -1,49 +1,61 @@
-/*import { Platform } from 'react-native';
-
-export const getApiUrl = (): string => {
-  if (Platform.OS === 'web') {
-    return process.env.EXPO_PUBLIC_API_URL_WEB || 'http://localhost:8000/api';
-  }
-  
-  if (Platform.OS === 'android') {
-    // Use YOUR local IP address from ipconfig
-    return process.env.EXPO_PUBLIC_API_URL_ANDROID || 'http://192.168.100.103:8000/api';
-  }
-  
-  if (Platform.OS === 'ios') {
-    return process.env.EXPO_PUBLIC_API_URL_IOS || 'http://192.168.100.103:8000/api';
-  }
-  
-  // Default fallback
-  return 'http://localhost:8000/api';
-};
-
-export const API_URL = getApiUrl();*/
 import { Platform } from 'react-native';
 import Constants from 'expo-constants';
 
-const PRODUCTION_API_URL = 'https://mashfa.odooclick.com/api';
+export const PRODUCTION_API_URL =
+  (Constants.expoConfig?.extra as { API_BASE_URL?: string } | undefined)?.API_BASE_URL ??
+  'https://mashfa.odooclick.com/api';
 
-export const getApiUrl = (): string => {
-  // Prefer the value baked into app.json -> expo.extra.API_BASE_URL.
-  const fromExtra = (Constants.expoConfig?.extra as { API_BASE_URL?: string } | undefined)?.API_BASE_URL;
-  if (fromExtra) return fromExtra;
+function getLocalApiUrl(): string {
+  const override = process.env.EXPO_PUBLIC_API_URL_LOCAL;
+  if (override && !override.includes('localhost') && Platform.OS !== 'web') return override;
 
-  if (Platform.OS === 'web') {
-    return process.env.EXPO_PUBLIC_API_URL_WEB || PRODUCTION_API_URL;
-  }
-  if (Platform.OS === 'android') {
-    return process.env.EXPO_PUBLIC_API_URL_ANDROID || PRODUCTION_API_URL;
-  }
-  if (Platform.OS === 'ios') {
-    return process.env.EXPO_PUBLIC_API_URL_IOS || PRODUCTION_API_URL;
-  }
-  return PRODUCTION_API_URL;
-};
+  if (Platform.OS === 'web') return override ?? 'http://localhost:8000/api';
 
-export const API_URL = getApiUrl();
+  const hostUri =
+    Constants.expoConfig?.hostUri ??
+    (Constants as { expoGoConfig?: { debuggerHost?: string } }).expoGoConfig?.debuggerHost;
+
+  let host: string | undefined = typeof hostUri === 'string' ? hostUri.split(':')[0] : undefined;
+
+  if (!host && typeof Constants.linkingUri === 'string') {
+    const m = Constants.linkingUri.match(/^exp?:\/\/([^:/]+)/);
+    if (m?.[1]) host = m[1];
+  }
+
+  // On Android, localhost/127.0.0.1 refers to the device itself; 10.0.2.2 reaches the host machine.
+  if (Platform.OS === 'android' && (!host || host === 'localhost' || host === '127.0.0.1')) {
+    return 'http://10.0.2.2:8000/api';
+  }
+
+  return host ? `http://${host}:8000/api` : 'http://localhost:8000/api';
+}
+
+export const LOCAL_API_URL = getLocalApiUrl();
+if (__DEV__) console.log(`[api] LOCAL_API_URL → ${LOCAL_API_URL}`);
+
+const OVERRIDE_API_URL = process.env.EXPO_PUBLIC_API_URL;
+
+// `let` is intentional: resolveApiBaseUrl() reassigns this once at startup;
+// apiClient reads it at request time via the ES module live binding.
+export let API_URL: string = OVERRIDE_API_URL ?? (__DEV__ ? LOCAL_API_URL : PRODUCTION_API_URL);
 
 export const API_HEADERS: HeadersInit = {
-  'Accept': 'application/json',
+  Accept: 'application/json',
   'Content-Type': 'application/json',
 };
+
+/** Called once in app/_layout.tsx before any screen renders. */
+export async function resolveApiBaseUrl(): Promise<string> {
+  if (OVERRIDE_API_URL) {
+    API_URL = OVERRIDE_API_URL;
+    console.log(`[api] override → ${API_URL}`);
+    return API_URL;
+  }
+  if (!__DEV__) {
+    API_URL = PRODUCTION_API_URL;
+    return API_URL;
+  }
+  API_URL = LOCAL_API_URL;
+  console.log(`[api] DEV → local ${API_URL} (production fallback per request)`);
+  return API_URL;
+}

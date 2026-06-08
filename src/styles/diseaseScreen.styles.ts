@@ -1,7 +1,7 @@
 import { StyleSheet } from 'react-native';
 import { palette } from '@/theme/colors';
 import { fontFamily } from '@/theme/typography';
-import { radius, spacing } from '@/theme/spacing';
+import { radius, space, spacing } from '@/theme/spacing';
 
 export const TAB_ICON_COLOR = palette.text.tertiary;
 
@@ -64,11 +64,18 @@ export const diseaseScreenStyles = StyleSheet.create({
     paddingBottom: spacing.xxxl,
     gap: 12,                // Figma gap between text items
   },
+  titleText: {
+    fontFamily: fontFamily.alexandriaSemiBold,
+    fontSize: 18,
+    lineHeight: 28,
+    color: palette.text.primary,
+    textAlign: 'center',
+  },
   descText: {
     fontFamily: fontFamily.alexandria,
     fontSize: 16,
     lineHeight: 24,
-    color: palette.text.primary,
+    color: palette.text.secondary,
     textAlign: 'center',
   },
   feedbackWrap: {
@@ -83,5 +90,35 @@ export const diseaseScreenStyles = StyleSheet.create({
     color: palette.text.tertiary,
     textAlign: 'center',
     paddingVertical: spacing.xl,
+  },
+
+  /* ── First-wird advisory alert — Figma node 18024:1107 ────── */
+  alert: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: palette.system.warning[25],
+    borderWidth: 1,
+    borderColor: palette.border.secondary,
+    borderRadius: radius.sm,
+    paddingHorizontal: space.md,
+    paddingVertical: space.lg,
+    gap: space.sm,
+    marginHorizontal: 20,
+  },
+  alertContent: {
+    flex: 1,
+    gap: space.xs,
+  },
+  alertTitle: {
+    fontFamily: fontFamily.alexandria,
+    fontSize: 14,
+    lineHeight: 20,
+    color: palette.system.warning[900],
+  },
+  alertBody: {
+    fontFamily: fontFamily.alexandriaLight,
+    fontSize: 10,
+    lineHeight: 16,
+    color: palette.system.warning[800],
   },
 });

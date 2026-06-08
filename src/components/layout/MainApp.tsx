@@ -54,6 +54,7 @@ export function MainApp() {
           <Stack.Screen name="hospital/subcategories/[slug]" />
           <Stack.Screen name="hospital/diseases/[slug]" />
           <Stack.Screen name="hospital/disease/[slug]" />
+          <Stack.Screen name="hospital/recordings/[slug]" />
           <Stack.Screen
             name="hospital/disease/subscription"
             options={{ presentation: 'modal', animation: 'slide_from_bottom' }}

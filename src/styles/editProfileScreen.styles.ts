@@ -119,6 +119,17 @@ export const editProfileStyles = StyleSheet.create({
     backgroundColor: palette.brand[500],
   },
 
+  hint: {
+    fontFamily: fontFamily.alexandriaLight,
+    fontSize: fontSize.xs,
+    lineHeight: lineHeight.xs,
+    color: palette.text.tertiary,
+    textAlign: 'left',
+    marginTop: 2,
+    paddingHorizontal: spacing.lg,
+  },
+  hintRtl: { textAlign: 'right' },
+
   divider: {
     height: 1,
     backgroundColor: palette.border.secondary,

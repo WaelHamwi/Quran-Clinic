@@ -8,6 +8,7 @@ import { EmptyState } from '@/components/common/EmptyState';
 import { DiseaseList } from '@/components/lists/DiseaseList';
 import { SearchBar } from '@/components/forms/SearchBar';
 import { useSubcategory } from '@/hooks/useSubcategory';
+import { useCategory } from '@/hooks/useCategory';
 import { useRefresh } from '@/hooks/useRefresh';
 import { useLanguage } from '@/context/LanguageContext';
 import { palette } from '@/theme/colors';
@@ -17,9 +18,22 @@ import { spacing } from '@/theme/spacing';
 export default function DiseasesScreen() {
   const params = useLocalSearchParams();
   const slug = typeof params.slug === 'string' ? params.slug : '';
+  const level = params.level === 'category' ? 'category' : 'subcategory';
   const { t, isArabic } = useLanguage();
   const router = useRouter();
-  const { subcategory, diseases, isLoading, error, refetch } = useSubcategory(slug);
+
+  // Both hooks are always called; only one is enabled at a time via the slug guard.
+  const subQ = useSubcategory(level === 'subcategory' ? slug : '');
+  const catQ = useCategory(level === 'category' ? slug : '');
+
+  const isLoading = level === 'category' ? catQ.isLoading : subQ.isLoading;
+  const error = level === 'category' ? catQ.error : subQ.error;
+  const refetch = level === 'category' ? catQ.refetch : subQ.refetch;
+  const diseases = level === 'category' ? catQ.directDiseases : subQ.diseases;
+  const title = level === 'category'
+    ? (catQ.category ? pickText(catQ.category.name, isArabic) : t.hospital.diseases)
+    : (subQ.subcategory ? pickText(subQ.subcategory.name, isArabic) : t.hospital.diseases);
+
   const { refreshing, onRefresh } = useRefresh(refetch);
   const [query, setQuery] = useState('');
 
@@ -34,8 +48,6 @@ export default function DiseasesScreen() {
     [router],
   );
   const handleRetry = useCallback(() => refetch(), [refetch]);
-
-  const title = subcategory ? pickText(subcategory.name, isArabic) : t.hospital.diseases;
 
   return (
     <Screen edges={['top']}>

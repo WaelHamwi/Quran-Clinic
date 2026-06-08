@@ -44,6 +44,7 @@ export function HomeSectionPills() {
 
   const goCourses = useCallback(() => router.push('/courses'), [router]);
   const goAdhkar = useCallback(() => router.push('/adhkar'), [router]);
+  const goTahsinat = useCallback(() => router.push('/tahsinat'), [router]);
 
   useEffect(() => {
     if (isArabic) {
@@ -63,6 +64,7 @@ export function HomeSectionPills() {
       <Pill label={t.home.pillSections} icon="business-outline" active />
       <Pill label={t.home.pillCourses} icon="school-outline" onPress={goCourses} />
       <Pill label={t.home.pillAdhkar} icon="book-outline" onPress={goAdhkar} />
+      <Pill label={t.home.pillTahsinat} icon="shield-checkmark-outline" onPress={goTahsinat} />
     </ScrollView>
   );
 }

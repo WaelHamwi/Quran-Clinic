@@ -17,7 +17,7 @@ import { useMushafContext } from '@/context/MushafContext';
 import { ReciterPickerModal } from '@/components/mushaf/ReciterPickerModal';
 import { useTheme } from '@/context/ThemeContext';
 import { useLanguage } from '@/context/LanguageContext';
-import { useAudio } from '@/hooks/useAudio';
+import { useAudio, PLAYBACK_SPEEDS, type PlaybackSpeed } from '@/hooks/useAudio';
 import { useSurah } from '@/hooks/useSurah';
 import { useVerseTiming } from '@/hooks/useVerseTiming';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -30,6 +30,14 @@ import type { Recitation } from '@/types/recitation';
 
 const TOTAL_SURAHS = 114;
 
+const SPEED_LABELS: Record<PlaybackSpeed, string> = {
+  0.5:  '0.5×',
+  0.75: '0.75×',
+  1:    '1×',
+  1.5:  '1.5×',
+  2:    '2×',
+};
+
 const EASTERN_DIGITS = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'] as const;
 function toEastern(n: number): string {
   return String(n).split('').map(d => EASTERN_DIGITS[+d]).join('');
@@ -39,6 +47,18 @@ function fmt(ms: number): string {
   const s = Math.floor(ms / 1000);
   const m = Math.floor(s / 60);
   return `${m}:${String(s % 60).padStart(2, '0')}`;
+}
+
+// Resolve the streamable URI for a recitation.
+// CDN/remote recitations expose an absolute `audio_url` we can stream directly —
+// this also sidesteps the local API base, which is unreachable from a device
+// when the backend isn't on the LAN (the recitation data itself may have arrived
+// from production via the per-request fallback while API_URL still points local).
+// Only backend-stored files (relative path) need the API proxy endpoint.
+function resolveRecitationUri(recitation: Recitation): string {
+  const url = recitation.audio_url ?? '';
+  if (url.startsWith('http://') || url.startsWith('https://')) return url;
+  return `${API_URL}/recitations/${recitation.id}/audio`;
 }
 
 // ─── SurahHeader ─────────────────────────────────────────────────────────────
@@ -302,18 +322,17 @@ export default function MushafReaderScreen() {
     if (!surah || audio.durationMillis === 0) { setActiveVerseIndex(-1); return; }
     const idx = getIdxAtMsRef.current(audio.positionMillis);
     if (idx < 0) return;
-    setActiveVerseIndex((prev) => {
-      if (prev === idx) return prev;
-      if (audio.isPlaying && idx !== lastScrolledIndexRef.current) {
-        lastScrolledIndexRef.current = idx;
-        try {
-          flatListRef.current?.scrollToIndex({ index: idx, animated: true, viewPosition: 0.25 });
-        } catch {
-          flatListRef.current?.scrollToOffset({ offset: idx * 90, animated: true });
-        }
+    // Update highlight — React bails out if idx hasn't changed, so no extra re-render
+    setActiveVerseIndex(idx);
+    // Scroll is a side-effect and must live outside the setState callback
+    if (audio.isPlaying && idx !== lastScrolledIndexRef.current) {
+      lastScrolledIndexRef.current = idx;
+      try {
+        flatListRef.current?.scrollToIndex({ index: idx, animated: true, viewPosition: 0.25 });
+      } catch {
+        flatListRef.current?.scrollToOffset({ offset: idx * 90, animated: true });
       }
-      return idx;
-    });
+    }
   }, [audio.positionMillis, audio.durationMillis, audio.isPlaying, surah]);
 
   useEffect(() => {
@@ -328,12 +347,14 @@ export default function MushafReaderScreen() {
       await audio.pause();
       return;
     }
-    const cached = await audioService.isAudioCached(surahId, selectedReciterId);
-    // Always proxy through the backend so CDN URLs don't go to the device directly.
-    const uri = cached
-      ? audioService.getLocalPath(surahId, selectedReciterId)
-      : `${API_URL}/recitations/${currentRecitation.id}/audio`;
-    await audio.loadAudio(uri);
+    // Only load if no source has been set — prevents restarting from 0 on every resume
+    if (!audio.hasSource) {
+      const cached = await audioService.isAudioCached(surahId, selectedReciterId);
+      const uri = cached
+        ? audioService.getLocalPath(surahId, selectedReciterId)
+        : resolveRecitationUri(currentRecitation);
+      await audio.loadAudio(uri);
+    }
     await audio.play();
   }, [currentRecitation, selectedReciterId, surahId, audio]);
 
@@ -342,7 +363,7 @@ export default function MushafReaderScreen() {
     setIsDownloading(true);
     try {
       await audioService.downloadAudio(
-        `${API_URL}/recitations/${currentRecitation.id}/audio`,
+        resolveRecitationUri(currentRecitation),
         surahId,
         selectedReciterId,
         setDownloadProgress
@@ -390,6 +411,10 @@ export default function MushafReaderScreen() {
     },
     [audio]
   );
+
+  const handleSetRate = useCallback((spd: PlaybackSpeed) => {
+    audio.setRate(spd);
+  }, [audio]);
 
   const handleRefresh = useCallback(async () => {
     setIsRefreshingRecitations(true);
@@ -532,10 +557,9 @@ export default function MushafReaderScreen() {
           renderItem={renderVerse}
           extraData={extraData}
           contentContainerStyle={styles.verseList}
-          initialNumToRender={10}
-          maxToRenderPerBatch={8}
-          windowSize={5}
-          removeClippedSubviews
+          initialNumToRender={20}
+          maxToRenderPerBatch={15}
+          windowSize={21}
           onScrollToIndexFailed={onScrollToIndexFailed}
           ListHeaderComponent={
             <SurahHeader surah={surah} language={language} t={t} />
@@ -629,6 +653,23 @@ export default function MushafReaderScreen() {
               <Text style={styles.skipBtnText}>+5s</Text>
             </TouchableOpacity>
           </View>
+
+          <View style={styles.speedRow}>
+            {PLAYBACK_SPEEDS.map((spd) => {
+              const active = audio.rate === spd;
+              return (
+                <TouchableOpacity
+                  key={spd}
+                  style={[styles.speedChip, active && styles.speedChipActive]}
+                  onPress={() => handleSetRate(spd)}
+                >
+                  <Text style={[styles.speedChipText, active && styles.speedChipTextActive]}>
+                    {SPEED_LABELS[spd]}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
         </View>
       ) : isLoadingRecitations || !isContextReady ? null : (
         <TouchableOpacity
@@ -636,10 +677,10 @@ export default function MushafReaderScreen() {
           onPress={() => setShowReciterPicker(true)}
           activeOpacity={0.7}
         >
-          <View style={styles.noReciterRow}>
+          <View style={[styles.noReciterRow, isArabic && { flexDirection: 'row-reverse' }]}>
             <Ionicons name="mic-outline" size={16} color={palette.brand[500]} />
             <Text style={styles.noReciterText}>{t.reader.selectReciterHint}</Text>
-            <Ionicons name="chevron-forward" size={14} color={palette.brand[500]} />
+            <Ionicons name={isArabic ? 'chevron-back' : 'chevron-forward'} size={14} color={palette.brand[500]} />
           </View>
         </TouchableOpacity>
       )}

@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react';
 import { ruqyahService } from '@/services/ruqyahService';
+import { clinicCache } from '@/services/clinicCache';
 import { useRuqyahEngine } from '@/context/PlayerContext';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import {
@@ -48,18 +49,27 @@ export function useGeneralRuqyah() {
     [dispatch, engine],
   );
 
-  /** Fetch, filter by subscription, shuffle, and start playback. */
+  /** Fetch, filter by subscription, shuffle, and start playback. Falls back to device cache when offline. */
   const playGeneralRuqyah = useCallback(async () => {
     setIsLoading(true);
     try {
       const all = await ruqyahService.getGeneralRuqyah();
+      await clinicCache.saveGeneralRuqyah(all);
       const filtered = isPaid ? all : all.filter((r) => r.session_number === 1);
       const shuffled = shuffle(filtered);
       if (!shuffled.length) return;
       dispatch(setQueue({ recordings: shuffled, index: 0 }));
       loadQueueTrack(shuffled, 0);
     } catch {
-      // Offline or no general ruqyah configured — fail silently.
+      const cached = await clinicCache.getGeneralRuqyah();
+      if (cached?.length) {
+        const filtered = isPaid ? cached : cached.filter((r) => r.session_number === 1);
+        const shuffled = shuffle(filtered);
+        if (shuffled.length) {
+          dispatch(setQueue({ recordings: shuffled, index: 0 }));
+          loadQueueTrack(shuffled, 0);
+        }
+      }
     } finally {
       setIsLoading(false);
     }

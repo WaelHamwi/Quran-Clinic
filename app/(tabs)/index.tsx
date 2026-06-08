@@ -1,5 +1,6 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { DevSettings, Pressable, Text, View } from 'react-native';
+import { DevSettings, Pressable, RefreshControl, Text, View } from 'react-native';
+import { palette } from '@/theme/colors';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useQueryClient } from '@tanstack/react-query';
@@ -17,6 +18,7 @@ import { useDiseaseSearch } from '@/hooks/useDiseaseSearch';
 import { useAuth } from '@/context/AuthContext';
 import { useLanguage } from '@/context/LanguageContext';
 import { offlineStorage } from '@/services/offlineStorage';
+import { categoryRoute } from '@/utils/hospital';
 import { homeScreenStyles as s } from '@/styles/homeScreen.styles';
 
 export default function HomeScreen() {
@@ -31,8 +33,11 @@ export default function HomeScreen() {
   const { query, results, isSearching, hasQuery } = useDiseaseSearch();
 
   const openCategory = useCallback(
-    (slug: string) => router.push(`/hospital/subcategories/${slug}`),
-    [router],
+    (slug: string) => {
+      const cat = categories.find((c) => c.slug === slug);
+      router.push((cat ? categoryRoute(cat) : `/hospital/subcategories/${slug}`) as never);
+    },
+    [router, categories],
   );
   const openDisease = useCallback(
     (slug: string) => router.push(`/hospital/disease/${slug}`),
@@ -42,6 +47,13 @@ export default function HomeScreen() {
     refetch();
   }, [refetch]);
   const handleSearchPress = useCallback(() => router.push('/hospital'), [router]);
+
+  const [refreshing, setRefreshing] = useState(false);
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await refetch();
+    setRefreshing(false);
+  }, [refetch]);
 
   const [isClearing, setIsClearing] = useState(false);
   const handleClearCache = useCallback(async () => {
@@ -97,6 +109,14 @@ export default function HomeScreen() {
       <CategoryGrid
         categories={categories}
         onItemPress={openCategory}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor={palette.brand[500]}
+            colors={[palette.brand[500]]}
+          />
+        }
         ListHeaderComponent={
           <View style={s.homeScreen__headerWrap}>
             {gridHeader}

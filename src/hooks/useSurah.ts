@@ -20,7 +20,8 @@ export function useSurah(id: number) {
       }
     },
     enabled: id > 0,
-    retry: 1,
+    retry: false,
+    networkMode: 'offlineFirst',
     staleTime: 10 * 60 * 1000,
     gcTime: 30 * 60 * 1000,
   });

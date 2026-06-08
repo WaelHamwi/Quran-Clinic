@@ -1,5 +1,10 @@
 import type { Translations } from './en';
 
+const AR_ORDINALS: Record<number, string> = {
+  1: 'الأول', 2: 'الثاني', 3: 'الثالث', 4: 'الرابع', 5: 'الخامس',
+  6: 'السادس', 7: 'السابع', 8: 'الثامن', 9: 'التاسع', 10: 'العاشر',
+};
+
 export const ar: Translations = {
   common: {
     back: 'رجوع',
@@ -69,6 +74,7 @@ export const ar: Translations = {
     // Figma 17962:415 — three horizontal pills above the General Ruqyah CTA.
     pillCourses: 'دورات الرقية',
     pillAdhkar: 'الأذكار والتحصين',
+    pillTahsinat: 'التحصينات',
     pillSections: 'أقسام المشفى',
   },
   mushaf: {
@@ -127,8 +133,8 @@ export const ar: Translations = {
   },
   disease: {
     about: 'عن هذه العلة',
-    sessions: 'جلسات الرقية',
-    session: (n: number) => `الجلسة ${n}`,
+    sessions: 'أوراد الرقية',
+    session: (n: number) => `الورد ${AR_ORDINALS[n] ?? n}`,
     play: 'تشغيل',
     pause: 'إيقاف',
     download: 'تنزيل',
@@ -147,6 +153,8 @@ export const ar: Translations = {
     noRecordings: 'لا توجد تسجيلات متاحة بعد',
     downloadToListen: 'تحميل للاستماع',
     playbackSettings: 'إعدادات التشغيل',
+    alertTitle: 'تنبيه هام',
+    alertBody: 'تعتمد هذه الرقية على الكتاب والسنة وهي مكملة وليست بديلاً عن العلاج الطبي. يرجى عدم ترك النصائح الطبية المقررة لك.',
   },
   adhkar: {
     title: 'الأذكار',
@@ -174,6 +182,9 @@ export const ar: Translations = {
     repetitions: (n: number) => `كرّر ${n}×`,
     hint: 'إرشاد',
     empty: 'لا توجد عناصر في هذا القسم',
+    next: 'التالي',
+    done: 'اكتمل',
+    progress: (cur: number, total: number) => `${cur} من ${total}`,
   },
   favorites: {
     title: 'المفضلة',
@@ -280,6 +291,7 @@ export const ar: Translations = {
   sponsors: {
     title: 'رعاتنا',
     sponsoredBy: 'برعاية',
+    sponsorIntro: 'هذا التطبيق برعاية كريمة من',
     empty: 'لا يوجد رعاة لعرضهم',
   },
   splash: {

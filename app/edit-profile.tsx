@@ -4,22 +4,31 @@ import { Ionicons } from '@expo/vector-icons';
 import { Screen } from '@/components/layout/Screen';
 import { PatternedBackground } from '@/components/layout/PatternedBackground';
 import { Header } from '@/components/layout/Header';
+import { CountryPickerModal } from '@/components/common/CountryPickerModal';
 import { useAuth } from '@/context/AuthContext';
 import { useLanguage } from '@/context/LanguageContext';
 import { palette } from '@/theme/colors';
 import { editProfileStyles as s } from '@/styles/editProfileScreen.styles';
+import type { Country } from '@/data/countries';
 
 type Gender = 'male' | 'female';
 
 export default function EditProfileScreen() {
   const { user } = useAuth();
-  const { t, isArabic } = useLanguage();
+  const { t, isArabic, language } = useLanguage();
 
   const [fullName, setFullName] = useState<string>(user?.name ?? '');
   const [email] = useState<string>(user?.email ?? '');
   const [phone, setPhone] = useState<string>(user?.phone ?? '');
-  const [country, setCountry] = useState<string>(user?.country ?? '');
+  const [country, setCountry] = useState<Country | null>(
+    user?.country ? { en: user.country, ar: user.country } : null,
+  );
   const [gender, setGender] = useState<Gender>('male');
+  const [countryPickerOpen, setCountryPickerOpen] = useState(false);
+
+  const countryLabel = country
+    ? (language === 'ar' ? country.ar : country.en)
+    : t.editProfile.country;
 
   return (
     <Screen edges={['top']}>
@@ -45,7 +54,7 @@ export default function EditProfileScreen() {
           </View>
         </View>
 
-        {/* Email */}
+        {/* Email (read-only) */}
         <View style={s.fieldGroup}>
           <Text style={[s.label, isArabic && s.labelRtl]}>{t.editProfile.email}</Text>
           <View style={[s.inputRow, s.inputRowDisabled, isArabic && s.inputRowRtl]}>
@@ -60,6 +69,7 @@ export default function EditProfileScreen() {
               placeholderTextColor={palette.text.placeholder}
             />
           </View>
+          <Text style={[s.hint, isArabic && s.hintRtl]}>{t.editProfile.emailReadOnly}</Text>
         </View>
 
         {/* Phone */}
@@ -81,19 +91,38 @@ export default function EditProfileScreen() {
           </View>
         </View>
 
-        {/* Country */}
+        {/* Country — opens picker */}
         <View style={s.fieldGroup}>
           <Text style={[s.label, isArabic && s.labelRtl]}>{t.editProfile.country}</Text>
-          <Pressable style={[s.inputRow, isArabic && s.inputRowRtl]}>
-            <View style={s.chevronIcon}>
-              <Ionicons name="chevron-down" size={16} color={palette.text.secondary} />
-            </View>
-            <View style={s.inputIcon}>
-              <Ionicons name="flag-outline" size={16} color={palette.text.secondary} />
-            </View>
-            <Text style={[s.input, !country && { color: palette.text.placeholder }, isArabic && { textAlign: 'right' }]}>
-              {country || t.editProfile.country}
-            </Text>
+          <Pressable
+            style={[s.inputRow, isArabic && s.inputRowRtl]}
+            onPress={() => setCountryPickerOpen(true)}
+          >
+            {isArabic ? (
+              <>
+                <View style={s.chevronIcon}>
+                  <Ionicons name="chevron-down" size={16} color={palette.text.secondary} />
+                </View>
+                <Text style={[s.input, !country && { color: palette.text.placeholder }, { textAlign: 'right' }]}>
+                  {countryLabel}
+                </Text>
+                <View style={s.inputIcon}>
+                  <Ionicons name="flag-outline" size={16} color={palette.text.secondary} />
+                </View>
+              </>
+            ) : (
+              <>
+                <View style={s.inputIcon}>
+                  <Ionicons name="flag-outline" size={16} color={palette.text.secondary} />
+                </View>
+                <Text style={[s.input, !country && { color: palette.text.placeholder }]}>
+                  {countryLabel}
+                </Text>
+                <View style={s.chevronIcon}>
+                  <Ionicons name="chevron-down" size={16} color={palette.text.secondary} />
+                </View>
+              </>
+            )}
           </Pressable>
         </View>
 
@@ -130,6 +159,13 @@ export default function EditProfileScreen() {
         </Pressable>
 
       </ScrollView>
+
+      <CountryPickerModal
+        visible={countryPickerOpen}
+        selected={country?.en ?? ''}
+        onSelect={(c: Country) => setCountry(c)}
+        onClose={() => setCountryPickerOpen(false)}
+      />
     </Screen>
   );
 }

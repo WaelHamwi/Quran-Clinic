@@ -53,7 +53,7 @@ export function useDownloadManager() {
           completeTask({
             recordingId: recording.id,
             diseaseId,
-            title: recording.title.ar || recording.title.en || `#${recording.id}`,
+            title: `#${recording.session_number}`,
             sessionNumber: recording.session_number,
             localPath: uri,
             size,

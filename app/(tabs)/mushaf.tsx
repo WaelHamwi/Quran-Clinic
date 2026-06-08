@@ -226,7 +226,7 @@ export default function MushafScreen() {
                     : t.mushaf.selectReciter}
                 </Text>
               </View>
-              <Ionicons name="chevron-forward" size={16} color={palette.text.tertiary} />
+              <Ionicons name={isArabic ? 'chevron-back' : 'chevron-forward'} size={16} color={palette.text.tertiary} />
             </TouchableOpacity>
 
             <ReciterPickerModal

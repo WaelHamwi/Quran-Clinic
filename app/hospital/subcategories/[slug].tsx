@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { RefreshControl, StyleSheet, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Screen } from '@/components/layout/Screen';
@@ -12,6 +12,7 @@ import { useRefresh } from '@/hooks/useRefresh';
 import { useLanguage } from '@/context/LanguageContext';
 import { palette } from '@/theme/colors';
 import { pickText } from '@/utils/formatters';
+import { categoryIsDirect, categoryIsDiseaseDirect, subcategoryRoute } from '@/utils/hospital';
 import { spacing } from '@/theme/spacing';
 
 export default function SubcategoriesScreen() {
@@ -23,15 +24,30 @@ export default function SubcategoriesScreen() {
   const { refreshing, onRefresh } = useRefresh(refetch);
   const [query, setQuery] = useState('');
 
+  // Guard: redirect to the appropriate screen based on the category type.
+  useEffect(() => {
+    if (!category) return;
+    if (categoryIsDirect(category)) {
+      router.replace(`/hospital/recordings/${slug}` as never);
+    } else if (categoryIsDiseaseDirect(category)) {
+      router.replace(`/hospital/diseases/${slug}?level=category` as never);
+    }
+  }, [category, slug, router]);
+
   const filtered = useMemo(() => {
     if (!query.trim()) return subcategories;
     const q = query.toLowerCase();
     return subcategories.filter(s => pickText(s.name, isArabic).toLowerCase().includes(q));
   }, [subcategories, query, isArabic]);
 
+  // A subcategory with recordings directly (no diseases) opens recordings;
+  // otherwise it opens its disease list.
   const openSubcategory = useCallback(
-    (s: string) => router.push(`/hospital/diseases/${s}`),
-    [router],
+    (sub: string) => {
+      const target = subcategories.find((x) => x.slug === sub);
+      router.push((target ? subcategoryRoute(target) : `/hospital/diseases/${sub}`) as never);
+    },
+    [router, subcategories],
   );
   const handleRetry = useCallback(() => refetch(), [refetch]);
 

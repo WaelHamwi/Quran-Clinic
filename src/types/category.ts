@@ -1,19 +1,26 @@
 import type { Translatable } from '@/types/translatable';
 import type { Disease } from '@/types/disease';
+import type { Recording } from '@/types/recording';
 
 export interface Category {
   id: number;
   name: Translatable;
   slug: string;
   icon: string | null;
-  /** Optional short blurb shown under the title on the homepage list.
-   *  Backend may or may not populate it; rendering is guarded. */
+  /**
+   * `'standard'`      — Category → Subcategory → Disease flow.
+   * `'disease_direct'`— Diseases attach directly (no subcategory layer).
+   * `'direct'`        — Recordings attach directly (no diseases or subcategories).
+   */
+  type: 'standard' | 'direct' | 'disease_direct';
   description?: Translatable | null;
-  /** Optional hex (e.g. "#8B5CF6") for the icon bubble background.
-   *  When absent the card falls back to a deterministic per-id colour. */
   color?: string | null;
   display_order: number;
   subcategories?: Subcategory[];
+  /** Populated only for `type === 'disease_direct'` categories. */
+  direct_diseases?: Disease[];
+  /** Populated only for `type === 'direct'` categories. */
+  recordings?: Recording[];
 }
 
 export interface Subcategory {
@@ -21,8 +28,12 @@ export interface Subcategory {
   category_id: number;
   name: Translatable;
   slug: string;
+  icon?: string | null;
   display_order: number;
   category?: Category;
   diseases?: Disease[];
   diseases_count?: number;
+  /** Recordings attached directly to this subcategory (no diseases). */
+  recordings?: Recording[];
+  recordings_count?: number;
 }

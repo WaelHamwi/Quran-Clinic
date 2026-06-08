@@ -4,6 +4,8 @@ import { fontFamily } from '@/theme/typography';
 
 export const ARROW_COLOR = palette.text.tertiary;
 export const ICON_ON_TILE = palette.white;
+// Fallback tile color for categories whose slug isn't one of the known four.
+export const TILE_DEFAULT = palette.brand[500];
 
 // Icon tile bg colors — Figma 18063:1291–1293.
 // These shades are specific to adhkar category icon bubbles; not in the global palette.
@@ -70,5 +72,9 @@ export const adhkarCategoryCardStyles = StyleSheet.create({
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  iconImage: {
+    width: 32,
+    height: 32,
   },
 });

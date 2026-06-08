@@ -1,4 +1,19 @@
 import type { Translatable } from '@/types/translatable';
+import { API_URL } from '@/services/api';
+
+/**
+ * Normalize a media URL coming from the API.
+ *
+ * In dev the backend builds absolute URLs from its `APP_URL` (often
+ * `http://localhost:8000`). A physical device can't reach `localhost`, so any
+ * such URL is rewritten to the API origin the app is actually talking to
+ * (e.g. the LAN IP). Production URLs are returned unchanged.
+ */
+export function resolveMediaUrl(url?: string | null): string | null {
+  if (!url) return null;
+  const origin = API_URL.replace(/\/api\/?$/, '').replace(/\/+$/, '');
+  return url.replace(/^https?:\/\/(?:localhost|127\.0\.0\.1)(?::\d+)?/i, origin);
+}
 
 /** Milliseconds → `m:ss` (or `h:mm:ss`). Used by audio players. */
 export function formatMillis(millis: number): string {

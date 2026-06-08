@@ -2,6 +2,7 @@ import React, { useCallback } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
+import { RemoteSvg } from '@/components/common/RemoteSvg';
 import { useLanguage } from '@/context/LanguageContext';
 import { pickText } from '@/utils/formatters';
 import type { Category } from '@/types/category';
@@ -16,6 +17,7 @@ function CategoryCardBase({ category, onPress }: CategoryCardProps) {
   const { isArabic } = useLanguage();
   const handlePress = useCallback(() => onPress(category.slug), [onPress, category.slug]);
   const iconIsUrl = !!category.icon && /^https?:\/\//.test(category.icon);
+  const iconIsSvg = iconIsUrl && /\.svg($|\?)/i.test(category.icon as string);
   const tile = category.color ?? colorForId(category.id);
   const desc = category.description ? pickText(category.description, isArabic) : null;
 
@@ -41,8 +43,18 @@ function CategoryCardBase({ category, onPress }: CategoryCardProps) {
           ) : null}
         </View>
         <View style={[s.categoryCard__iconTile, { backgroundColor: tile }]}>
-          {iconIsUrl ? (
-            <Image source={category.icon} style={s.categoryCard__iconImage} contentFit="contain" tintColor={ICON_ON_TILE} />
+          {iconIsSvg ? (
+            <RemoteSvg uri={category.icon as string} width={32} height={32} color={ICON_ON_TILE} />
+          ) : iconIsUrl ? (
+            <Image
+              source={{
+                uri: category.icon as string,
+                headers: { 'ngrok-skip-browser-warning': 'true' },
+              }}
+              style={s.categoryCard__iconImage}
+              contentFit="contain"
+              tintColor={ICON_ON_TILE}
+            />
           ) : (
             <Ionicons name="medkit-outline" size={32} color={ICON_ON_TILE} />
           )}

@@ -320,6 +320,32 @@ export function createReaderStyles(theme: Theme) {
       justifyContent: 'center',
       gap: 24,
     },
+
+    speedRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 6,
+      marginTop: 10,
+    },
+    speedChip: {
+      paddingHorizontal: 10,
+      paddingVertical: 5,
+      borderRadius: 99,
+      backgroundColor: OVERLAY_12,
+    },
+    speedChipActive: {
+      backgroundColor: palette.text.onBrand,
+    },
+    speedChipText: {
+      color: OVERLAY_60,
+      fontSize: 11,
+      lineHeight: 16,
+      fontFamily: fontFamily.alexandriaMedium,
+    },
+    speedChipTextActive: {
+      color: palette.brand[700],
+    },
     skipBtn: {
       paddingHorizontal: 12,
       paddingVertical: 8,

@@ -16,6 +16,12 @@ interface PlayerState {
   playbackRate: number;
   volume: number;
   miniPlayerVisible: boolean;
+  /** User-selected ruqyah text colour (hex string). Persists for the session. */
+  textColor: string;
+  /** User-selected ruqyah text font size (pt). Persists for the session. */
+  fontSize: number;
+  /** Whether dark mode is active for the ruqyah content card. */
+  isDarkMode: boolean;
   /** Shuffled general ruqyah playlist. Empty = not in general ruqyah mode. */
   queue: Recording[];
   /** Current position within `queue`. -1 when no queue is active. */
@@ -34,6 +40,9 @@ const initialState: PlayerState = {
   playbackRate: 1,
   volume: 1,
   miniPlayerVisible: false,
+  textColor: '#181d27',
+  fontSize: 16,
+  isDarkMode: false,
   queue: [],
   queueIndex: -1,
 };
@@ -45,7 +54,7 @@ const playerSlice = createSlice({
   reducers: {
     setRecording(
       state,
-      action: PayloadAction<{ recording: Recording; diseaseId: number; source: PlayerSource }>,
+      action: PayloadAction<{ recording: Recording; diseaseId: number | null; source: PlayerSource }>,
     ) {
       state.currentRecording = action.payload.recording;
       state.diseaseId = action.payload.diseaseId;
@@ -73,6 +82,15 @@ const playerSlice = createSlice({
     },
     setRate(state, action: PayloadAction<number>) {
       state.playbackRate = action.payload;
+    },
+    setTextColor(state, action: PayloadAction<string>) {
+      state.textColor = action.payload;
+    },
+    setFontSize(state, action: PayloadAction<number>) {
+      state.fontSize = action.payload;
+    },
+    setDarkMode(state, action: PayloadAction<boolean>) {
+      state.isDarkMode = action.payload;
     },
     setVolume(state, action: PayloadAction<number>) {
       state.volume = action.payload;
@@ -112,6 +130,9 @@ export const {
   setProgress,
   seek,
   setRate,
+  setTextColor,
+  setFontSize,
+  setDarkMode,
   setVolume,
   setLoading,
   setLoadError,
@@ -135,3 +156,7 @@ export const selectPlayerDiseaseId = (s: RootState): number | null => s.player.d
 export const selectPlayerLoadError = (s: RootState): boolean => s.player.loadError;
 export const selectQueue = (s: RootState): Recording[] => s.player.queue;
 export const selectQueueIndex = (s: RootState): number => s.player.queueIndex;
+export const selectPlaybackRate = (s: RootState): number => s.player.playbackRate;
+export const selectTextColor = (s: RootState): string => s.player.textColor;
+export const selectFontSize = (s: RootState): number => s.player.fontSize;
+export const selectDarkMode = (s: RootState): boolean => s.player.isDarkMode;

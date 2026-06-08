@@ -1,45 +1,42 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback } from 'react';
+import { FlatList, RefreshControl, type ListRenderItem } from 'react-native';
+import { useRouter } from 'expo-router';
 import { Screen } from '@/components/layout/Screen';
+import { PatternedBackground } from '@/components/layout/PatternedBackground';
 import { Header } from '@/components/layout/Header';
 import { Loader } from '@/components/common/Loader';
 import { EmptyState } from '@/components/common/EmptyState';
-import { SegmentedTabs } from '@/components/common/SegmentedTabs';
-import { TahsinatList } from '@/components/lists/TahsinatList';
-import { useTahsinatCategories, useTahsinatItems } from '@/hooks/useTahsinat';
+import { TahsinatCategoryCard } from '@/components/lists/TahsinatCategoryCard';
+import { useTahsinatCategories } from '@/hooks/useTahsinat';
+import { useRefresh } from '@/hooks/useRefresh';
 import { useLanguage } from '@/context/LanguageContext';
-import { pickText } from '@/utils/formatters';
-import { flattenSectioned } from '@/utils/sections';
+import { palette } from '@/theme/colors';
+import type { TahsinatCategory } from '@/types/tahsinat';
+import { tahsinatScreenStyles as s } from '@/styles/tahsinatScreen.styles';
 
 export default function TahsinatScreen() {
-  const { t, isArabic } = useLanguage();
-  const { categories, isLoading: catsLoading, error: catsError, refetch } =
-    useTahsinatCategories();
-  const [activeSlug, setActiveSlug] = useState('');
-  const effectiveSlug = activeSlug || categories[0]?.slug || '';
-  const { category, isLoading: itemsLoading } = useTahsinatItems(effectiveSlug);
-  // Flatten sections → items per view; `order_randomly` sections reshuffle here.
-  const items = useMemo(() => flattenSectioned(category), [category]);
-  const [counters, setCounters] = useState<Record<number, number>>({});
+  const { t } = useLanguage();
+  const router = useRouter();
+  const { categories, isLoading, error, refetch } = useTahsinatCategories();
 
-  const onCount = useCallback((id: number, reps: number) => {
-    setCounters((c) => {
-      const cur = c[id] ?? 0;
-      return { ...c, [id]: cur >= reps ? 0 : cur + 1 };
-    });
-  }, []);
-
-  const tabs = useMemo(
-    () => categories.map((c) => ({ key: c.slug, label: pickText(c.name, isArabic) })),
-    [categories, isArabic],
+  const openCategory = useCallback(
+    (slug: string) => router.push(`/tahsinat/${slug}` as any),
+    [router],
   );
-  const handleRetry = useCallback(() => {
-    refetch();
-  }, [refetch]);
+
+  const renderItem = useCallback<ListRenderItem<TahsinatCategory>>(
+    ({ item }) => <TahsinatCategoryCard category={item} onPress={openCategory} />,
+    [openCategory],
+  );
+
+  const keyExtractor = useCallback((item: TahsinatCategory) => String(item.id), []);
+  const handleRetry = useCallback(() => refetch(), [refetch]);
+  const { refreshing, onRefresh } = useRefresh(refetch);
 
   let body: React.ReactNode;
-  if (catsLoading) {
+  if (isLoading) {
     body = <Loader fullScreen message={t.common.loading} />;
-  } else if (catsError) {
+  } else if (error) {
     body = (
       <EmptyState
         icon="cloud-offline-outline"
@@ -50,27 +47,32 @@ export default function TahsinatScreen() {
     );
   } else {
     body = (
-      <>
-        <SegmentedTabs tabs={tabs} activeKey={effectiveSlug} onChange={setActiveSlug} />
-        {itemsLoading ? (
-          <Loader fullScreen message={t.common.loading} />
-        ) : (
-          <TahsinatList
-            items={items}
-            counters={counters}
-            onCount={onCount}
-            ListEmptyComponent={
-              <EmptyState icon="shield-checkmark-outline" title={t.tahsinat.empty} />
-            }
+      <FlatList
+        data={categories}
+        renderItem={renderItem}
+        keyExtractor={keyExtractor}
+        contentContainerStyle={s.listContent}
+        showsVerticalScrollIndicator={false}
+        removeClippedSubviews
+        maxToRenderPerBatch={8}
+        windowSize={5}
+        initialNumToRender={6}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={palette.brand[500]}
+            colors={[palette.brand[500]]}
           />
-        )}
-      </>
+        }
+      />
     );
   }
 
   return (
     <Screen edges={['top']}>
-      <Header title={t.tahsinat.title} />
+      <PatternedBackground />
+      <Header title={t.tahsinat.title} showBack />
       {body}
     </Screen>
   );

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Image, Pressable, Text, View } from 'react-native';
+import { Image, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import OnbBgVector from '@/assets/figma/onb1-bg.svg';
 import TickIcon from '@/assets/figma/tick.svg';
@@ -26,13 +26,18 @@ export function OnboardingPager({ onComplete }: Props) {
 
   const finish = useCallback(() => onComplete(), [onComplete]);
 
+  // FR-2.2: slides auto-transition with no navigation buttons; after the last
+  // slide we auto-advance straight into the next flow step.
   useEffect(() => {
-    if (index >= SLIDE_COUNT - 1) return;
-    const id = setTimeout(() => setIndex((i) => Math.min(i + 1, SLIDE_COUNT - 1)), SLIDE_MS);
+    const id = setTimeout(() => {
+      if (index >= SLIDE_COUNT - 1) {
+        finish();
+      } else {
+        setIndex((i) => i + 1);
+      }
+    }, SLIDE_MS);
     return () => clearTimeout(id);
-  }, [index]);
-
-  const isLast = index === SLIDE_COUNT - 1;
+  }, [index, finish]);
 
   return (
     <View style={s.root}>
@@ -104,15 +109,6 @@ export function OnboardingPager({ onComplete }: Props) {
               </View>
             )}
           </View>
-
-          {isLast && (
-            <Pressable
-              onPress={finish}
-              style={({ pressed }) => [s.cta, pressed && s.pressed]}
-            >
-              <Text style={s.ctaText}>{t.onboarding.getStarted}</Text>
-            </Pressable>
-          )}
         </View>
       </SafeAreaView>
     </View>

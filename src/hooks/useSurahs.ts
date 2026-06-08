@@ -30,6 +30,7 @@ export function useSurahs() {
         ? lastPage.meta.current_page + 1
         : undefined,
     staleTime: 5 * 60 * 1000,
-    retry: 1,
+    retry: false,
+    networkMode: 'offlineFirst',
   });
 }

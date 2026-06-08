@@ -62,6 +62,9 @@ export function createHeaderStyles(theme: Theme) {
       paddingVertical: 12,
       backgroundColor: theme.background,
     },
+    'header--rtl': {
+      flexDirection: 'row-reverse',
+    },
     header__side: {
       minWidth: 32,
       justifyContent: 'center',
@@ -79,6 +82,7 @@ export function createHeaderStyles(theme: Theme) {
       fontWeight: fontWeight.semibold,
       color: palette.text.primary,
       fontFamily: fontFamily.alexandriaSemiBold,
+      textAlign: 'center',
     },
     header__subtitle: {
       fontSize: fontSize.xs,

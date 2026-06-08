@@ -17,6 +17,7 @@ import { useGeneralRuqyah } from '@/hooks/useGeneralRuqyah';
 import { usePlayer } from '@/hooks/usePlayer';
 import { useRefresh } from '@/hooks/useRefresh';
 import { useLanguage } from '@/context/LanguageContext';
+import { categoryRoute } from '@/utils/hospital';
 import { palette } from '@/theme/colors';
 import { hospitalScreenStyles as s } from '@/styles/hospitalScreen.styles';
 
@@ -30,8 +31,11 @@ export default function HospitalScreen() {
   const { refreshing, onRefresh } = useRefresh(refetch);
 
   const openCategory = useCallback(
-    (slug: string) => router.push(`/hospital/subcategories/${slug}`),
-    [router],
+    (slug: string) => {
+      const cat = categories.find((c) => c.slug === slug);
+      router.push((cat ? categoryRoute(cat) : `/hospital/subcategories/${slug}`) as never);
+    },
+    [router, categories],
   );
   const openDisease = useCallback(
     (slug: string) => router.push(`/hospital/disease/${slug}`),

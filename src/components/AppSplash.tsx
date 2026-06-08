@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { Animated, Easing, Pressable, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import SplashLogoTop from '@/assets/figma/splash-logo-top.svg';
@@ -18,6 +18,35 @@ export function AppSplash({ onReady }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
 
   const buttonTop = insets.top + 24;
+
+  // FR-2.1 — welcome screen flashes/animates on first launch: the three logo
+  // parts reveal in sequence, then the subtitle fades up.
+  const topA = useRef(new Animated.Value(0)).current;
+  const midA = useRef(new Animated.Value(0)).current;
+  const botA = useRef(new Animated.Value(0)).current;
+  const titleA = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.sequence([
+      Animated.stagger(150, [
+        Animated.spring(topA, { toValue: 1, useNativeDriver: true, friction: 6, tension: 55 }),
+        Animated.spring(midA, { toValue: 1, useNativeDriver: true, friction: 6, tension: 55 }),
+        Animated.spring(botA, { toValue: 1, useNativeDriver: true, friction: 6, tension: 55 }),
+      ]),
+      Animated.timing(titleA, {
+        toValue: 1,
+        duration: 450,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [topA, midA, botA, titleA]);
+
+  /** Fade + scale-in reveal for one logo part. */
+  const partStyle = (a: Animated.Value) => ({
+    opacity: a,
+    transform: [{ scale: a.interpolate({ inputRange: [0, 1], outputRange: [0.4, 1] }) }],
+  });
 
   return (
     <View style={s.container}>
@@ -76,18 +105,30 @@ export function AppSplash({ onReady }: Props) {
       {/* Centered logo block + subtitle */}
       <View style={s.content}>
         <View style={s.logoBlock}>
-          <View style={s.logoTopWrap}>
+          <Animated.View style={[s.logoTopWrap, partStyle(topA)]}>
             <SplashLogoTop width="100%" height="100%" />
-          </View>
-          <View style={s.logoMidWrap}>
+          </Animated.View>
+          <Animated.View style={[s.logoMidWrap, partStyle(midA)]}>
             <SplashLogoMid width="100%" height="100%" />
-          </View>
-          <View style={s.logoBottomWrap}>
+          </Animated.View>
+          <Animated.View style={[s.logoBottomWrap, partStyle(botA)]}>
             <SplashLogoBottom width="100%" height="100%" />
-          </View>
+          </Animated.View>
         </View>
 
-        <Text style={s.title}>{t.splash.subtitle}</Text>
+        <Animated.Text
+          style={[
+            s.title,
+            {
+              opacity: titleA,
+              transform: [
+                { translateY: titleA.interpolate({ inputRange: [0, 1], outputRange: [12, 0] }) },
+              ],
+            },
+          ]}
+        >
+          {t.splash.subtitle}
+        </Animated.Text>
       </View>
 
       {/* CTA button */}

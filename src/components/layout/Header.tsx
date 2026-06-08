@@ -70,7 +70,7 @@ function HeaderBase({
   }
 
   return (
-    <View style={s.header}>
+    <View style={[s.header, isArabic && s['header--rtl']]}>
       <View style={s.header__side}>
         {showBack ? (
           <IconButton
@@ -82,12 +82,12 @@ function HeaderBase({
       </View>
       <View style={s.header__titleWrap}>
         {title ? (
-          <Text style={s.header__title}>
+          <Text style={s.header__title} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
             {title}
           </Text>
         ) : null}
         {subtitle ? (
-          <Text style={s.header__subtitle}>
+          <Text style={s.header__subtitle} numberOfLines={1}>
             {subtitle}
           </Text>
         ) : null}

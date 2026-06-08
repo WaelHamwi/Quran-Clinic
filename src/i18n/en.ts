@@ -1,3 +1,8 @@
+const EN_ORDINALS: Record<number, string> = {
+  1: 'First', 2: 'Second', 3: 'Third', 4: 'Fourth', 5: 'Fifth',
+  6: 'Sixth', 7: 'Seventh', 8: 'Eighth', 9: 'Ninth', 10: 'Tenth',
+};
+
 export const en = {
   common: {
     back: 'Back',
@@ -62,6 +67,7 @@ export const en = {
     favoritesSub: 'Your saved ruqyah',
     pillCourses: 'Ruqyah Courses',
     pillAdhkar: 'Adhkar & Protection',
+    pillTahsinat: 'Tahsinat',
     pillSections: 'Clinic Sections',
   },
   mushaf: {
@@ -120,8 +126,8 @@ export const en = {
   },
   disease: {
     about: 'About this ailment',
-    sessions: 'Ruqyah Sessions',
-    session: (n: number) => `Session ${n}`,
+    sessions: 'Ruqyah Wirds',
+    session: (n: number) => `${EN_ORDINALS[n] ?? `#${n}`} Wird`,
     play: 'Play',
     pause: 'Pause',
     download: 'Download',
@@ -140,6 +146,8 @@ export const en = {
     noRecordings: 'No recordings available yet',
     downloadToListen: 'Download to Listen',
     playbackSettings: 'Playback Settings',
+    alertTitle: 'Important Notice',
+    alertBody: 'This ruqyah is based on the Quran and Sunnah. It is complementary, not a substitute for medical treatment. Please do not abandon your prescribed medical advice.',
   },
   adhkar: {
     title: 'Adhkar',
@@ -167,6 +175,9 @@ export const en = {
     repetitions: (n: number) => `Repeat ${n}×`,
     hint: 'Hint',
     empty: 'No items in this section',
+    next: 'Next',
+    done: 'Completed',
+    progress: (cur: number, total: number) => `${cur} of ${total}`,
   },
   favorites: {
     title: 'Favorites',
@@ -273,6 +284,7 @@ export const en = {
   sponsors: {
     title: 'Our Sponsors',
     sponsoredBy: 'Sponsored by',
+    sponsorIntro: 'This app is kindly sponsored by',
     empty: 'No sponsors to show',
   },
   splash: {
@@ -328,11 +340,11 @@ export const en = {
   },
   subscription: {
     title: 'Discover Comprehensive & Intensive Ruqyah',
-    subtitle: 'Unlock all sessions and advanced features to support your healing journey without interruptions.',
-    feature1Title: 'Unlock all sessions',
-    feature1Desc: 'Listen to the second and third (intensive and comprehensive) sessions for all conditions.',
+    subtitle: 'Unlock all wirds and advanced features to support your healing journey without interruptions.',
+    feature1Title: 'Unlock all wirds',
+    feature1Desc: 'Listen to the second and third (intensive and comprehensive) wirds for all conditions.',
     feature2Title: 'Full written texts',
-    feature2Desc: 'Read the texts of all advanced ruqyah sessions.',
+    feature2Desc: 'Read the texts of all advanced ruqyah wirds.',
     feature3Title: 'Ad-free experience',
     feature3Desc: 'Listen and read with full focus and serenity, no ad breaks.',
     save: 'Save 25%',

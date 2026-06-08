@@ -5,6 +5,7 @@
 export const cacheKeys = {
   categories: ['categories'] as const,
   category: (slug: string) => ['category', slug] as const,
+  categoryRecordings: (slug: string) => ['categoryRecordings', slug] as const,
   subcategory: (slug: string) => ['subcategory', slug] as const,
   diseases: (subcategoryId?: number) => ['diseases', subcategoryId ?? 'all'] as const,
   diseaseSearch: (query: string) => ['diseaseSearch', query] as const,

@@ -2,7 +2,7 @@ import React, { useCallback } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useLanguage } from '@/context/LanguageContext';
-import { pickText, formatSeconds } from '@/utils/formatters';
+import { formatSeconds } from '@/utils/formatters';
 import { Badge } from '@/components/common/Badge';
 import { DownloadButton } from '@/components/players/DownloadButton';
 import type { AccessibleRecording } from '@/hooks/useRecordings';
@@ -27,11 +27,11 @@ function RecordingCardBase({
   isPlaying,
   onPlay,
 }: RecordingCardProps) {
-  const { isArabic, t } = useLanguage();
+  const { t } = useLanguage();
   const handlePlay = useCallback(() => onPlay(recording), [onPlay, recording]);
 
   const playing = isCurrent && isPlaying;
-  const title = pickText(recording.title, isArabic) || t.disease.session(recording.session_number);
+  const title = t.disease.session(recording.session_number);
   const locked = !recording.accessible;
 
   return (

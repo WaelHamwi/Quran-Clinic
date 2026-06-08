@@ -40,11 +40,6 @@ export const adhkarItemsScreenStyles = StyleSheet.create({
     textAlign: 'center',
     writingDirection: 'rtl',
   },
-  image: {
-    width: '100%',
-    height: 220,
-    borderRadius: radius.md,
-  },
   hintText: {
     fontFamily: fontFamily.alexandriaLight,
     fontSize: 13,

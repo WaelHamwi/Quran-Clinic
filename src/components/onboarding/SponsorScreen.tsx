@@ -1,29 +1,31 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { useQuery } from '@tanstack/react-query';
-import { useTheme } from '@/context/ThemeContext';
+import SponsorFallbackLogo from '@/assets/figma/onb-sponsor-logo.svg';
+import { PatternedBackground } from '@/components/layout/PatternedBackground';
+import { FigmaTopBar } from '@/components/layout/FigmaTopBar';
 import { useLanguage } from '@/context/LanguageContext';
+import { useAuth } from '@/context/AuthContext';
 import { useAppDispatch } from '@/store/hooks';
 import { markSponsorShown } from '@/store/slices/onboardingSlice';
 import { sponsorService } from '@/services/sponsorService';
 import { cacheKeys } from '@/utils/cacheKeys';
-import { pickText } from '@/utils/formatters';
-import type { Theme } from '@/theme/colors';
-import { spacing } from '@/theme/spacing';
-import { fontSize, fontWeight } from '@/theme/typography';
+import { pickText, resolveMediaUrl } from '@/utils/formatters';
+import { sponsorScreenStyles as s } from './SponsorScreen.styles';
 
 const MIN_DURATION_MS = 1500;
 
 /**
- * Launch gate: shows the admin-configured sponsor screen once per session,
- * then renders the app. Children mount underneath so the app preloads.
+ * Launch gate (FR-2.4): flashes the admin-configured sponsor splash on every
+ * launch, matching the Figma sponsor screen, then reveals the app underneath.
+ * Visibility respects the admin on/off toggle (FR-2.5) and country targeting.
  */
 export function SponsorScreen({ children }: { children: React.ReactNode }) {
-  const { theme } = useTheme();
   const { t, isArabic } = useLanguage();
+  const { user } = useAuth();
   const dispatch = useAppDispatch();
-  const styles = useMemo(() => createStyles(theme), [theme]);
   const [overlayVisible, setOverlayVisible] = useState(true);
 
   const { data, isLoading, isError } = useQuery({
@@ -33,9 +35,22 @@ export function SponsorScreen({ children }: { children: React.ReactNode }) {
     retry: 1,
   });
 
+  // A sponsor either targets all countries, or only users from its list.
+  // `target_countries` may be absent on older API responses — default to [].
+  // Guests (no known country) can't be filtered, so they always see the
+  // sponsor — we never hide it just because the user isn't signed in.
+  const sponsor = data?.sponsor ?? null;
+  const targetCountries = sponsor?.target_countries ?? [];
+  const matchesCountry =
+    !!sponsor &&
+    (!user?.country ||
+      sponsor.target_all_countries ||
+      targetCountries.length === 0 ||
+      targetCountries.includes(user.country));
+
   useEffect(() => {
     if (isLoading) return;
-    const shouldShow = !isError && !!data?.is_enabled && !!data?.sponsor;
+    const shouldShow = !isError && !!data?.is_enabled && !!sponsor && matchesCountry;
     if (!shouldShow) {
       dispatch(markSponsorShown());
       setOverlayVisible(false);
@@ -47,50 +62,31 @@ export function SponsorScreen({ children }: { children: React.ReactNode }) {
       setOverlayVisible(false);
     }, ms);
     return () => clearTimeout(id);
-  }, [isLoading, isError, data, dispatch]);
+  }, [isLoading, isError, data, sponsor, matchesCountry, dispatch]);
 
   return (
-    <View style={styles.flex}>
+    <View style={s.flex}>
       {children}
-      {overlayVisible ? (
-        <View style={styles.overlay}>
-          {data?.sponsor?.logo_url ? (
-            <Image
-              source={data.sponsor.logo_url}
-              style={styles.logo}
-              contentFit="contain"
-            />
-          ) : null}
-          {data?.sponsor ? (
-            <>
-              <Text style={styles.label}>{t.sponsors.sponsoredBy}</Text>
-              <Text style={styles.name}>{pickText(data.sponsor.name, isArabic)}</Text>
-            </>
-          ) : null}
+      {overlayVisible && sponsor && matchesCountry ? (
+        <View style={s.overlay}>
+          <PatternedBackground />
+          <FigmaTopBar showBrandLogo />
+          <SafeAreaView style={s.safe} edges={['bottom']}>
+            <View style={s.body}>
+              <Text style={s.label}>{t.sponsors.sponsorIntro}</Text>
+              <View style={s.logoWrap}>
+                {sponsor.logo_url ? (
+                  <Image source={resolveMediaUrl(sponsor.logo_url)} style={s.logoImg} contentFit="contain" />
+                ) : (
+                  // No admin-uploaded logo → fall back to the bundled sponsor mark.
+                  <SponsorFallbackLogo width="100%" height="100%" />
+                )}
+              </View>
+              <Text style={s.nameAr}>{pickText(sponsor.name, isArabic)}</Text>
+            </View>
+          </SafeAreaView>
         </View>
       ) : null}
     </View>
   );
-}
-
-function createStyles(theme: Theme) {
-  return StyleSheet.create({
-    flex: { flex: 1 },
-    overlay: {
-      ...StyleSheet.absoluteFillObject,
-      backgroundColor: theme.background,
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: spacing.md,
-      padding: spacing.xl,
-    },
-    logo: { width: 200, height: 160 },
-    label: { fontSize: fontSize.sm, color: theme.textMuted },
-    name: {
-      fontSize: fontSize.xl,
-      fontWeight: fontWeight.bold,
-      color: theme.text,
-      textAlign: 'center',
-    },
-  });
 }

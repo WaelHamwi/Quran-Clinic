@@ -1,7 +1,6 @@
 import React from 'react';
 import { AppSplash } from '@/components/AppSplash';
 import { OnboardingPager } from '@/components/onboarding/OnboardingPager';
-import { OnboardingSponsor } from '@/components/onboarding/OnboardingSponsor';
 import { LoginGate } from '@/components/auth/LoginGate';
 import { DisclaimerPopup } from '@/components/common/DisclaimerPopup';
 import { MainApp } from '@/components/layout/MainApp';
@@ -21,8 +20,7 @@ export function AppFlow({ fontsLoaded }: AppFlowProps) {
 
   switch (step) {
     case 'splash':      return <AppSplash onReady={() => go('onboarding')} />;
-    case 'onboarding':  return <OnboardingPager onComplete={() => go('sponsor')} />;
-    case 'sponsor':     return <OnboardingSponsor onDone={() => go('login')} />;
+    case 'onboarding':  return <OnboardingPager onComplete={() => go('login')} />;
     case 'login':       return <LoginGate onSuccess={() => go('disclaimer')} />;
     case 'disclaimer':
       return (

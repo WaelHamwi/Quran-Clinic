@@ -29,6 +29,10 @@ export const diseaseCardStyles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  diseaseCard__iconImage: {
+    width: 48,
+    height: 48,
+  },
   diseaseCard__name: {
     fontFamily: fontFamily.alexandriaMedium,
     fontSize: 13,

@@ -6,6 +6,8 @@ export interface AdhkarCategory {
   id: number;
   name: Translatable;
   slug: string;
+  /** Absolute URL to the uploaded icon (SVG/PNG), or null. */
+  icon?: string | null;
   day_number: number;
   display_order: number;
   items_count?: number;
@@ -30,7 +32,6 @@ export interface AdhkarItem {
   category_id: number;
   section_id: number | null;
   text: Translatable;
-  image_url: string | null;
   repetitions: number;
   hint: Translatable;
   daleel: Translatable;

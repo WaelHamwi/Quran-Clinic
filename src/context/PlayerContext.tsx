@@ -172,7 +172,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   );
   const setRate = useCallback(
     (rate: number) => {
-      player.playbackRate = rate;
+      player.setPlaybackRate(rate);
     },
     [player],
   );
