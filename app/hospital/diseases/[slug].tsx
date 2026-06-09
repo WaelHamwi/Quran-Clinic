@@ -50,7 +50,7 @@ export default function DiseasesScreen() {
   const handleRetry = useCallback(() => refetch(), [refetch]);
 
   return (
-    <Screen edges={['top']}>
+    <Screen>
       <Header title={title} />
       {isLoading ? (
         <Loader fullScreen message={t.common.loading} />

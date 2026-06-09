@@ -10,6 +10,7 @@ import {
   View,
   type LayoutChangeEvent,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { palette } from '@/theme/colors';
 import { useLanguage } from '@/context/LanguageContext';
@@ -167,6 +168,7 @@ function AudioPlayerBase({
   } = usePlayer();
   const diseaseId = useAppSelector(selectPlayerDiseaseId) ?? 0;
   const { download, cancel, getTask, isDownloaded } = useDownloadManager();
+  const { bottom: bottomInset } = useSafeAreaInsets();
   const [showSettings, setShowSettings] = useState(false);
 
   // ── Seek bar drag ─────────────────────────────────────────────────────────
@@ -248,7 +250,7 @@ function AudioPlayerBase({
       </View>
 
       {/* Controls + action buttons */}
-      <View style={s.controlsSection}>
+      <View style={[s.controlsSection, { paddingBottom: bottomInset + 12 }]}>
         {/* Playback controls row */}
         <View style={s.controls}>
           <Pressable onPress={handleBack} hitSlop={8}>
@@ -322,7 +324,7 @@ function AudioPlayerBase({
         onRequestClose={() => setShowSettings(false)}
       >
         <Pressable style={s.modalBackdrop} onPress={() => setShowSettings(false)}>
-          <Pressable style={s.settingsSheet} onPress={() => {}}>
+          <Pressable style={[s.settingsSheet, { paddingBottom: Math.max(bottomInset + 12, 32) }]} onPress={() => {}}>
             {/* drag handle */}
             <View style={[s.sheetHandle, { alignSelf: 'center' }]} />
 

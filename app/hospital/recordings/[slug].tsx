@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -9,6 +9,7 @@ import { Loader } from '@/components/common/Loader';
 import { EmptyState } from '@/components/common/EmptyState';
 import { AudioPlayer } from '@/components/players/AudioPlayer';
 import { KaraokeText } from '@/components/players/KaraokeText';
+import { VerseText } from '@/components/players/VerseText';
 import { useCategory } from '@/hooks/useCategory';
 import { useSubcategory } from '@/hooks/useSubcategory';
 import { usePlayer } from '@/hooks/usePlayer';
@@ -63,7 +64,6 @@ export default function CategoryRecordingsScreen() {
   const { playNext: generalNext, playPrevious: generalPrev, hasPrevious: generalHasPrev, hasNext: generalHasNext, isGeneralMode } = useGeneralRuqyah();
   const playerDiseaseId = useAppSelector(selectPlayerDiseaseId);
   const { getLocalUri } = useDownloadManager();
-  const [, setScrolled] = useState(false);
   const hasAutoPlayed = useRef(false);
 
   const contextId = node?.id ?? 0;
@@ -107,8 +107,8 @@ export default function CategoryRecordingsScreen() {
       hasAutoPlayed.current = true;
       return;
     }
-    const first = recordings[0];
-    if (!first?.accessible) return;
+    const first = recordings.find((r) => r.accessible && r.audio_url);
+    if (!first) return;
     hasAutoPlayed.current = true;
     handlePlay(first);
   }, [recordings, currentIndex, handlePlay, isGeneralMode]);
@@ -207,18 +207,15 @@ export default function CategoryRecordingsScreen() {
             if (hasSegments) {
               return <KaraokeText segments={active.segments!} refreshing={refreshing} onRefresh={onRefresh} />;
             }
+            if (active.description) {
+              return <VerseText text={active.description} refreshing={refreshing} onRefresh={onRefresh} />;
+            }
             return (
               <ScrollView
                 contentContainerStyle={s.cardScroll}
                 showsVerticalScrollIndicator={false}
-                onScroll={() => setScrolled(true)}
-                scrollEventThrottle={32}
                 refreshControl={refreshCtrl}
-              >
-                {active.description && (
-                  <Text style={[s.descText, { color: player.textColor, fontSize: player.fontSize, lineHeight: player.fontSize * 1.5 }]}>{pickText(active.description, isArabic)}</Text>
-                )}
-              </ScrollView>
+              />
             );
           })()}
         </View>

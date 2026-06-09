@@ -18,7 +18,7 @@ export default function ContactUsScreen() {
   const [message, setMessage] = useState<string>('');
 
   return (
-    <Screen edges={['top']}>
+    <Screen>
       <PatternedBackground />
       <Header title={t.contactUs.title} />
       <ScrollView

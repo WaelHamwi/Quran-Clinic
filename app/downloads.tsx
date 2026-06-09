@@ -53,7 +53,7 @@ export default function DownloadsScreen() {
   );
 
   return (
-    <Screen edges={['top']}>
+    <Screen>
       <Header title={t.more.downloads} />
       {items.length === 0 ? (
         <EmptyState icon="download-outline" title={t.more.noDownloads} />

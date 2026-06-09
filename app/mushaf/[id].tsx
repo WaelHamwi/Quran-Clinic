@@ -2,9 +2,9 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  FlatList,
   PanResponder,
   RefreshControl,
+  ScrollView,
   Text,
   TouchableOpacity,
   View,
@@ -66,10 +66,12 @@ const SurahHeader = React.memo(function SurahHeader({
   surah,
   language,
   t,
+  isBasmalahActive,
 }: {
   surah: { id: number; name: { ar: string; en?: string | null }; transliteration: string; total_verses: number; type: string };
   language: 'ar' | 'en';
   t: { reader: { verses: string }; mushaf: { meccan: string; medinan: string } };
+  isBasmalahActive: boolean;
 }) {
   const { theme } = useTheme();
   const styles = useMemo(() => createReaderStyles(theme), [theme]);
@@ -78,15 +80,19 @@ const SurahHeader = React.memo(function SurahHeader({
 
   return (
     <View style={styles.surahHeader}>
-      <View style={styles.surahHeaderBanner}>
-        {/* Arabic name shown calligraphically — mushaf always displays the Arabic canonical name */}
-        <Text style={styles.surahHeaderName}>﴿ {surah.name.ar} ﴾</Text>
-        <Text style={styles.surahHeaderMeta}>
-          {surah.transliteration} · {toEastern(surah.total_verses)} {t.reader.verses} · {surah.type === 'meccan' ? t.mushaf.meccan : t.mushaf.medinan}
-        </Text>
+      {/* Double-frame calligraphic banner — outer ring + inner ring */}
+      <View style={styles.surahHeaderBannerOuter}>
+        <View style={styles.surahHeaderBanner}>
+          <Text style={styles.surahHeaderName}>﴿ {surah.name.ar} ﴾</Text>
+          <Text style={styles.surahHeaderMeta}>
+            {surah.transliteration} · {toEastern(surah.total_verses)} {t.reader.verses} · {surah.type === 'meccan' ? t.mushaf.meccan : t.mushaf.medinan}
+          </Text>
+        </View>
       </View>
+      {/* ﷽ — single Unicode ligature; Amiri renders it as full calligraphic bismillah.
+          Highlighted while the reciter is reciting the basmalah (before verse 1 timing). */}
       {showBasmalah && (
-        <Text style={styles.basmalah}>بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ</Text>
+        <Text style={[styles.basmalah, isBasmalahActive && styles.basmalahActive]}>﷽</Text>
       )}
     </View>
   );
@@ -186,24 +192,21 @@ const VerseRow = React.memo(function VerseRow({
   const hasEn = Boolean(item.text.en);
   return (
     <View style={[styles.verseRow, isActive && styles.verseRowActive]}>
-      <View style={[styles.verseNumberCircle, isActive && styles.verseNumberCircleActive]}>
-        <Text style={[styles.verseNumber, isActive && styles.verseNumberActive]}>
-          {toEastern(item.verse_number)}
+      {/* Arabic verse text with inline end-of-ayah marker ﴿n﴾ */}
+      <Text style={[styles.verseArabic, isActive && styles.verseArabicActive]}>
+        {item.text.ar}
+        <Text style={[styles.verseEndMarker, isActive && styles.verseEndMarkerActive]}>
+          {' ﴿'}{toEastern(item.verse_number)}{'﴾'}
         </Text>
-      </View>
-      <View style={styles.verseTexts}>
-        <Text style={[styles.verseArabic, isActive && styles.verseArabicActive]}>
-          {item.text.ar}
+      </Text>
+      {showEnglish && hasEn && (
+        <Text style={[styles.verseEnglish, isActive && styles.verseEnglishActive]}>
+          {item.text.en}
         </Text>
-        {showEnglish && hasEn && (
-          <Text style={[styles.verseEnglish, isActive && styles.verseEnglishActive]}>
-            {item.text.en}
-          </Text>
-        )}
-        {showEnglish && !hasEn && (
-          <Text style={styles.verseEnglishMissing}>{t.reader.translationMissing}</Text>
-        )}
-      </View>
+      )}
+      {showEnglish && !hasEn && (
+        <Text style={styles.verseEnglishMissing}>{t.reader.translationMissing}</Text>
+      )}
     </View>
   );
 });
@@ -233,8 +236,14 @@ export default function MushafReaderScreen() {
   const [showReciterPicker, setShowReciterPicker] = useState(false);
   const [reciterSearch, setReciterSearch] = useState('');
 
-  const flatListRef = useRef<FlatList<Verse>>(null);
+  const scrollRef = useRef<ScrollView>(null);
+  const contentHeightRef = useRef(0);
   const lastScrolledIndexRef = useRef(-1);
+  // Capture where the verse block starts and how tall it is (set via onLayout in JSX).
+  // Used by scrollToVerseRef to place the active verse in the viewport.
+  const versesTopRef = useRef(0);
+  const versesHeightRef = useRef(0);
+  const scrollToVerseRef = useRef((_idx: number) => {});
 
   const currentRecitation = recitations.find((r) => r.reciter_id === selectedReciterId);
 
@@ -273,6 +282,19 @@ export default function MushafReaderScreen() {
     return lengths.map((len) => { const s = cum / total; cum += len; return s; });
   }, [surah]);
 
+  // Cumulative char offset before each verse — drives character-proportional scroll.
+  // Far more accurate than verse-count ratio because verses vary widely in length.
+  const verseCumChars = useMemo(() => {
+    if (!surah) return [] as number[];
+    let cum = 0;
+    return surah.verses.map((v) => { const s = cum; cum += v.text.ar.length; return s; });
+  }, [surah]);
+
+  const totalChars = useMemo(
+    () => (surah ? Math.max(1, surah.verses.reduce((s, v) => s + v.text.ar.length, 0)) : 1),
+    [surah]
+  );
+
   // Always-fresh lookup function in a ref — handleSeek/handleSkip read this without
   // needing verseTiming in their own deps (avoids SeekBar re-renders on timing load).
   const getIdxAtMsRef = useRef<(ms: number) => number>(() => -1);
@@ -289,6 +311,18 @@ export default function MushafReaderScreen() {
       if (progress >= verseStartFractions[i]) return i;
     }
     return 0;
+  };
+
+  // Always-fresh scroll helper — reads verseCumChars/totalChars at call time so
+  // handleSeek and handleSkip don't need those values in their useCallback deps.
+  scrollToVerseRef.current = (idx: number) => {
+    if (idx < 0) return;
+    const blockH = versesHeightRef.current;
+    const blockTop = versesTopRef.current;
+    const targetY = blockH > 0
+      ? blockTop + (verseCumChars[idx] ?? 0) / totalChars * blockH - 150
+      : idx * 90;
+    scrollRef.current?.scrollTo({ y: Math.max(0, targetY), animated: true });
   };
 
   useEffect(() => {
@@ -327,11 +361,7 @@ export default function MushafReaderScreen() {
     // Scroll is a side-effect and must live outside the setState callback
     if (audio.isPlaying && idx !== lastScrolledIndexRef.current) {
       lastScrolledIndexRef.current = idx;
-      try {
-        flatListRef.current?.scrollToIndex({ index: idx, animated: true, viewPosition: 0.25 });
-      } catch {
-        flatListRef.current?.scrollToOffset({ offset: idx * 90, animated: true });
-      }
+      scrollToVerseRef.current(idx);
     }
   }, [audio.positionMillis, audio.durationMillis, audio.isPlaying, surah]);
 
@@ -384,11 +414,7 @@ export default function MushafReaderScreen() {
       if (idx >= 0) {
         setActiveVerseIndex(idx);
         lastScrolledIndexRef.current = idx;
-        try {
-          flatListRef.current?.scrollToIndex({ index: idx, animated: true, viewPosition: 0.25 });
-        } catch {
-          flatListRef.current?.scrollToOffset({ offset: idx * 90, animated: true });
-        }
+        scrollToVerseRef.current(idx);
       }
     },
     [audio]
@@ -402,11 +428,7 @@ export default function MushafReaderScreen() {
       if (idx >= 0) {
         setActiveVerseIndex(idx);
         lastScrolledIndexRef.current = idx;
-        try {
-          flatListRef.current?.scrollToIndex({ index: idx, animated: true, viewPosition: 0.25 });
-        } catch {
-          flatListRef.current?.scrollToOffset({ offset: idx * 90, animated: true });
-        }
+        scrollToVerseRef.current(idx);
       }
     },
     [audio]
@@ -439,35 +461,6 @@ export default function MushafReaderScreen() {
     if (surahId < TOTAL_SURAHS) router.replace(`/mushaf/${surahId + 1}` as any);
   }, [surahId, router]);
 
-  const extraData = useMemo(
-    () => ({ showEnglish, activeVerseIndex }),
-    [showEnglish, activeVerseIndex]
-  );
-
-  const renderVerse = useCallback(
-    ({ item, index }: { item: Verse; index: number }) => (
-      <VerseRow item={item} showEnglish={showEnglish} isActive={index === activeVerseIndex} />
-    ),
-    [showEnglish, activeVerseIndex]
-  );
-
-  const onScrollToIndexFailed = useCallback(
-    (info: { index: number; averageItemLength: number }) => {
-      flatListRef.current?.scrollToOffset({
-        offset: info.index * info.averageItemLength,
-        animated: false,
-      });
-      setTimeout(() => {
-        flatListRef.current?.scrollToIndex({
-          index: info.index,
-          animated: true,
-          viewPosition: 0.25,
-        });
-      }, 200);
-    },
-    []
-  );
-
   if (isLoading) {
     return (
       <View style={styles.centered}>
@@ -489,6 +482,20 @@ export default function MushafReaderScreen() {
   }
 
   const hasAudio = audio.durationMillis > 0;
+
+  // True while the reciter is saying the basmalah before verse 1.
+  // Two cases:
+  //   • Timing loaded: active while positionMillis < verseTiming[0].timestampFrom (exact phase)
+  //   • Timing loading: active for the first 3 s so the ﷽ lights up immediately on play
+  const timingLoaded = verseTiming != null && verseTiming.length > 0;
+  const firstVerseMs = timingLoaded ? verseTiming![0].timestampFrom : 0;
+  const isBasmalahPhase = surah.id !== 1 && surah.id !== 9; // Fatiha v1 IS basmalah; Tawbah has none
+  const isBasmalahActive =
+    audio.isPlaying &&
+    isBasmalahPhase &&
+    (timingLoaded
+      ? firstVerseMs > 0 && audio.positionMillis < firstVerseMs   // exact window
+      : audio.positionMillis < 3000);                             // fallback: assume ≤3 s bismillah
 
   return (
     <LinearGradient
@@ -549,21 +556,11 @@ export default function MushafReaderScreen() {
         </View>
 
         {/* ── Verse list ────────────────────────────────────────────────────── */}
-        <FlatList<Verse>
+        <ScrollView
+          ref={scrollRef}
           style={{ flex: 1 }}
-          ref={flatListRef}
-          data={surah.verses}
-          keyExtractor={(item) => String(item.id)}
-          renderItem={renderVerse}
-          extraData={extraData}
           contentContainerStyle={styles.verseList}
-          initialNumToRender={20}
-          maxToRenderPerBatch={15}
-          windowSize={21}
-          onScrollToIndexFailed={onScrollToIndexFailed}
-          ListHeaderComponent={
-            <SurahHeader surah={surah} language={language} t={t} />
-          }
+          onContentSizeChange={(_w, h) => { contentHeightRef.current = h; }}
           refreshControl={
             <RefreshControl
               refreshing={isSurahRefetching || isRefreshingRecitations}
@@ -573,7 +570,50 @@ export default function MushafReaderScreen() {
               progressBackgroundColor={theme.surface}
             />
           }
-        />
+        >
+          <SurahHeader surah={surah} language={language} t={t} isBasmalahActive={isBasmalahActive} />
+
+          {/* onLayout captures where verses start and how tall the block is —
+              used by scrollToVerseRef for character-proportional auto-scroll */}
+          <View
+            onLayout={(e) => {
+              versesTopRef.current = e.nativeEvent.layout.y;
+              versesHeightRef.current = e.nativeEvent.layout.height;
+            }}
+          >
+            {showEnglish ? (
+              /* Block mode — one View per verse so English translation fits below */
+              surah.verses.map((verse, index) => (
+                <VerseRow
+                  key={verse.id}
+                  item={verse}
+                  showEnglish
+                  isActive={!isBasmalahActive && index === activeVerseIndex}
+                />
+              ))
+            ) : (
+              /* Inline Mushaf mode — all ayat flow as one continuous RTL paragraph */
+              <View style={styles.verseBlock}>
+                <Text style={styles.verseArabic}>
+                  {surah.verses.map((verse, index) => {
+                    const isActive = !isBasmalahActive && index === activeVerseIndex;
+                    return (
+                      <Text
+                        key={verse.id}
+                        style={isActive ? styles.verseArabicActiveInline : undefined}
+                      >
+                        {verse.text.ar}
+                        <Text style={[styles.verseEndMarker, isActive && styles.verseEndMarkerActive]}>
+                          {' ﴿'}{toEastern(verse.verse_number)}{'﴾ '}
+                        </Text>
+                      </Text>
+                    );
+                  })}
+                </Text>
+              </View>
+            )}
+          </View>
+        </ScrollView>
 
       </View>
 

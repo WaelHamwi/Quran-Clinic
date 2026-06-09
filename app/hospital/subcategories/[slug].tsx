@@ -54,7 +54,7 @@ export default function SubcategoriesScreen() {
   const title = category ? pickText(category.name, isArabic) : t.hospital.subcategories;
 
   return (
-    <Screen edges={['top']}>
+    <Screen>
       <Header title={title} />
       {isLoading ? (
         <Loader fullScreen message={t.common.loading} />

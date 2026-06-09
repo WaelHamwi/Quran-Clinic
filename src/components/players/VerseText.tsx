@@ -4,26 +4,33 @@ import { palette } from '@/theme/colors';
 import { usePlayer } from '@/hooks/usePlayer';
 import { useLanguage } from '@/context/LanguageContext';
 import { karaokeTextStyles as s } from './KaraokeText.styles';
-import type { Segment } from '@/types/recording';
+import type { Translatable } from '@/types/translatable';
 
 interface Props {
-  segments: Segment[];
+  text: Translatable;
   refreshing?: boolean;
   onRefresh?: () => void;
 }
 
-function KaraokeTextBase({ segments, refreshing, onRefresh }: Props) {
-  const { position, textColor, fontSize, isDarkMode } = usePlayer();
+function VerseTextBase({ text, refreshing, onRefresh }: Props) {
+  const { position, duration, textColor, fontSize, isDarkMode } = usePlayer();
   const { isArabic } = useLanguage();
   const scrollRef = useRef<ScrollView>(null);
   const yPositions = useRef<number[]>([]);
 
+  const raw = (isArabic ? text.ar : (text.en ?? text.ar)) ?? '';
+
+  const verses = useMemo(
+    () => raw.split(/\(\d+\)/).map((v) => v.trim()).filter(Boolean),
+    [raw],
+  );
+
   const activeIndex = useMemo(() => {
-    for (let i = 0; i < segments.length; i++) {
-      if (position >= segments[i].start && position < segments[i].end) return i;
-    }
-    return -1;
-  }, [segments, position]);
+    if (duration <= 0 || verses.length === 0) return -1;
+    const verseDuration = duration / verses.length;
+    const idx = Math.floor(position / verseDuration);
+    return Math.min(idx, verses.length - 1);
+  }, [position, duration, verses.length]);
 
   useEffect(() => {
     const y = yPositions.current[activeIndex];
@@ -49,9 +56,7 @@ function KaraokeTextBase({ segments, refreshing, onRefresh }: Props) {
         ) : undefined
       }
     >
-      {segments.map((seg, i) => {
-        const text = isArabic ? seg.text_ar : seg.text_en;
-        if (!text) return null;
+      {verses.map((verse, i) => {
         const active = i === activeIndex;
         return (
           <View
@@ -67,7 +72,7 @@ function KaraokeTextBase({ segments, refreshing, onRefresh }: Props) {
                 isArabic && s['segment--rtl'],
               ]}
             >
-              {text}
+              {verse}
             </Text>
           </View>
         );
@@ -76,4 +81,4 @@ function KaraokeTextBase({ segments, refreshing, onRefresh }: Props) {
   );
 }
 
-export const KaraokeText = React.memo(KaraokeTextBase);
+export const VerseText = React.memo(VerseTextBase);

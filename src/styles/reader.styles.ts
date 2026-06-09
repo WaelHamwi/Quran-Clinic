@@ -22,12 +22,11 @@ export function createReaderStyles(theme: Theme) {
     // ── Outer container (LinearGradient) ────────────────────────────────────────
     container: { flex: 1 },
 
-    // Figma 18085:1756 — rgba(255,255,255,0.5) over #e4efd9 green → cream-white mushaf paper.
-    // iOS shadow matches Figma Shadows/xl. No elevation here — player sibling must render on top of
-    // this view on Android (elevation would flip the z-order and hide the player).
+    // Warm parchment page over the sage-green canvas — closer to a printed Mushaf.
+    // No elevation — player sibling must render on top on Android.
     contentWrapper: {
       flex: 1,
-      backgroundColor: palette.bg.overlay,
+      backgroundColor: palette.bg.mushaf,
       shadowColor: palette.shadow,
       shadowOpacity: 0.08,
       shadowOffset: { width: 0, height: 16 },
@@ -112,27 +111,38 @@ export function createReaderStyles(theme: Theme) {
     },
     langToggleTextActive: { color: palette.text.onBrand },
 
-    // ── Surah header (ListHeaderComponent) — Figma 18085:1755 mushaf header ────
+    // ── Surah header (ListHeaderComponent) — double-frame calligraphic banner ───
     surahHeader: {
       alignItems: 'center',
-      paddingTop: 24,
-      paddingBottom: 8,
+      paddingTop: 28,
+      paddingBottom: 20,
       paddingHorizontal: 20,
-      gap: 12,
+      gap: 18,
     },
+    // Outer decorative frame — thicker border, more radius
+    surahHeaderBannerOuter: {
+      width: '100%',
+      padding: 5,
+      borderWidth: 1.5,
+      borderColor: palette.brand[200],
+      borderRadius: 8,
+      backgroundColor: palette.brand[25],
+    },
+    // Inner frame — slightly darker border, tighter radius
     surahHeaderBanner: {
       width: '100%',
       alignItems: 'center',
-      paddingVertical: 14,
+      paddingVertical: 18,
       paddingHorizontal: 16,
       borderWidth: 1,
-      borderColor: palette.brand[100],
+      borderColor: palette.brand[400],
+      borderRadius: 5,
       backgroundColor: palette.brand[25],
     },
     surahHeaderName: {
-      fontSize: 26,
-      lineHeight: 50,
-      color: palette.brand[500],
+      fontSize: 30,
+      lineHeight: 56,
+      color: palette.brand[700],
       fontFamily: fontFamily.arabic,
       textAlign: 'center',
     },
@@ -144,68 +154,67 @@ export function createReaderStyles(theme: Theme) {
       textAlign: 'center',
       marginTop: 2,
     },
+    // ﷽ rendered as a single calligraphic ligature via Amiri font
     basmalah: {
-      fontSize: 20,
-      lineHeight: 44,
+      fontSize: 26,
+      lineHeight: 46,
       color: palette.text.primary,
-      fontFamily: fontFamily.arabic,
+      fontFamily: fontFamily.arabicBold,
       textAlign: 'center',
     },
+    // Pulsing highlight when the reciter is reciting the basmalah (before verse 1 timestamp)
+    basmalahActive: {
+      color: palette.brand[700],
+    },
 
-    // ── Verse list — Figma 18085:1730 mushaf page (white paper) ────────────────
+    // ── Verse list — continuous mushaf page layout ───────────────────────────
     verseList: {
       paddingTop: 4,
       paddingBottom: 180,
     },
-    // Figma mushaf: verses flow like a book — no visible gap between rows
+    // ── Inline Mushaf mode (showEnglish = false) ─────────────────────────────
+    // All verses flow as a single RTL paragraph — no block breaks between ayat.
+    verseBlock: {
+      paddingHorizontal: 20,
+      paddingTop: 8,
+    },
+    // ── Block mode (showEnglish = true) — one View per verse ─────────────────
+    // borderRightWidth always present to prevent layout shifts on active toggle.
     verseRow: {
-      flexDirection: 'row',
-      alignItems: 'flex-start',
-      paddingVertical: 2,
-      paddingHorizontal: 16,
-      gap: 8,
+      paddingVertical: 4,
+      paddingHorizontal: 20,
+      borderRightWidth: 3,
+      borderRightColor: 'transparent',
     },
     verseRowActive: {
       backgroundColor: palette.brand[25],
-      borderLeftWidth: 3,
-      borderLeftColor: palette.brand[500],
+      borderRightColor: palette.brand[400],
     },
-    // Figma āyah marker: small circle with visible sage-green fill + darker ring
-    verseNumberCircle: {
-      width: 22,
-      height: 22,
-      borderRadius: 999,
-      backgroundColor: palette.secondaryGreen[100],
-      borderWidth: 1,
-      borderColor: palette.secondaryGreen[300],
-      justifyContent: 'center',
-      alignItems: 'center',
-      marginTop: 4,
-      flexShrink: 0,
-    },
-    verseNumberCircleActive: {
-      backgroundColor: palette.brand[500],
-      borderColor: palette.brand[500],
-    },
-    verseNumber: {
-      fontSize: 9,
-      lineHeight: 12,
-      color: palette.secondaryGreen[600],
-      fontFamily: fontFamily.alexandriaBold,
-      textAlign: 'center',
-    },
-    verseNumberActive: { color: palette.text.onBrand },
-    verseTexts: { flex: 1 },
-    // Figma 18085:1755 — Amiri Quranic text on cream mushaf paper
+    // Amiri Quranic text — large, generous line-height for harakat (diacritics)
     verseArabic: {
       fontSize: 22,
-      lineHeight: 36,
+      lineHeight: 42,
       textAlign: 'right',
       writingDirection: 'rtl',
-      color: theme.verseArabicColor, // palette.text.primary (#181d27) in light
+      color: theme.verseArabicColor,
       fontFamily: fontFamily.arabic,
     },
+    // Block mode active: bold + color
     verseArabicActive: { color: palette.brand[700], fontFamily: fontFamily.arabicBold },
+    // Inline mode active: background highlight + color, no font-family change (would reflow entire paragraph)
+    verseArabicActiveInline: {
+      color: palette.brand[700],
+      backgroundColor: palette.brand[25],
+    },
+    // Inline end-of-ayah marker ﴿n﴾ embedded within the Arabic text flow
+    verseEndMarker: {
+      fontSize: 16,
+      fontFamily: fontFamily.arabic,
+      color: palette.secondaryGreen[600],
+    },
+    verseEndMarkerActive: {
+      color: palette.brand[500],
+    },
     verseEnglish: {
       fontSize: 14,
       lineHeight: 22,

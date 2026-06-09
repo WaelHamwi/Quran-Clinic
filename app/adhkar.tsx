@@ -70,7 +70,7 @@ export default function AdhkarScreen() {
   }
 
   return (
-    <Screen edges={['top']}>
+    <Screen>
       <PatternedBackground />
       <Header title={t.adhkar.title} showBack />
       {body}

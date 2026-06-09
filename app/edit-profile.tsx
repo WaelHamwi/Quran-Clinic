@@ -31,7 +31,7 @@ export default function EditProfileScreen() {
     : t.editProfile.country;
 
   return (
-    <Screen edges={['top']}>
+    <Screen>
       <PatternedBackground />
       <Header title={t.editProfile.title} />
       <ScrollView contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>

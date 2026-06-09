@@ -70,7 +70,7 @@ export default function TahsinatScreen() {
   }
 
   return (
-    <Screen edges={['top']}>
+    <Screen>
       <PatternedBackground />
       <Header title={t.tahsinat.title} showBack />
       {body}

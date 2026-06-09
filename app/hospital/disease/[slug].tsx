@@ -7,8 +7,8 @@ import { Header } from '@/components/layout/Header';
 import { Loader } from '@/components/common/Loader';
 import { EmptyState } from '@/components/common/EmptyState';
 import { AudioPlayer } from '@/components/players/AudioPlayer';
-import { FeedbackControl } from '@/components/forms/FeedbackControl';
 import { KaraokeText } from '@/components/players/KaraokeText';
+import { VerseText } from '@/components/players/VerseText';
 import { useDisease } from '@/hooks/useDisease';
 import { useRecordings, type AccessibleRecording } from '@/hooks/useRecordings';
 import { usePlayer } from '@/hooks/usePlayer';
@@ -21,7 +21,6 @@ import { palette } from '@/theme/colors';
 import { enqueue } from '@/store/slices/offlineQueueSlice';
 import { selectPlayerDiseaseId } from '@/store/slices/playerSlice';
 import { ruqyahService } from '@/services/ruqyahService';
-import { feedbackService } from '@/services/feedbackService';
 import { pickText } from '@/utils/formatters';
 import { Ionicons } from '@expo/vector-icons';
 import { diseaseScreenStyles as s, TAB_ICON_COLOR } from '@/styles/diseaseScreen.styles';
@@ -46,7 +45,6 @@ export default function DiseaseDetailScreen() {
   const { playNext: generalNext, playPrevious: generalPrev, hasPrevious: generalHasPrev, hasNext: generalHasNext, isGeneralMode } = useGeneralRuqyah();
   const playerDiseaseId = useAppSelector(selectPlayerDiseaseId);
   const { getLocalUri } = useDownloadManager();
-  const [feedbackDone, setFeedbackDone] = useState(false);
   const [alertDismissed, setAlertDismissed] = useState(false);
   const hasAutoPlayed = useRef(false);
 
@@ -89,8 +87,8 @@ export default function DiseaseDetailScreen() {
       hasAutoPlayed.current = true;
       return;
     }
-    const first = recordings[0];
-    if (!first?.accessible) return;
+    const first = recordings.find((r) => r.accessible && r.audio_url);
+    if (!first) return;
     hasAutoPlayed.current = true;
     handlePlay(first);
   }, [recordings, currentIndex, handlePlay, isGeneralMode]);
@@ -109,22 +107,6 @@ export default function DiseaseDetailScreen() {
       playerStop();
     }
   }, [recordings, currentIndex, handlePlay, playerStop, isGeneralMode]);
-
-  const handleFeedback = useCallback(
-    ({ useful, comment }: { useful: boolean; comment: string }) => {
-      const payload = {
-        service_type: 'disease',
-        service_id: diseaseId,
-        was_beneficial: useful,
-        comment: comment || null,
-      };
-      feedbackService.submitFeedback(payload).catch(() => {
-        dispatch(enqueue({ type: 'feedback', payload }));
-      });
-      setFeedbackDone(true);
-    },
-    [diseaseId, dispatch],
-  );
 
   if (isLoading) {
     return (
@@ -224,33 +206,18 @@ export default function DiseaseDetailScreen() {
             );
             if (!active) {
               return (
-                <ScrollView contentContainerStyle={s.cardScroll} showsVerticalScrollIndicator={false} refreshControl={refreshCtrl}>
-                  <View style={s.feedbackWrap}>
-                    <FeedbackControl onSubmit={handleFeedback} submitted={feedbackDone} />
-                  </View>
-                </ScrollView>
+                <ScrollView contentContainerStyle={s.cardScroll} showsVerticalScrollIndicator={false} refreshControl={refreshCtrl} />
               );
             }
             const hasSegments = (active.segments?.length ?? 0) > 0;
             if (hasSegments) {
-              return (
-                <>
-                  <KaraokeText segments={active.segments!} refreshing={refreshing} onRefresh={onRefresh} />
-                  <View style={s.feedbackWrap}>
-                    <FeedbackControl onSubmit={handleFeedback} submitted={feedbackDone} />
-                  </View>
-                </>
-              );
+              return <KaraokeText segments={active.segments!} refreshing={refreshing} onRefresh={onRefresh} />;
+            }
+            if (active.description) {
+              return <VerseText text={active.description} refreshing={refreshing} onRefresh={onRefresh} />;
             }
             return (
-              <ScrollView contentContainerStyle={s.cardScroll} showsVerticalScrollIndicator={false} refreshControl={refreshCtrl}>
-                {active.description && (
-                  <Text style={[s.descText, { color: player.textColor, fontSize: player.fontSize, lineHeight: player.fontSize * 1.5 }]}>{pickText(active.description, isArabic)}</Text>
-                )}
-                <View style={s.feedbackWrap}>
-                  <FeedbackControl onSubmit={handleFeedback} submitted={feedbackDone} />
-                </View>
-              </ScrollView>
+              <ScrollView contentContainerStyle={s.cardScroll} showsVerticalScrollIndicator={false} refreshControl={refreshCtrl} />
             );
           })()}
         </View>

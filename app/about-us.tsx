@@ -19,7 +19,7 @@ export default function AboutUsScreen() {
   ];
 
   return (
-    <Screen edges={['top']}>
+    <Screen>
       <PatternedBackground />
       <Header title={t.aboutUs.title} />
       <ScrollView style={s.scroll} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>

@@ -24,7 +24,7 @@ export default function ReportBugScreen() {
 
   if (submitted) {
     return (
-      <Screen edges={['top']}>
+      <Screen>
         <PatternedBackground />
         <Header title={t.reportBug.title} />
         <View style={s.successWrap}>
@@ -42,7 +42,7 @@ export default function ReportBugScreen() {
   }
 
   return (
-    <Screen edges={['top']}>
+    <Screen>
       <PatternedBackground />
       <Header title={t.reportBug.title} />
       <ScrollView style={s.scroll} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>

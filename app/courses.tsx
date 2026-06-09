@@ -21,7 +21,7 @@ export default function CoursesScreen() {
   );
 
   return (
-    <Screen edges={['top']}>
+    <Screen>
       <PatternedBackground />
       <Header title={t.courses.title} />
       {isLoading ? (

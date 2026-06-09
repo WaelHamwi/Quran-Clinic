@@ -52,7 +52,7 @@ export default function AdhkarItemsScreen() {
 
   if (isLoading) {
     return (
-      <Screen edges={['top']}>
+      <Screen>
         <PatternedBackground />
         <Header title={title} showBack />
         <Loader fullScreen message={t.common.loading} />
@@ -62,7 +62,7 @@ export default function AdhkarItemsScreen() {
 
   if (error) {
     return (
-      <Screen edges={['top']}>
+      <Screen>
         <PatternedBackground />
         <Header title={title} showBack />
         <EmptyState
@@ -77,7 +77,7 @@ export default function AdhkarItemsScreen() {
 
   if (!item) {
     return (
-      <Screen edges={['top']}>
+      <Screen>
         <PatternedBackground />
         <Header title={title} showBack />
         <EmptyState icon="sparkles-outline" title={t.adhkar.empty} />
@@ -86,7 +86,7 @@ export default function AdhkarItemsScreen() {
   }
 
   return (
-    <Screen edges={['top']}>
+    <Screen>
       <PatternedBackground />
       <Header title={title} showBack />
 

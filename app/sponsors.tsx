@@ -20,7 +20,7 @@ export default function SponsorsScreen() {
   );
 
   return (
-    <Screen edges={['top']}>
+    <Screen>
       <Header title={t.sponsors.title} />
       {isLoading ? (
         <Loader fullScreen message={t.common.loading} />

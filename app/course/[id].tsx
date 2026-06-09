@@ -29,7 +29,7 @@ export default function CourseDetailScreen() {
 
   if (isLoading) {
     return (
-      <Screen edges={['top']}>
+      <Screen>
         <PatternedBackground />
         <Header title={title} showBack />
         <Loader fullScreen message={t.common.loading} />
@@ -39,7 +39,7 @@ export default function CourseDetailScreen() {
 
   if (!course) {
     return (
-      <Screen edges={['top']}>
+      <Screen>
         <PatternedBackground />
         <Header title={t.courses.title} showBack />
         <EmptyState icon="school-outline" title={t.common.empty} />
@@ -50,7 +50,7 @@ export default function CourseDetailScreen() {
   const description = pickText(course.description, isArabic);
 
   return (
-    <Screen edges={['top']}>
+    <Screen>
       <PatternedBackground />
       <Header title={title} showBack />
       <ScrollView

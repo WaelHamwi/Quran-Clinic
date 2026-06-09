@@ -54,6 +54,7 @@ export const palette = {
   bg: {
     primary: '#ffffff',
     overlay: 'rgba(255,255,255,0.5)',
+    mushaf: 'rgba(255,252,238,0.93)',  // warm parchment page — Mushaf reader only
     quaternary: '#e9eaeb',
     disabled: '#f5f5f5',
     primarySolid: '#0a0d12',

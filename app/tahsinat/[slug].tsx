@@ -48,7 +48,7 @@ export default function TahsinatItemsScreen() {
 
   if (isLoading) {
     return (
-      <Screen edges={['top']}>
+      <Screen>
         <PatternedBackground />
         <Header title={title} showBack />
         <Loader fullScreen message={t.common.loading} />
@@ -58,7 +58,7 @@ export default function TahsinatItemsScreen() {
 
   if (error) {
     return (
-      <Screen edges={['top']}>
+      <Screen>
         <PatternedBackground />
         <Header title={title} showBack />
         <EmptyState
@@ -73,7 +73,7 @@ export default function TahsinatItemsScreen() {
 
   if (!item) {
     return (
-      <Screen edges={['top']}>
+      <Screen>
         <PatternedBackground />
         <Header title={title} showBack />
         <EmptyState icon="shield-checkmark-outline" title={t.tahsinat.empty} />
@@ -82,7 +82,7 @@ export default function TahsinatItemsScreen() {
   }
 
   return (
-    <Screen edges={['top']}>
+    <Screen>
       <PatternedBackground />
       <Header title={title} showBack />
 

@@ -38,7 +38,7 @@ export default function NotificationsScreen() {
   );
 
   return (
-    <Screen edges={['top']}>
+    <Screen>
       <Header title={t.notifications.title} />
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.group}>

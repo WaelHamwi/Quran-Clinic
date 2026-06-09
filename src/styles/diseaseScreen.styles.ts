@@ -3,6 +3,9 @@ import { palette } from '@/theme/colors';
 import { fontFamily } from '@/theme/typography';
 import { radius, space, spacing } from '@/theme/spacing';
 
+// Warm yellow at 30% opacity — matches the KaraokeText segment highlight
+const DESC_HIGHLIGHT = 'rgba(255,214,0,0.30)';
+
 export const TAB_ICON_COLOR = palette.text.tertiary;
 
 export const diseaseScreenStyles = StyleSheet.create({
@@ -70,6 +73,14 @@ export const diseaseScreenStyles = StyleSheet.create({
     lineHeight: 28,
     color: palette.text.primary,
     textAlign: 'center',
+  },
+  descHighlight: {
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  'descHighlight--active': {
+    backgroundColor: DESC_HIGHLIGHT,
   },
   descText: {
     fontFamily: fontFamily.alexandria,
