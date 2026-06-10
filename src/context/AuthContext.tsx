@@ -3,7 +3,7 @@ import * as WebBrowser from "expo-web-browser";
 import * as SecureStore from "expo-secure-store";
 import { Platform } from "react-native";
 import { useRouter } from "expo-router";
-import { API_URL } from "@/services/api";
+import { API_URL, PRODUCTION_API_URL } from "@/services/api";
 
 interface AuthContextProps {
   user: any;
@@ -28,7 +28,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const [pendingEmail, setPendingEmail] = useState<string | null>(null);
   const router = useRouter();
 
-  const BASE_URL = API_URL.replace(/\/api$/, '');
+  // OAuth must always go through production — Google's servers can't reach a local IP
+  const OAUTH_BASE_URL = PRODUCTION_API_URL.replace(/\/api$/, '');
 
   useEffect(() => {
     loadStoredAuth();
@@ -75,7 +76,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     const sessionToken = Array.from({ length: 32 }, () =>
       Math.floor(Math.random() * 36).toString(36)
     ).join('');
-    const authUrl = `${BASE_URL}/auth/google/mobile?session_token=${encodeURIComponent(sessionToken)}`;
+    const authUrl = `${OAUTH_BASE_URL}/auth/google/mobile?session_token=${encodeURIComponent(sessionToken)}`;
 
     let intervalId: ReturnType<typeof setInterval>;
     let settled = false;
@@ -87,7 +88,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
     intervalId = setInterval(async () => {
       try {
-        const res = await fetch(`${API_URL}/auth/session/${sessionToken}`);
+        const res = await fetch(`${PRODUCTION_API_URL}/auth/session/${sessionToken}`);
         if (res.status === 202) return;
         const data = await res.json();
         if (data.status === 'success') {
