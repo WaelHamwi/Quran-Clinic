@@ -43,9 +43,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         const parsedUser = JSON.parse(storedUser);
         setToken(storedToken);
         setUser(parsedUser);
-        if (Platform.OS !== "web") {
-          router.replace("/(tabs)");
-        }
+        // Navigation is handled by AppFlow's useEffect reacting to user state
       }
     } catch {
       await SecureStore.deleteItemAsync("token");
@@ -81,26 +79,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     let intervalId: ReturnType<typeof setInterval>;
     let settled = false;
 
-    const cleanup = () => {
-      clearInterval(intervalId);
-      if (!settled) { settled = true; setLoading(false); }
-    };
-
     intervalId = setInterval(async () => {
+      if (settled) return;
       try {
         const res = await fetch(`${PRODUCTION_API_URL}/auth/session/${sessionToken}`);
         if (res.status === 202) return;
         const data = await res.json();
-        if (data.status === 'success') {
-          cleanup();
-          WebBrowser.dismissBrowser();
+        if (data.status === 'success' || data.status === 'verification_required') {
+          if (settled) return;
           settled = true;
-          await persistAuth(data.user, data.token);
-          router.replace('/(tabs)');
-        } else if (data.status === 'verification_required') {
-          cleanup();
-          WebBrowser.dismissBrowser();
-          setPendingEmail(data.email as string);
+          clearInterval(intervalId);
+          // Close the browser first so the app UI is visible when state updates
+          await WebBrowser.dismissBrowser();
+          setLoading(false);
+          if (data.status === 'success') {
+            await persistAuth(data.user, data.token);
+            // AppFlow reacts: step === 'login' && user → go('disclaimer')
+          } else {
+            setPendingEmail(data.email as string);
+            // AppFlow reacts: step === 'login' && pendingEmail → go('otp')
+          }
         }
       } catch {}
     }, 2000);
@@ -108,7 +106,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     try {
       await WebBrowser.openAuthSessionAsync(authUrl, 'quranicclinic://auth-callback');
     } finally {
-      cleanup();
+      if (!settled) {
+        settled = true;
+        clearInterval(intervalId);
+        setLoading(false);
+      }
     }
   };
 
