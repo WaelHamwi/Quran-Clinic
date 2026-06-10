@@ -1,12 +1,9 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import * as WebBrowser from "expo-web-browser";
-import * as Linking from "expo-linking";
 import * as SecureStore from "expo-secure-store";
 import { Platform } from "react-native";
 import { useRouter } from "expo-router";
 import { API_URL } from "@/services/api";
-
-WebBrowser.maybeCompleteAuthSession();
 
 interface AuthContextProps {
   user: any;
@@ -75,26 +72,42 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const signIn = async () => {
     setLoading(true);
-    try {
-      const returnTo = Linking.createURL('/auth-callback');
-      const authUrl  = `${BASE_URL}/auth/google/mobile?returnTo=${encodeURIComponent(returnTo)}`;
-      const result   = await WebBrowser.openAuthSessionAsync(authUrl, returnTo);
+    const sessionToken = Array.from({ length: 32 }, () =>
+      Math.floor(Math.random() * 36).toString(36)
+    ).join('');
+    const authUrl = `${BASE_URL}/auth/google/mobile?session_token=${encodeURIComponent(sessionToken)}`;
 
-      if (result.type === 'success') {
-        const { queryParams } = Linking.parse(result.url);
-        const status = queryParams?.status as string;
+    let intervalId: ReturnType<typeof setInterval>;
+    let settled = false;
 
-        if (status === 'success') {
-          const user = JSON.parse(queryParams?.user as string);
-          await persistAuth(user, queryParams?.token as string);
-        } else if (status === 'verification_required') {
-          setPendingEmail(queryParams?.email as string);
+    const cleanup = () => {
+      clearInterval(intervalId);
+      if (!settled) { settled = true; setLoading(false); }
+    };
+
+    intervalId = setInterval(async () => {
+      try {
+        const res = await fetch(`${API_URL}/auth/session/${sessionToken}`);
+        if (res.status === 202) return;
+        const data = await res.json();
+        if (data.status === 'success') {
+          cleanup();
+          WebBrowser.dismissBrowser();
+          settled = true;
+          await persistAuth(data.user, data.token);
+          router.replace('/(tabs)');
+        } else if (data.status === 'verification_required') {
+          cleanup();
+          WebBrowser.dismissBrowser();
+          setPendingEmail(data.email as string);
         }
-      }
-    } catch {
-      // cancelled or dismissed — no-op
+      } catch {}
+    }, 2000);
+
+    try {
+      await WebBrowser.openBrowserAsync(authUrl);
     } finally {
-      setLoading(false);
+      cleanup();
     }
   };
 
