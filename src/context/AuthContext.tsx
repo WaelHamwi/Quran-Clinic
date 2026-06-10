@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import * as WebBrowser from "expo-web-browser";
-import * as Google from "expo-auth-session/providers/google";
+import * as Linking from "expo-linking";
 import * as SecureStore from "expo-secure-store";
 import { Platform } from "react-native";
 import { useRouter } from "expo-router";
@@ -31,27 +31,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const [pendingEmail, setPendingEmail] = useState<string | null>(null);
   const router = useRouter();
 
-  const [request, response, promptAsync] = Google.useAuthRequest({
-    webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
-    androidClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
-    iosClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
-    // PKCE authorization code flow — implicit (ResponseType.Token) is blocked by Google policy
-    redirectUri: 'https://auth.expo.io/@wael_hamwi/quranic-clinic',
-  });
+  const BASE_URL = API_URL.replace(/\/api$/, '');
 
   useEffect(() => {
     loadStoredAuth();
   }, []);
-
-  useEffect(() => {
-    if (response?.type === "success") {
-      const { code } = response.params;
-      const codeVerifier = request?.codeVerifier ?? '';
-      handleGoogleSignIn(code, codeVerifier);
-    } else if (response?.type === "error" || response?.type === "dismiss") {
-      setLoading(false);
-    }
-  }, [response]);
 
   const loadStoredAuth = async () => {
     try {
@@ -82,31 +66,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     } catch {}
   };
 
-  const handleGoogleSignIn = async (code: string, codeVerifier: string) => {
-    setLoading(true);
-    try {
-      const res = await fetch(`${API_URL}/auth/google/callback`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code, code_verifier: codeVerifier }),
-      });
-
-      if (res.status === 429) throw new Error("too_many_requests");
-
-      const data = await res.json();
-
-      if (data.status === "verification_required") {
-        setPendingEmail(data.email);
-      } else if (data.status === "success" && data.user) {
-        await persistAuth(data.user, data.token);
-      } else {
-        throw new Error("auth_failed");
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const persistAuth = async (authUser: any, authToken: string) => {
     setUser(authUser);
     setToken(authToken);
@@ -117,8 +76,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const signIn = async () => {
     setLoading(true);
     try {
-      await promptAsync();
+      const returnTo = Linking.createURL('/auth-callback');
+      const authUrl  = `${BASE_URL}/auth/google/mobile?returnTo=${encodeURIComponent(returnTo)}`;
+      const result   = await WebBrowser.openAuthSessionAsync(authUrl, returnTo);
+
+      if (result.type === 'success') {
+        const { queryParams } = Linking.parse(result.url);
+        const status = queryParams?.status as string;
+
+        if (status === 'success') {
+          const user = JSON.parse(queryParams?.user as string);
+          await persistAuth(user, queryParams?.token as string);
+        } else if (status === 'verification_required') {
+          setPendingEmail(queryParams?.email as string);
+        }
+      }
     } catch {
+      // cancelled or dismissed — no-op
+    } finally {
       setLoading(false);
     }
   };
