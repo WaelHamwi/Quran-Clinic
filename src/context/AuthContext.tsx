@@ -105,7 +105,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     }, 2000);
 
     try {
-      await WebBrowser.openBrowserAsync(authUrl);
+      await WebBrowser.openAuthSessionAsync(authUrl, 'quranicclinic://auth-callback');
     } finally {
       cleanup();
     }
