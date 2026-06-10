@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import * as WebBrowser from "expo-web-browser";
 import * as Google from "expo-auth-session/providers/google";
-import { ResponseType } from "expo-auth-session";
 import * as SecureStore from "expo-secure-store";
 import { Platform } from "react-native";
 import { useRouter } from "expo-router";
@@ -13,8 +12,11 @@ interface AuthContextProps {
   user: any;
   token: string | null;
   loading: boolean;
+  pendingEmail: string | null;
   signIn: () => Promise<void>;
   signOut: () => Promise<void>;
+  verifyOtp: (otp: string) => Promise<void>;
+  resendOtp: () => Promise<void>;
   clearAuthOnStart: () => Promise<void>;
 }
 
@@ -25,54 +27,47 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 }) => {
   const [user, setUser] = useState<any>(null);
   const [token, setToken] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false); // DEV: bypass auth loading
+  const [loading, setLoading] = useState(true);
+  const [pendingEmail, setPendingEmail] = useState<string | null>(null);
   const router = useRouter();
 
   const [request, response, promptAsync] = Google.useAuthRequest({
     webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
     androidClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
     iosClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
-    responseType: ResponseType.Token,
+    // PKCE authorization code flow — implicit (ResponseType.Token) is blocked by Google policy
+    redirectUri: 'https://auth.expo.io/@wael_hamwi/quranic-clinic',
   });
 
-  // DEV: auth loading bypassed — re-enable both useEffects when auth is needed
-  // useEffect(() => {
-  //   loadStoredAuth();
-  // }, []);
+  useEffect(() => {
+    loadStoredAuth();
+  }, []);
 
-  // useEffect(() => {
-  //   if (response?.type === "success") {
-  //     const { access_token } = response.params;
-  //     handleGoogleSignIn(access_token);
-  //   }
-  // }, [response]);
+  useEffect(() => {
+    if (response?.type === "success") {
+      const { code } = response.params;
+      const codeVerifier = request?.codeVerifier ?? '';
+      handleGoogleSignIn(code, codeVerifier);
+    } else if (response?.type === "error" || response?.type === "dismiss") {
+      setLoading(false);
+    }
+  }, [response]);
 
   const loadStoredAuth = async () => {
     try {
       const storedToken = await SecureStore.getItemAsync("token");
       const storedUser = await SecureStore.getItemAsync("user");
-
-      console.log("Loading stored auth - Token:", !!storedToken, "User:", !!storedUser);
-
       if (storedToken && storedUser) {
-        try {
-          const parsedUser = JSON.parse(storedUser);
-          setToken(storedToken);
-          setUser(parsedUser);
-          console.log("User loaded from storage:", parsedUser.email);
-          if (Platform.OS !== 'web') {
-            router.replace('/(tabs)');
-          }
-        } catch (e) {
-          console.error("Error parsing stored user:", e);
-          await SecureStore.deleteItemAsync("token");
-          await SecureStore.deleteItemAsync("user");
+        const parsedUser = JSON.parse(storedUser);
+        setToken(storedToken);
+        setUser(parsedUser);
+        if (Platform.OS !== "web") {
+          router.replace("/(tabs)");
         }
-      } else {
-        console.log("No stored auth found - user needs to login");
       }
-    } catch (error) {
-      console.error("Error loading auth:", error);
+    } catch {
+      await SecureStore.deleteItemAsync("token");
+      await SecureStore.deleteItemAsync("user");
     } finally {
       setLoading(false);
     }
@@ -84,69 +79,99 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       await SecureStore.deleteItemAsync("user");
       setUser(null);
       setToken(null);
-      console.log("Cleared stored auth data on start");
-    } catch (error) {
-      console.error("Error clearing auth:", error);
-    }
+    } catch {}
   };
 
-  const handleGoogleSignIn = async (access_token: string) => {
+  const handleGoogleSignIn = async (code: string, codeVerifier: string) => {
     setLoading(true);
     try {
-      console.log("API URL:", API_URL);
-      
       const res = await fetch(`${API_URL}/auth/google/callback`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ access_token }),
+        body: JSON.stringify({ code, code_verifier: codeVerifier }),
       });
+
+      if (res.status === 429) throw new Error("too_many_requests");
 
       const data = await res.json();
 
-      if (data.user) {
-        setUser(data.user);
-        await SecureStore.setItemAsync("user", JSON.stringify(data.user));
-        if (data.token) {
-          setToken(data.token);
-          await SecureStore.setItemAsync("token", data.token);
-        }
-        console.log("User signed in successfully:", data.user.email);
-        if (Platform.OS !== 'web') {
-          router.replace('/(tabs)');
-        }
+      if (data.status === "verification_required") {
+        setPendingEmail(data.email);
+      } else if (data.status === "success" && data.user) {
+        await persistAuth(data.user, data.token);
       } else {
-        console.error("No user in response:", data);
-        throw new Error("Failed to authenticate with backend");
+        throw new Error("auth_failed");
       }
-    } catch (error: any) {
-      console.error("Sign in error:", error.message);
     } finally {
       setLoading(false);
     }
   };
 
+  const persistAuth = async (authUser: any, authToken: string) => {
+    setUser(authUser);
+    setToken(authToken);
+    await SecureStore.setItemAsync("user", JSON.stringify(authUser));
+    await SecureStore.setItemAsync("token", authToken);
+  };
+
   const signIn = async () => {
+    setLoading(true);
     try {
       await promptAsync();
-    } catch (error: any) {
-      console.error("Sign in error:", error.message);
+    } catch {
+      setLoading(false);
     }
+  };
+
+  const verifyOtp = async (otp: string) => {
+    if (!pendingEmail) throw new Error("no_pending_email");
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_URL}/auth/verify-otp`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: pendingEmail, otp }),
+      });
+
+      if (res.status === 429) throw new Error("too_many_requests");
+
+      const data = await res.json();
+      if (data.error === "invalid_otp") throw new Error("invalid_otp");
+      if (!data.user) throw new Error("auth_failed");
+
+      setPendingEmail(null);
+      await persistAuth(data.user, data.token);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const resendOtp = async () => {
+    if (!pendingEmail) throw new Error("no_pending_email");
+    const res = await fetch(`${API_URL}/auth/resend-otp`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: pendingEmail }),
+    });
+    if (res.status === 429) throw new Error("too_many_requests");
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
   };
 
   const signOut = async () => {
     setToken(null);
     setUser(null);
+    setPendingEmail(null);
     await SecureStore.deleteItemAsync("token");
     await SecureStore.deleteItemAsync("user");
-    console.log("User signed out");
-    if (Platform.OS !== 'web') {
-      router.replace('/login');
+    if (Platform.OS !== "web") {
+      router.replace("/login");
     }
   };
 
   return (
     <AuthContext.Provider
-      value={{ user, token, loading, signIn, signOut, clearAuthOnStart }}
+      value={{ user, token, loading, pendingEmail, signIn, signOut, verifyOtp, resendOtp, clearAuthOnStart }}
     >
       {children}
     </AuthContext.Provider>
