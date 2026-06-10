@@ -27,6 +27,9 @@ export const diseaseScreenStyles = StyleSheet.create({
     borderWidth: 1,
     borderColor: palette.border.primary,
   },
+  'tabGroup--rtl': {
+    flexDirection: 'row-reverse',
+  },
   tab: {
     flex: 1,
     flexDirection: 'row',

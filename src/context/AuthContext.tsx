@@ -3,7 +3,7 @@ import * as WebBrowser from "expo-web-browser";
 import * as SecureStore from "expo-secure-store";
 import { Platform } from "react-native";
 import { useRouter } from "expo-router";
-import { API_URL, PRODUCTION_API_URL } from "@/services/api";
+import { PRODUCTION_API_URL } from "@/services/api";
 
 interface AuthContextProps {
   user: any;
@@ -76,8 +76,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     ).join('');
     const authUrl = `${OAUTH_BASE_URL}/auth/google/mobile?session_token=${encodeURIComponent(sessionToken)}`;
 
-    let intervalId: ReturnType<typeof setInterval>;
     let settled = false;
+    let intervalId: ReturnType<typeof setInterval>;
+
+    // Safety: stop polling after 10 minutes if nothing resolved
+    const timeoutId = setTimeout(() => {
+      if (!settled) {
+        settled = true;
+        clearInterval(intervalId);
+        setLoading(false);
+      }
+    }, 10 * 60 * 1000);
+
+    const finish = async (data: any) => {
+      if (settled) return;
+      settled = true;
+      clearInterval(intervalId);
+      clearTimeout(timeoutId);
+      await WebBrowser.dismissBrowser().catch(() => {});
+      if (data.status === 'success') {
+        await persistAuth(data.user, data.token);
+      } else if (data.status === 'verification_required') {
+        setPendingEmail(data.email as string);
+      }
+      setLoading(false);
+    };
 
     intervalId = setInterval(async () => {
       if (settled) return;
@@ -86,33 +109,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         if (res.status === 202) return;
         const data = await res.json();
         if (data.status === 'success' || data.status === 'verification_required') {
-          if (settled) return;
-          settled = true;
-          clearInterval(intervalId);
-          // Close the browser first so the app UI is visible when state updates
-          await WebBrowser.dismissBrowser();
-          setLoading(false);
-          if (data.status === 'success') {
-            await persistAuth(data.user, data.token);
-            // AppFlow reacts: step === 'login' && user → go('app') or go('disclaimer')
-            // When called from login.tsx inside MainApp Stack (post-signout), also navigate via router
-            router.replace('/(tabs)');
-          } else {
-            setPendingEmail(data.email as string);
-            // AppFlow reacts: step === 'login' && pendingEmail → go('otp')
-          }
+          await finish(data);
         }
       } catch {}
     }, 2000);
 
-    try {
-      await WebBrowser.openAuthSessionAsync(authUrl, 'quranicclinic://auth-callback');
-    } finally {
-      if (!settled) {
-        settled = true;
-        clearInterval(intervalId);
-        setLoading(false);
-      }
+    // Open browser — resolves immediately on Android, on dismiss on iOS.
+    // Do NOT clear intervalId here; polling must keep running while user fills OTP.
+    await WebBrowser.openBrowserAsync(authUrl).catch(() => {});
+
+    // One immediate poll after browser resolves (catches race condition on iOS dismiss)
+    if (!settled) {
+      try {
+        const res = await fetch(`${PRODUCTION_API_URL}/auth/session/${sessionToken}`);
+        if (res.status !== 202) {
+          const data = await res.json();
+          if (data.status === 'success' || data.status === 'verification_required') {
+            await finish(data);
+          }
+        }
+      } catch {}
     }
   };
 
@@ -120,7 +136,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     if (!pendingEmail) throw new Error("no_pending_email");
     setLoading(true);
     try {
-      const res = await fetch(`${API_URL}/auth/verify-otp`, {
+      const res = await fetch(`${PRODUCTION_API_URL}/auth/verify-otp`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: pendingEmail, otp }),
@@ -141,7 +157,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const resendOtp = async () => {
     if (!pendingEmail) throw new Error("no_pending_email");
-    const res = await fetch(`${API_URL}/auth/resend-otp`, {
+    const res = await fetch(`${PRODUCTION_API_URL}/auth/resend-otp`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email: pendingEmail }),

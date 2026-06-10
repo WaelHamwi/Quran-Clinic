@@ -31,7 +31,6 @@ function getLocalApiUrl(): string {
 }
 
 export const LOCAL_API_URL = getLocalApiUrl();
-if (__DEV__) console.log(`[api] LOCAL_API_URL → ${LOCAL_API_URL}`);
 
 const OVERRIDE_API_URL = process.env.EXPO_PUBLIC_API_URL;
 
@@ -48,7 +47,6 @@ export const API_HEADERS: HeadersInit = {
 export async function resolveApiBaseUrl(): Promise<string> {
   if (OVERRIDE_API_URL) {
     API_URL = OVERRIDE_API_URL;
-    console.log(`[api] override → ${API_URL}`);
     return API_URL;
   }
   if (!__DEV__) {
@@ -56,6 +54,5 @@ export async function resolveApiBaseUrl(): Promise<string> {
     return API_URL;
   }
   API_URL = LOCAL_API_URL;
-  console.log(`[api] DEV → local ${API_URL} (production fallback per request)`);
   return API_URL;
 }

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -10,6 +10,9 @@ import { EmptyState } from '@/components/common/EmptyState';
 import { AudioPlayer } from '@/components/players/AudioPlayer';
 import { KaraokeText } from '@/components/players/KaraokeText';
 import { VerseText } from '@/components/players/VerseText';
+import { WirdPager } from '@/components/players/WirdPager';
+import { WirdMenuSheet } from '@/components/players/WirdMenuSheet';
+import { LockedWird } from '@/components/players/LockedWird';
 import { useCategory } from '@/hooks/useCategory';
 import { useSubcategory } from '@/hooks/useSubcategory';
 import { usePlayer } from '@/hooks/usePlayer';
@@ -68,9 +71,33 @@ export default function CategoryRecordingsScreen() {
 
   const contextId = node?.id ?? 0;
 
+  // More than three wird switches the tab strip for a pager + wird-list menu,
+  // and lets the user browse to (locked) wird that aren't playing.
+  const manyWird = recordings.length > 3;
+  const [viewIndex, setViewIndex] = useState(0);
+  const [menuVisible, setMenuVisible] = useState(false);
+
   const currentIndex = useMemo(
     () => recordings.findIndex((r) => player.isCurrent(r.id)),
     [recordings, player],
+  );
+
+  // The wird shown on screen: the browsed one in pager mode, otherwise the
+  // playing one (falling back to the first).
+  const displayIndex = manyWird
+    ? Math.min(viewIndex, recordings.length - 1)
+    : currentIndex >= 0 ? currentIndex : 0;
+  const displayed = recordings[displayIndex];
+  const viewedLocked = manyWird && !!displayed && !displayed.accessible;
+
+  const startPlayback = useCallback(
+    (recording: AccessibleRecording) => {
+      player.loadAndPlay(recording, contextId, getLocalUri(recording.id));
+      ruqyahService.incrementPlayCount(recording.id).catch(() => {
+        dispatch(enqueue({ type: 'playCount', payload: { recordingId: recording.id } }));
+      });
+    },
+    [player, getLocalUri, contextId, dispatch],
   );
 
   const handlePlay = useCallback(
@@ -83,23 +110,55 @@ export default function CategoryRecordingsScreen() {
         player.togglePlay();
         return;
       }
-      player.loadAndPlay(recording, contextId, getLocalUri(recording.id));
-      ruqyahService.incrementPlayCount(recording.id).catch(() => {
-        dispatch(enqueue({ type: 'playCount', payload: { recordingId: recording.id } }));
-      });
+      startPlayback(recording);
     },
-    [player, getLocalUri, contextId, dispatch],
+    [player, startPlayback],
   );
 
+  // Pager / menu navigation: browse to any wird. Accessible wird start playing;
+  // locked wird pause playback and surface the paywall card in place.
+  const goToWird = useCallback(
+    (idx: number) => {
+      if (idx < 0 || idx >= recordings.length) return;
+      setViewIndex(idx);
+      setMenuVisible(false);
+      const rec = recordings[idx];
+      if (!rec.accessible) {
+        player.pause();
+        return;
+      }
+      if (!player.isCurrent(rec.id)) startPlayback(rec);
+    },
+    [recordings, player, startPlayback],
+  );
+
+  // Keep the pager in sync when playback moves on its own (auto-play, auto-switch).
+  useEffect(() => {
+    if (manyWird && currentIndex >= 0) setViewIndex(currentIndex);
+  }, [manyWird, currentIndex]);
+
+  const hasPrevious = manyWird ? displayIndex > 0 : currentIndex > 0;
+  const hasNext = manyWird
+    ? displayIndex < recordings.length - 1
+    : currentIndex < recordings.length - 1;
+
   const handlePrevious = useCallback(() => {
+    if (manyWird) {
+      goToWird(displayIndex - 1);
+      return;
+    }
     const prev = recordings[currentIndex - 1];
     if (prev) handlePlay(prev);
-  }, [currentIndex, recordings, handlePlay]);
+  }, [manyWird, goToWird, displayIndex, currentIndex, recordings, handlePlay]);
 
   const handleNext = useCallback(() => {
+    if (manyWird) {
+      goToWird(displayIndex + 1);
+      return;
+    }
     const next = recordings[currentIndex + 1];
     if (next) handlePlay(next);
-  }, [currentIndex, recordings, handlePlay]);
+  }, [manyWird, goToWird, displayIndex, currentIndex, recordings, handlePlay]);
 
   useEffect(() => {
     if (isGeneralMode || hasAutoPlayed.current || recordings.length === 0) return;
@@ -156,77 +215,114 @@ export default function CategoryRecordingsScreen() {
       <Header title={title} showBack />
 
       <View style={s.content}>
+        {/* Session tabs (≤3) or wird pager (>3) — Figma nodes 18032:3101 / 18900:2907 */}
         {recordings.length > 0 && (
           <View style={s.tabsWrap}>
-            <View style={s.tabGroup}>
-              {recordings.map((r, idx) => {
-                const active = player.isCurrent(r.id);
-                const label = t.disease.session(idx + 1);
-                return (
-                  <Pressable
-                    key={r.id}
-                    style={[s.tab, active && s['tab--active']]}
-                    onPress={() => handlePlay(r)}
-                  >
-                    {!active && (
-                      <Ionicons name="time-outline" size={12} color={TAB_ICON_COLOR} />
-                    )}
-                    <Text
-                      style={[s.tabText, active && s['tabText--active']]}
-                      numberOfLines={1}
+            {manyWird ? (
+              <WirdPager
+                isArabic={isArabic}
+                label={t.disease.session(displayIndex + 1)}
+                position={t.disease.wirdPosition(displayIndex + 1, recordings.length)}
+                locked={!displayed?.accessible}
+                hasPrev={hasPrevious}
+                hasNext={hasNext}
+                onPrev={handlePrevious}
+                onNext={handleNext}
+                onPressLabel={() => setMenuVisible(true)}
+              />
+            ) : (
+              <View style={[s.tabGroup, isArabic && s['tabGroup--rtl']]}>
+                {recordings.map((r, idx) => {
+                  const active = player.isCurrent(r.id);
+                  const label = t.disease.session(idx + 1);
+                  return (
+                    <Pressable
+                      key={r.id}
+                      style={[s.tab, active && s['tab--active']]}
+                      onPress={() => handlePlay(r)}
                     >
-                      {label}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
+                      {!active && (
+                        <Ionicons name="time-outline" size={12} color={TAB_ICON_COLOR} />
+                      )}
+                      <Text
+                        style={[s.tabText, active && s['tabText--active']]}
+                        numberOfLines={1}
+                      >
+                        {label}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            )}
           </View>
         )}
 
+        {/* Section card — Figma nodes 18032:3107 / 18972:3492 (locked) */}
         <View style={[s.sectionCard, player.isDarkMode && { backgroundColor: palette.brand[700] }]}>
-          {(() => {
-            const refreshCtrl = (
-              <RefreshControl
-                refreshing={refreshing}
-                onRefresh={onRefresh}
-                tintColor={palette.brand[500]}
-                colors={[palette.brand[500]]}
-              />
-            );
-            if (recordings.length === 0) {
-              return (
-                <ScrollView contentContainerStyle={s.cardScroll} showsVerticalScrollIndicator={false} refreshControl={refreshCtrl}>
-                  <Text style={s.emptyText}>{t.disease.noRecordings}</Text>
-                </ScrollView>
+          {viewedLocked ? (
+            <LockedWird
+              onSubscribe={() => router.push('/hospital/disease/subscription')}
+              onReturn={() => goToWird(0)}
+            />
+          ) : (
+            (() => {
+              const refreshCtrl = (
+                <RefreshControl
+                  refreshing={refreshing}
+                  onRefresh={onRefresh}
+                  tintColor={palette.brand[500]}
+                  colors={[palette.brand[500]]}
+                />
               );
-            }
-            const active = currentIndex >= 0 ? recordings[currentIndex] : recordings[0];
-            if (!active) return null;
-            const hasSegments = (active.segments?.length ?? 0) > 0;
-            if (hasSegments) {
-              return <KaraokeText segments={active.segments!} refreshing={refreshing} onRefresh={onRefresh} />;
-            }
-            if (active.description) {
-              return <VerseText text={active.description} refreshing={refreshing} onRefresh={onRefresh} />;
-            }
-            return (
-              <ScrollView
-                contentContainerStyle={s.cardScroll}
-                showsVerticalScrollIndicator={false}
-                refreshControl={refreshCtrl}
-              />
-            );
-          })()}
+              if (recordings.length === 0) {
+                return (
+                  <ScrollView contentContainerStyle={s.cardScroll} showsVerticalScrollIndicator={false} refreshControl={refreshCtrl}>
+                    <Text style={s.emptyText}>{t.disease.noRecordings}</Text>
+                  </ScrollView>
+                );
+              }
+              const active = displayed;
+              if (!active) return null;
+              const hasSegments = (active.segments?.length ?? 0) > 0;
+              if (hasSegments) {
+                return <KaraokeText segments={active.segments!} refreshing={refreshing} onRefresh={onRefresh} />;
+              }
+              if (active.description) {
+                return <VerseText text={active.description} refreshing={refreshing} onRefresh={onRefresh} />;
+              }
+              return (
+                <ScrollView
+                  contentContainerStyle={s.cardScroll}
+                  showsVerticalScrollIndicator={false}
+                  refreshControl={refreshCtrl}
+                />
+              );
+            })()
+          )}
         </View>
       </View>
 
-      {player.currentRecording && !isGeneralMode && playerDiseaseId === contextId && (
+      {/* Wird list — Figma node 18975:3626 */}
+      {manyWird && (
+        <WirdMenuSheet
+          visible={menuVisible}
+          onClose={() => setMenuVisible(false)}
+          items={recordings}
+          activeIndex={displayIndex}
+          isArabic={isArabic}
+          title={t.disease.wirdMenuTitle}
+          sessionLabel={t.disease.session}
+          onSelect={goToWird}
+        />
+      )}
+
+      {player.currentRecording && !isGeneralMode && playerDiseaseId === contextId && !viewedLocked && (
         <AudioPlayer
           onPrevious={handlePrevious}
           onNext={handleNext}
-          hasPrevious={currentIndex > 0}
-          hasNext={currentIndex < recordings.length - 1}
+          hasPrevious={hasPrevious}
+          hasNext={hasNext}
         />
       )}
       {player.currentRecording && isGeneralMode && (

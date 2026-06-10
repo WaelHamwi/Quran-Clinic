@@ -148,6 +148,12 @@ export const en = {
     playbackSettings: 'Playback Settings',
     alertTitle: 'Important Notice',
     alertBody: 'This ruqyah is based on the Quran and Sunnah. It is complementary, not a substitute for medical treatment. Please do not abandon your prescribed medical advice.',
+    wirdMenuTitle: 'Wird List',
+    wirdPosition: (cur: number, total: number) => `(${cur}/${total})`,
+    lockedTitle: 'Subscriber-only content',
+    lockedBody: 'Subscribe now to unlock this wird and access all advanced ruqyah, ad-free.',
+    lockedSubscribe: 'View subscription plans',
+    lockedReturn: 'Return to the first wird',
   },
   adhkar: {
     title: 'Adhkar',
@@ -396,6 +402,17 @@ export const en = {
     privacy: 'Privacy Policy',
     error: 'Sign In Error',
     errorBody: 'Failed to sign in with Google',
+    rateLimitError: 'Too many attempts. Please wait a moment and try again.',
+  },
+  otp: {
+    title: 'Email Verification',
+    heading: 'Enter Verification Code',
+    sentTo: 'We sent a 6-digit code to',
+    resend: 'Resend Code',
+    resendIn: 'Resend in',
+    errorInvalid: 'Incorrect or expired code. Please try again.',
+    errorRateLimit: 'Too many attempts. Please wait a moment.',
+    errorResendLimit: 'Resend limit reached. Please try again later.',
   },
 };
 

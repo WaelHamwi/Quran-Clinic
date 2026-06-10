@@ -41,6 +41,7 @@ export function useVerseTiming(surahId: number, reciterNameEn: string | undefine
     enabled: !!recitationId && surahId > 0,
     staleTime: 7 * 24 * 60 * 60 * 1000,
     gcTime:    7 * 24 * 60 * 60 * 1000,
-    retry: 1,
+    retry: false,
+    networkMode: 'offlineFirst',
   });
 }

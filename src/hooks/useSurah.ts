@@ -9,7 +9,13 @@ export function useSurah(id: number) {
     queryFn: async () => {
       try {
         const result = await quranService.getSurah(id);
-        await offlineStorage.saveVerses(result.data.verses);
+        const { verses, ...surahMeta } = result.data;
+        // Persist BOTH the verses and the surah's own metadata. Saving the metadata
+        // here (not just in the paginated list) is what makes any surah the user opens
+        // available offline — the list only caches page 1, so surahs beyond #15 would
+        // otherwise have verses but no metadata and fail to reconstruct offline.
+        await offlineStorage.saveVerses(verses);
+        await offlineStorage.saveSurahs([surahMeta]);
         return result.data;
       } catch {
         const verses = await offlineStorage.getVersesBySurah(id);

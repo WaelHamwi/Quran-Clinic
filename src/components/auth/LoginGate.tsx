@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import LogoTop from '@/assets/figma/login-logo-3.svg';
 import LogoMid from '@/assets/figma/login-logo-2.svg';
@@ -7,13 +7,29 @@ import LogoBottom from '@/assets/figma/login-logo-1.svg';
 import GoogleIcon from '@/assets/figma/google-icon.svg';
 import { PatternedBackground } from '@/components/layout/PatternedBackground';
 import { FigmaTopBar } from '@/components/layout/FigmaTopBar';
+import { useAuth } from '@/context/AuthContext';
 import { useLanguage } from '@/context/LanguageContext';
 import { loginGateStyles as s } from './LoginGate.styles';
+import { palette } from '@/theme/colors';
 
 type Props = { onSuccess: () => void };
 
 export function LoginGate({ onSuccess }: Props) {
   const { t } = useLanguage();
+  const { signIn, loading } = useAuth();
+
+  const handleGoogleSignIn = async () => {
+    try {
+      await signIn();
+      // AppFlow watches user + pendingEmail to advance automatically.
+    } catch (error: any) {
+      if (error?.message === 'too_many_requests') {
+        Alert.alert(t.login.error, t.login.rateLimitError);
+      } else {
+        Alert.alert(t.login.error, t.login.errorBody);
+      }
+    }
+  };
 
   return (
     <View style={s.root}>
@@ -42,13 +58,20 @@ export function LoginGate({ onSuccess }: Props) {
 
             <View style={s.buttons}>
               <Pressable
-                onPress={onSuccess}
-                style={({ pressed }) => [s.googleBtn, pressed && s.pressed]}
+                onPress={handleGoogleSignIn}
+                disabled={loading}
+                style={({ pressed }) => [s.googleBtn, pressed && !loading && s.pressed, loading && { opacity: 0.6 }]}
               >
-                <Text style={s.googleBtnText}>{t.login.googleSignIn}</Text>
-                <View style={s.googleIcon}>
-                  <GoogleIcon width={16} height={16} />
-                </View>
+                {loading ? (
+                  <ActivityIndicator color={palette.text.onBrand} />
+                ) : (
+                  <>
+                    <Text style={s.googleBtnText}>{t.login.googleSignIn}</Text>
+                    <View style={s.googleIcon}>
+                      <GoogleIcon width={16} height={16} />
+                    </View>
+                  </>
+                )}
               </Pressable>
 
               <Pressable
