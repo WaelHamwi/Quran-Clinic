@@ -2,7 +2,7 @@ import { useCallback, useState } from 'react';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { completeOnboarding, selectHasCompletedOnboarding } from '@/store/slices/onboardingSlice';
 
-export type FlowStep = 'splash' | 'onboarding' | 'login' | 'disclaimer' | 'app';
+export type FlowStep = 'splash' | 'onboarding' | 'login' | 'otp' | 'disclaimer' | 'app';
 
 /** Manages the first-run step machine and the onboarding Redux action.
  *
@@ -34,5 +34,5 @@ export function useAppFlow() {
     setStep('app');
   }, [dispatch]);
 
-  return { step, go, finish };
+  return { step, go, finish, hasOnboarded };
 }

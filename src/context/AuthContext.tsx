@@ -94,7 +94,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
           setLoading(false);
           if (data.status === 'success') {
             await persistAuth(data.user, data.token);
-            // AppFlow reacts: step === 'login' && user → go('disclaimer')
+            // AppFlow reacts: step === 'login' && user → go('app') or go('disclaimer')
+            // When called from login.tsx inside MainApp Stack (post-signout), also navigate via router
+            router.replace('/(tabs)');
           } else {
             setPendingEmail(data.email as string);
             // AppFlow reacts: step === 'login' && pendingEmail → go('otp')
