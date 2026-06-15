@@ -83,8 +83,13 @@ class AuthController extends Controller
     {
         try {
             $user = $request->user();
+
+            // Revoke API tokens, then permanently remove the account. forceDelete()
+            // bypasses SoftDeletes so the row is actually removed from the DB — the
+            // DB-level cascades then clean up favorites, feedback, notifications and
+            // the oauth_providers link, freeing the email for a clean re-signup.
             $user->tokens()->delete();
-            $user->delete();
+            $user->forceDelete();
 
             return $this->success(null, 'Account deleted');
         } catch (\Throwable $e) {

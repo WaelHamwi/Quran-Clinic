@@ -33,8 +33,10 @@ Route::middleware(['throttle:otp'])->group(function () {
     Route::post('/auth/resend-otp', [GoogleAuthController::class, 'resendOtp']);
 });
 
-// ── OAuth session result polling ───────────────────────────────────────────────
-Route::get('/auth/session/{token}', [GoogleAuthController::class, 'getSessionResult']);
+// ── OAuth one-time session exchange (existing-user login, no OTP) ──────────────
+Route::middleware(['throttle:auth'])->group(function () {
+    Route::post('/auth/session-exchange', [GoogleAuthController::class, 'exchangeSession']);
+});
 
 Route::middleware(['throttle:api'])->group(function () {
 

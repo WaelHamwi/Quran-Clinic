@@ -157,7 +157,6 @@ class GoogleAuthController extends Controller
     {
         $stateRaw     = $request->query('state', '');
         $sessionToken = base64_decode(strtr($stateRaw, '-_', '+/') . str_repeat('=', (4 - strlen($stateRaw) % 4) % 4));
-        $cacheKey     = "auth_session:{$sessionToken}";
 
         try {
             $driver = Socialite::driver('google');
@@ -168,8 +167,7 @@ class GoogleAuthController extends Controller
                 ->user();
             assert($googleUser instanceof \Laravel\Socialite\Two\User);
         } catch (\Exception $e) {
-            Cache::put($cacheKey, ['status' => 'error', 'message' => $e->getMessage()], 300);
-            return view('auth.complete', ['status' => 'error']);
+            return $this->callbackRedirect('error', $sessionToken);
         }
 
         // Existing Google account — log in directly.
@@ -183,13 +181,8 @@ class GoogleAuthController extends Controller
                 // Orphaned provider record — user was deleted. Clean up and treat as new user.
                 $oauthProvider->delete();
             } else {
-                $token = $user->createToken('mobile-app')->plainTextToken;
-                Cache::put($cacheKey, [
-                    'status' => 'success',
-                    'token'  => $token,
-                    'user'   => $user->only(['id', 'name', 'email', 'avatar_path']),
-                ], 300);
-                return view('auth.complete', ['status' => 'success']);
+                $this->cacheExchangeResult($sessionToken, $user->fresh());
+                return $this->callbackRedirect('success', $sessionToken);
             }
         }
 
@@ -207,16 +200,13 @@ class GoogleAuthController extends Controller
                     'avatar_path' => $existingUser->avatar_path ?? $googleUser->getAvatar(),
                 ]);
             }
-            $token = $existingUser->createToken('mobile-app')->plainTextToken;
-            Cache::put($cacheKey, [
-                'status' => 'success',
-                'token'  => $token,
-                'user'   => $existingUser->fresh()->only(['id', 'name', 'email', 'avatar_path']),
-            ], 300);
-            return view('auth.complete', ['status' => 'success']);
+            $this->cacheExchangeResult($sessionToken, $existingUser->fresh());
+            return $this->callbackRedirect('success', $sessionToken);
         }
 
-        // Brand-new user — send OTP to their email and show the browser OTP entry page.
+        // Brand-new user — email an OTP and bounce back to the app for native entry.
+        // We map session_token → email in the cache so verifyOtp can resolve the email
+        // without it ever travelling through the deep link (no user data in URLs).
         $otp   = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
         $email = $googleUser->getEmail();
 
@@ -228,37 +218,118 @@ class GoogleAuthController extends Controller
             'avatar_url'     => $googleUser->getAvatar(),
             'email_verified' => true,
         ], 600);
+        Cache::put("otp_session:{$sessionToken}", $email, 600);
 
         Mail::to($email)->send(new OtpVerificationMail($otp));
 
-        return view('auth.otp-entry', [
-            'email'        => $email,
-            'sessionToken' => $sessionToken,
-        ]);
+        return $this->callbackRedirect('verification_required', $sessionToken);
     }
 
-    public function getSessionResult(Request $request, string $token)
+    /**
+     * Hand control back to the mobile app via an HTML "bounce" page.
+     *
+     * We deliberately do NOT use a 302 `redirect()->away('quranicclinic://…')`: inside the
+     * Android Chrome Custom Tab opened by `openAuthSessionAsync`, a server redirect to a
+     * custom scheme is routinely dropped (ERR_UNKNOWN_URL_SCHEME) because there is no user
+     * gesture. Instead we return a page that (1) auto-launches the app via JS and (2) shows
+     * a tap button as a guaranteed fallback (a user tap always resolves a registered custom
+     * scheme). Data rides in QUERY params — Android strips URL fragments off launched intents.
+     * Only the status + opaque session_token leave the server — never the token or profile.
+     */
+    private function callbackRedirect(string $status, string $sessionToken)
     {
-        $cacheKey = "auth_session:{$token}";
-        $result   = Cache::get($cacheKey);
+        $deepLink = 'quranicclinic://auth-callback?status=' . rawurlencode($status)
+            . '&session_token=' . rawurlencode($sessionToken);
+
+        $jsUrl   = json_encode($deepLink, JSON_UNESCAPED_SLASHES);
+        $hrefUrl = htmlspecialchars($deepLink, ENT_QUOTES);
+
+        $html = <<<HTML
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Quranic Clinic</title>
+<style>
+  body{font-family:-apple-system,"Segoe UI",Roboto,sans-serif;background:#135452;color:#fff;
+       margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;text-align:center}
+  .card{padding:32px}
+  .spinner{width:42px;height:42px;margin:0 auto 18px;border:4px solid rgba(255,255,255,.3);
+       border-top-color:#fff;border-radius:50%;animation:spin 1s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  p{font-size:15px;line-height:1.6;opacity:.95}
+  .btn{display:inline-block;margin-top:24px;padding:14px 30px;background:#fff;color:#135452;
+       border-radius:999px;text-decoration:none;font-weight:700;font-size:15px}
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="spinner"></div>
+    <p>جارٍ العودة إلى التطبيق…<br>Returning to the app…</p>
+    <a class="btn" href="{$hrefUrl}">العودة إلى التطبيق · Open the app</a>
+  </div>
+  <script>
+    (function () {
+      var url = {$jsUrl};
+      function go(){ try { window.location.replace(url); } catch (e) { window.location.href = url; } }
+      go();
+      setTimeout(go, 500);
+    })();
+  </script>
+</body>
+</html>
+HTML;
+
+        return response($html, 200)->header('Content-Type', 'text/html; charset=utf-8');
+    }
+
+    /**
+     * Stash a one-time login result keyed by session_token so the app can claim it with
+     * a single POST /auth/session-exchange call (existing-user path — no OTP needed).
+     */
+    private function cacheExchangeResult(string $sessionToken, User $user): void
+    {
+        Cache::put("auth_exchange:{$sessionToken}", [
+            'status' => 'success',
+            'token'  => $user->createToken('mobile-app')->plainTextToken,
+            'user'   => $user->only(['id', 'name', 'email', 'avatar_path']),
+        ], 300);
+    }
+
+    /**
+     * One-time exchange: the app trades a session_token (delivered via deep link after a
+     * successful existing-user login) for its bearer token. The result is forgotten on
+     * read — this is a single direct call, not a polling loop.
+     */
+    public function exchangeSession(Request $request)
+    {
+        $request->validate(['session_token' => 'required|string']);
+
+        $key    = "auth_exchange:{$request->session_token}";
+        $result = Cache::get($key);
 
         if (! $result) {
-            return response()->json(['status' => 'pending'], 202);
+            return response()->json(['error' => 'session_expired'], 410);
         }
 
-        Cache::forget($cacheKey);
+        Cache::forget($key);
         return response()->json($result);
     }
 
     public function verifyOtp(Request $request)
     {
         $request->validate([
-            'email'         => 'required|email',
+            'session_token' => 'required|string',
             'otp'           => 'required|string|size:6',
-            'session_token' => 'nullable|string',
         ]);
 
-        $cached = Cache::get("otp:{$request->email}");
+        $email = Cache::get("otp_session:{$request->session_token}");
+        if (! $email) {
+            return response()->json(['error' => 'session_expired'], 410);
+        }
+
+        $cached = Cache::get("otp:{$email}");
 
         if (! $cached || ! Hash::check($request->otp, $cached['otp'])) {
             return response()->json(['error' => 'invalid_otp'], 422);
@@ -266,9 +337,20 @@ class GoogleAuthController extends Controller
 
         DB::beginTransaction();
         try {
+            // Purge any soft-deleted account with this email first. A trashed row still
+            // occupies the email's unique index, so without this the create() below throws
+            // a unique-constraint violation — which surfaces to the user as a misleading
+            // "code not correct" and, because the session result is never cached, leaves
+            // the app stuck on the loading spinner. (Trashed rows come from Delete Account.)
+            User::onlyTrashed()->where('email', $email)->get()->each(function ($trashed) {
+                $trashed->oauthProviders()->forceDelete();
+                $trashed->tokens()->delete();
+                $trashed->forceDelete();
+            });
+
             $user = User::create([
                 'name'              => $cached['name'],
-                'email'             => $request->email,
+                'email'             => $email,
                 'email_verified_at' => now(),
                 'password'          => bcrypt(Str::random(32)),
                 'google_id'         => $cached['google_sub'],
@@ -289,20 +371,11 @@ class GoogleAuthController extends Controller
             return response()->json(['error' => 'Registration failed'], 500);
         }
 
-        Cache::forget("otp:{$request->email}");
-        Cache::forget("otp_resend:{$request->email}");
+        Cache::forget("otp:{$email}");
+        Cache::forget("otp_resend:{$email}");
+        Cache::forget("otp_session:{$request->session_token}");
 
         $token = $user->createToken('mobile-app')->plainTextToken;
-
-        // When called from the browser OTP page, store result in session cache so the
-        // app's polling loop can pick it up and dismiss the browser.
-        if ($request->input('session_token')) {
-            Cache::put("auth_session:{$request->input('session_token')}", [
-                'status' => 'success',
-                'token'  => $token,
-                'user'   => $user->fresh()->only(['id', 'name', 'email', 'avatar_path']),
-            ], 300);
-        }
 
         return response()->json([
             'status' => 'success',
@@ -313,14 +386,19 @@ class GoogleAuthController extends Controller
 
     public function resendOtp(Request $request)
     {
-        $request->validate(['email' => 'required|email']);
+        $request->validate(['session_token' => 'required|string']);
 
-        $cached = Cache::get("otp:{$request->email}");
+        $email = Cache::get("otp_session:{$request->session_token}");
+        if (! $email) {
+            return response()->json(['error' => 'session_expired'], 410);
+        }
+
+        $cached = Cache::get("otp:{$email}");
         if (! $cached) {
             return response()->json(['error' => 'No pending verification for this email'], 422);
         }
 
-        $resendKey   = "otp_resend:{$request->email}";
+        $resendKey   = "otp_resend:{$email}";
         $resendCount = Cache::get($resendKey, 0);
         if ($resendCount >= 3) {
             return response()->json(['error' => 'too_many_resend_attempts'], 429);
@@ -328,13 +406,13 @@ class GoogleAuthController extends Controller
 
         $otp = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
 
-        Cache::put("otp:{$request->email}", array_merge($cached, [
+        Cache::put("otp:{$email}", array_merge($cached, [
             'otp' => Hash::make($otp),
         ]), 600);
 
         Cache::put($resendKey, $resendCount + 1, 600);
 
-        Mail::to($request->email)->send(new OtpVerificationMail($otp));
+        Mail::to($email)->send(new OtpVerificationMail($otp));
 
         return response()->json(['status' => 'sent']);
     }
