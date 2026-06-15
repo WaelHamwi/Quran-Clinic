@@ -6,7 +6,7 @@ export type SyncStatus = 'idle' | 'syncing' | 'synced' | 'error';
 
 interface FavoritesState {
   /** Favorited DISEASES keyed by id — stored as objects so the Favorites
-   *  screen works fully offline / while auth is bypassed. */
+   *  screen works fully offline / for a guest (unauthenticated) user. */
   items: Record<number, Disease>;
   syncStatus: SyncStatus;
 }

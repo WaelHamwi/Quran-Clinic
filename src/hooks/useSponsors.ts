@@ -1,11 +1,12 @@
 import { useQuery } from '@tanstack/react-query';
 import { cacheKeys } from '@/utils/cacheKeys';
 import { sponsorService } from '@/services/sponsorService';
+import { cachedFetch } from '@/services/contentCache';
 
 export function useSponsors() {
   const query = useQuery({
     queryKey: cacheKeys.sponsors,
-    queryFn: sponsorService.getSponsors,
+    queryFn: () => cachedFetch('sponsors_list', sponsorService.getSponsors),
     staleTime: 1000 * 60 * 10,
   });
   return {

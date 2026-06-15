@@ -2,11 +2,16 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  FlatList,
+  Modal,
   PanResponder,
+  Pressable,
   RefreshControl,
   ScrollView,
   Text,
+  TextInput,
   TouchableOpacity,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { API_URL } from '@/services/api';
@@ -25,10 +30,36 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { palette } from '@/theme/colors';
 import { createReaderStyles, READER_GRADIENT_COLORS } from '@/styles/reader.styles';
+import {
+  VERSES_PER_PAGE,
+  chunkVersesIntoPages,
+  getPageIndexForVerseIndex,
+  getTotalPagesForSurah,
+} from '@/utils/mushafPages';
+import {
+  addPageBookmark,
+  getAllPageBookmarks,
+  removePageBookmark,
+  type PageBookmark,
+} from '@/services/bookmarks';
 import type { Verse } from '@/types/verse';
 import type { Recitation } from '@/types/recitation';
 
 const TOTAL_SURAHS = 114;
+type DisplayMode = 'continuous' | 'pages';
+type FontScale = 'sm' | 'md' | 'lg' | 'xl';
+const FONT_SCALES: FontScale[] = ['sm', 'md', 'lg', 'xl'];
+const ARABIC_FONT_SIZES: Record<FontScale, number> = { sm: 18, md: 22, lg: 26, xl: 32 };
+const ARABIC_LINE_HEIGHTS: Record<FontScale, number> = { sm: 34, md: 42, lg: 50, xl: 60 };
+const ENGLISH_FONT_SIZES: Record<FontScale, number> = { sm: 12, md: 14, lg: 16, xl: 18 };
+const FONT_SCALE_LABELS: Record<FontScale, string> = { sm: 'S', md: 'M', lg: 'L', xl: 'XL' };
+
+// Verse-reference pattern: "2:255", "2.255", "٢:٢٥٥" (after digit normalization)
+const VERSE_REF_RE = /^(\d+)\s*[:：.]\s*(\d+)$/;
+function normalizeArabicDigits(s: string): string {
+  // Arabic-Indic digits U+0660–U+0669 → Western 0–9
+  return s.replace(/[٠-٩]/g, (c) => String(c.codePointAt(0)! - 0x0660));
+}
 
 const SPEED_LABELS: Record<PlaybackSpeed, string> = {
   0.5:  '0.5×',
@@ -180,27 +211,37 @@ const VerseRow = React.memo(function VerseRow({
   item,
   showEnglish,
   isActive,
+  fontScale,
+  isSearchHighlight,
 }: {
   item: Verse;
   showEnglish: boolean;
   isActive: boolean;
+  fontScale: FontScale;
+  isSearchHighlight: boolean;
 }) {
   const { theme } = useTheme();
   const { t } = useLanguage();
   const styles = useMemo(() => createReaderStyles(theme), [theme]);
 
   const hasEn = Boolean(item.text.en);
+  const arFontOverride = fontScale !== 'md'
+    ? { fontSize: ARABIC_FONT_SIZES[fontScale], lineHeight: ARABIC_LINE_HEIGHTS[fontScale] }
+    : undefined;
+  const enFontOverride = fontScale !== 'md'
+    ? { fontSize: ENGLISH_FONT_SIZES[fontScale], lineHeight: Math.round(ENGLISH_FONT_SIZES[fontScale] * 1.6) }
+    : undefined;
   return (
-    <View style={[styles.verseRow, isActive && styles.verseRowActive]}>
+    <View style={[styles.verseRow, isActive && styles.verseRowActive, isSearchHighlight && styles.verseSearchHighlight]}>
       {/* Arabic verse text with inline end-of-ayah marker ﴿n﴾ */}
-      <Text style={[styles.verseArabic, isActive && styles.verseArabicActive]}>
+      <Text style={[styles.verseArabic, isActive && styles.verseArabicActive, arFontOverride]}>
         {item.text.ar}
         <Text style={[styles.verseEndMarker, isActive && styles.verseEndMarkerActive]}>
           {' ﴿'}{toEastern(item.verse_number)}{'﴾'}
         </Text>
       </Text>
       {showEnglish && hasEn && (
-        <Text style={[styles.verseEnglish, isActive && styles.verseEnglishActive]}>
+        <Text style={[styles.verseEnglish, isActive && styles.verseEnglishActive, enFontOverride]}>
           {item.text.en}
         </Text>
       )}
@@ -211,10 +252,34 @@ const VerseRow = React.memo(function VerseRow({
   );
 });
 
+// ─── PageBreakMarker ─────────────────────────────────────────────────────────
+const PageBreakMarker = React.memo(function PageBreakMarker({
+  pageNumber,
+  totalPages,
+}: {
+  pageNumber: number;
+  totalPages: number;
+}) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => createReaderStyles(theme), [theme]);
+  return (
+    <View style={styles.pageBreak}>
+      <View style={styles.pageBreakLine} />
+      <View style={styles.pageBreakBadge}>
+        <Text style={styles.pageBreakText}>
+          {toEastern(pageNumber)} / {toEastern(totalPages)}
+        </Text>
+      </View>
+      <View style={styles.pageBreakLine} />
+    </View>
+  );
+});
+
 // ─── Screen ───────────────────────────────────────────────────────────────────
 export default function MushafReaderScreen() {
-  const { id } = useLocalSearchParams() as { id: string };
+  const { id, highlight } = useLocalSearchParams() as { id: string; highlight?: string };
   const surahId = Number(id);
+  const highlightVerseNumber = highlight ? Number(highlight) : null;
   const router = useRouter();
 
   const { selectedReciterId, setSelectedReciterId, isContextReady } = useMushafContext();
@@ -222,7 +287,8 @@ export default function MushafReaderScreen() {
   const audio = useAudio();
   const { theme } = useTheme();
   const { t, language, isArabic } = useLanguage();
-  const { bottom: bottomInset } = useSafeAreaInsets();
+  const { bottom: bottomInset, top: topInset } = useSafeAreaInsets();
+  const { width: windowWidth } = useWindowDimensions();
   const styles = useMemo(() => createReaderStyles(theme), [theme]);
 
   const [recitations, setRecitations] = useState<Recitation[]>([]);
@@ -235,6 +301,17 @@ export default function MushafReaderScreen() {
   const [activeVerseIndex, setActiveVerseIndex] = useState(-1);
   const [showReciterPicker, setShowReciterPicker] = useState(false);
   const [reciterSearch, setReciterSearch] = useState('');
+  const [displayMode, setDisplayMode] = useState<DisplayMode>('continuous');
+  const [bookmarks, setBookmarks] = useState<PageBookmark[]>([]);
+  const [currentPageIndex, setCurrentPageIndex] = useState(0);
+  const [bookmarkModalOpen, setBookmarkModalOpen] = useState(false);
+  const [fontScale, setFontScale] = useState<FontScale>('md');
+  const [fontScaleOpen, setFontScaleOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<Verse[] | null>(null);
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchHighlightIndex, setSearchHighlightIndex] = useState(-1);
 
   const scrollRef = useRef<ScrollView>(null);
   const contentHeightRef = useRef(0);
@@ -244,6 +321,19 @@ export default function MushafReaderScreen() {
   const versesTopRef = useRef(0);
   const versesHeightRef = useRef(0);
   const scrollToVerseRef = useRef((_idx: number) => {});
+  const pagerRef = useRef<FlatList<Verse[]>>(null);
+  const lastPageRef = useRef(-1);
+  const currentPageRef = useRef(0);
+  const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 60 }).current;
+  const onViewableItemsChanged = useRef(
+    ({ viewableItems }: { viewableItems: Array<{ index: number | null }> }) => {
+      const first = viewableItems[0];
+      if (first && typeof first.index === 'number') {
+        currentPageRef.current = first.index;
+        setCurrentPageIndex(first.index);
+      }
+    }
+  ).current;
 
   const currentRecitation = recitations.find((r) => r.reciter_id === selectedReciterId);
 
@@ -295,6 +385,16 @@ export default function MushafReaderScreen() {
     [surah]
   );
 
+  const pages = useMemo<Verse[][]>(() => {
+    if (!surah) return [];
+    return chunkVersesIntoPages(surah.verses);
+  }, [surah]);
+
+  const totalPages = useMemo(
+    () => (surah ? getTotalPagesForSurah(surah.verses.length) : 0),
+    [surah]
+  );
+
   // Always-fresh lookup function in a ref — handleSeek/handleSkip read this without
   // needing verseTiming in their own deps (avoids SeekBar re-renders on timing load).
   const getIdxAtMsRef = useRef<(ms: number) => number>(() => -1);
@@ -324,6 +424,25 @@ export default function MushafReaderScreen() {
       : idx * 90;
     scrollRef.current?.scrollTo({ y: Math.max(0, targetY), animated: true });
   };
+
+  useEffect(() => {
+    getAllPageBookmarks().then(setBookmarks).catch(() => {});
+  }, []);
+
+  // Auto-scroll and highlight the verse requested via the ?highlight= URL param
+  useEffect(() => {
+    if (!surah || !highlightVerseNumber) return;
+    const idx = surah.verses.findIndex((v) => v.verse_number === highlightVerseNumber);
+    if (idx < 0) return;
+    setSearchHighlightIndex(idx);
+    const timer = setTimeout(() => scrollToVerseRef.current(idx), 700);
+    return () => clearTimeout(timer);
+  }, [surah?.id, highlightVerseNumber]);
+
+  useEffect(() => {
+    setCurrentPageIndex(0);
+    currentPageRef.current = 0;
+  }, [surahId]);
 
   useEffect(() => {
     setIsLoadingRecitations(true);
@@ -368,8 +487,17 @@ export default function MushafReaderScreen() {
   useEffect(() => {
     if (!audio.isPlaying) {
       lastScrolledIndexRef.current = -1;
+      lastPageRef.current = -1;
     }
   }, [audio.isPlaying]);
+
+  useEffect(() => {
+    if (displayMode !== 'pages' || activeVerseIndex < 0 || !audio.isPlaying) return;
+    const page = getPageIndexForVerseIndex(activeVerseIndex);
+    if (page === lastPageRef.current) return;
+    lastPageRef.current = page;
+    pagerRef.current?.scrollToIndex({ index: page, animated: true });
+  }, [activeVerseIndex, displayMode, audio.isPlaying]);
 
   const handlePlay = useCallback(async () => {
     if (!currentRecitation || !selectedReciterId) return;
@@ -461,6 +589,100 @@ export default function MushafReaderScreen() {
     if (surahId < TOTAL_SURAHS) router.replace(`/mushaf/${surahId + 1}` as any);
   }, [surahId, router]);
 
+  const isCurrentBookmarked = useMemo(
+    () => bookmarks.some((b) => b.surahId === surahId && b.pageIndex === currentPageIndex),
+    [bookmarks, surahId, currentPageIndex]
+  );
+
+  // The in-reader sheet only lists pages bookmarked within THIS surah.
+  // (The global list of every bookmarked page lives in the Mushaf tab's "My Reads".)
+  const surahBookmarks = useMemo(
+    () => bookmarks.filter((b) => b.surahId === surahId),
+    [bookmarks, surahId]
+  );
+
+  const handleToggleBookmark = useCallback(async () => {
+    const next = isCurrentBookmarked
+      ? await removePageBookmark(surahId, currentPageIndex)
+      : await addPageBookmark(surahId, currentPageIndex);
+    setBookmarks(next);
+  }, [isCurrentBookmarked, surahId, currentPageIndex]);
+
+  const handleGoToBookmark = useCallback((b: PageBookmark) => {
+    setBookmarkModalOpen(false);
+    if (b.surahId !== surahId) {
+      router.replace(`/mushaf/${b.surahId}` as any);
+      return;
+    }
+    currentPageRef.current = b.pageIndex;
+    setCurrentPageIndex(b.pageIndex);
+    if (displayMode === 'pages') {
+      pagerRef.current?.scrollToIndex({ index: b.pageIndex, animated: true });
+    } else {
+      const pageH = versesHeightRef.current > 0 && pages.length > 0
+        ? versesHeightRef.current / pages.length
+        : 0;
+      const y = versesTopRef.current + pageH * b.pageIndex - 16;
+      scrollRef.current?.scrollTo({ y: Math.max(0, y), animated: true });
+    }
+  }, [surahId, displayMode, pages.length, router]);
+
+  const handleSearch = useCallback(
+    async (rawQuery: string) => {
+      const q = normalizeArabicDigits(rawQuery.trim());
+      if (!q) return;
+      const match = q.match(VERSE_REF_RE);
+      if (match) {
+        const sid = Number(match[1]);
+        const vnum = Number(match[2]);
+        if (sid >= 1 && sid <= 114 && vnum >= 1) {
+          setSearchOpen(false);
+          setSearchQuery('');
+          setSearchResults(null);
+          if (sid === surahId && surah) {
+            const idx = surah.verses.findIndex((v) => v.verse_number === vnum);
+            if (idx >= 0) {
+              setSearchHighlightIndex(idx);
+              scrollToVerseRef.current(idx);
+            }
+          } else {
+            router.replace(`/mushaf/${sid}?highlight=${vnum}` as any);
+          }
+          return;
+        }
+      }
+      if (q.length < 2) return;
+      setIsSearching(true);
+      try {
+        const res = await quranService.searchVerses(rawQuery.trim());
+        setSearchResults(res.data ?? []);
+      } catch {
+        setSearchResults([]);
+      } finally {
+        setIsSearching(false);
+      }
+    },
+    [surahId, surah, router]
+  );
+
+  const handleSearchResultPress = useCallback(
+    (result: Verse) => {
+      setSearchOpen(false);
+      setSearchQuery('');
+      setSearchResults(null);
+      if (result.surah_id === surahId && surah) {
+        const idx = surah.verses.findIndex((v) => v.id === result.id);
+        if (idx >= 0) {
+          setSearchHighlightIndex(idx);
+          scrollToVerseRef.current(idx);
+        }
+      } else {
+        router.replace(`/mushaf/${result.surah_id}?highlight=${result.verse_number}` as any);
+      }
+    },
+    [surahId, surah, router]
+  );
+
   if (isLoading) {
     return (
       <View style={styles.centered}>
@@ -509,58 +731,123 @@ export default function MushafReaderScreen() {
       <View style={styles.contentWrapper}>
 
         {/* ── Header ──────────────────────────────────────────────────────── */}
-        <View style={[styles.header, isArabic && styles.headerRtl]}>
-          {/* First nav: prev (LTR left / RTL right) */}
-          <TouchableOpacity
-            style={[styles.navBtn, surahId <= 1 && styles.navBtnDisabled]}
-            onPress={goToPrev}
-            disabled={surahId <= 1}
-          >
-            <Ionicons
-              name={isArabic ? 'chevron-forward' : 'chevron-back'}
-              size={22}
-              color={palette.brand[500]}
-            />
-          </TouchableOpacity>
+        <View style={styles.header}>
+          {/* Tier 1 — surah navigation (prev · title · next) */}
+          <View style={[styles.navRow, isArabic && styles.rowRtl]}>
+            <TouchableOpacity
+              style={[styles.navBtn, surahId <= 1 && styles.navBtnDisabled]}
+              onPress={goToPrev}
+              disabled={surahId <= 1}
+            >
+              <Ionicons
+                name={isArabic ? 'chevron-forward' : 'chevron-back'}
+                size={22}
+                color={palette.brand[500]}
+              />
+            </TouchableOpacity>
 
-          {/* Center: surah name in active app language */}
-          <View style={styles.headerCenter}>
-            <Text style={styles.headerTitle}>{surah.name[language]}</Text>
-            <Text style={styles.headerSub}>
-              {surah.transliteration} · {surah.total_verses} {t.reader.verses}
-            </Text>
+            <View style={styles.headerCenter}>
+              <Text style={styles.headerTitle} numberOfLines={1}>{surah.name[language]}</Text>
+              <Text style={styles.headerSub} numberOfLines={1}>
+                {surah.transliteration} · {surah.total_verses} {t.reader.verses}
+              </Text>
+            </View>
+
+            <TouchableOpacity
+              style={[styles.navBtn, surahId >= TOTAL_SURAHS && styles.navBtnDisabled]}
+              onPress={goToNext}
+              disabled={surahId >= TOTAL_SURAHS}
+            >
+              <Ionicons
+                name={isArabic ? 'chevron-back' : 'chevron-forward'}
+                size={22}
+                color={palette.brand[500]}
+              />
+            </TouchableOpacity>
           </View>
 
-          {/* EN/AR translation toggle */}
-          <TouchableOpacity
-            style={[styles.langToggle, showEnglish && styles.langToggleActive]}
-            onPress={() => setShowEnglish((v) => !v)}
-          >
-            <Text style={[styles.langToggleText, showEnglish && styles.langToggleTextActive]}>
-              {showEnglish ? 'EN' : 'AR'}
-            </Text>
-          </TouchableOpacity>
+          {/* Tier 2 — reading toolbar (translation · layout · font · search) */}
+          <View style={[styles.toolbarRow, isArabic && styles.rowRtl]}>
+            <TouchableOpacity
+              style={[styles.langToggle, showEnglish && styles.langToggleActive]}
+              onPress={() => setShowEnglish((v) => !v)}
+            >
+              <Text style={[styles.langToggleText, showEnglish && styles.langToggleTextActive]}>
+                {showEnglish ? 'EN' : 'AR'}
+              </Text>
+            </TouchableOpacity>
 
-          {/* Second nav: next (LTR right / RTL left) */}
-          <TouchableOpacity
-            style={[styles.navBtn, surahId >= TOTAL_SURAHS && styles.navBtnDisabled]}
-            onPress={goToNext}
-            disabled={surahId >= TOTAL_SURAHS}
-          >
-            <Ionicons
-              name={isArabic ? 'chevron-back' : 'chevron-forward'}
-              size={22}
-              color={palette.brand[500]}
-            />
-          </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.modeToggle}
+              onPress={() => setDisplayMode((m) => (m === 'continuous' ? 'pages' : 'continuous'))}
+            >
+              <Ionicons
+                name={displayMode === 'continuous' ? 'book-outline' : 'list-outline'}
+                size={18}
+                color={palette.brand[500]}
+              />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.fontSizeToggle, fontScaleOpen && styles.fontSizeToggleActive]}
+              onPress={() => setFontScaleOpen((v) => !v)}
+            >
+              <Ionicons
+                name="text-outline"
+                size={17}
+                color={fontScaleOpen ? palette.text.onBrand : palette.brand[500]}
+              />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.modeToggle}
+              onPress={() => setSearchOpen(true)}
+            >
+              <Ionicons name="search-outline" size={18} color={palette.brand[500]} />
+            </TouchableOpacity>
+          </View>
+
+          {/* Font scale picker — inline, closes on selection */}
+          {fontScaleOpen && (
+            <View style={styles.fontSizeRow}>
+              {FONT_SCALES.map((scale) => {
+                const active = fontScale === scale;
+                return (
+                  <TouchableOpacity
+                    key={scale}
+                    style={[styles.fontSizeChip, active && styles.fontSizeChipActive]}
+                    onPress={() => { setFontScale(scale); setFontScaleOpen(false); }}
+                  >
+                    <Text style={[styles.fontSizeChipText, active && styles.fontSizeChipTextActive]}>
+                      {FONT_SCALE_LABELS[scale]}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          )}
         </View>
 
         {/* ── Verse list ────────────────────────────────────────────────────── */}
+        {displayMode === 'continuous' ? (
         <ScrollView
           ref={scrollRef}
           style={{ flex: 1 }}
           contentContainerStyle={styles.verseList}
           onContentSizeChange={(_w, h) => { contentHeightRef.current = h; }}
+          onScroll={(e) => {
+            const y = e.nativeEvent.contentOffset.y;
+            if (pages.length > 0 && versesHeightRef.current > 0) {
+              const relativeY = Math.max(0, y - versesTopRef.current);
+              const pageH = versesHeightRef.current / pages.length;
+              const idx = Math.max(0, Math.min(pages.length - 1, Math.floor(relativeY / pageH)));
+              if (idx !== currentPageRef.current) {
+                currentPageRef.current = idx;
+                setCurrentPageIndex(idx);
+              }
+            }
+          }}
+          scrollEventThrottle={120}
           refreshControl={
             <RefreshControl
               refreshing={isSurahRefetching || isRefreshingRecitations}
@@ -582,38 +869,145 @@ export default function MushafReaderScreen() {
             }}
           >
             {showEnglish ? (
-              /* Block mode — one View per verse so English translation fits below */
+              /* Block mode — page-broken every VERSES_PER_PAGE verses */
               surah.verses.map((verse, index) => (
-                <VerseRow
-                  key={verse.id}
-                  item={verse}
-                  showEnglish
-                  isActive={!isBasmalahActive && index === activeVerseIndex}
-                />
+                <React.Fragment key={verse.id}>
+                  {index > 0 && index % VERSES_PER_PAGE === 0 && (
+                    <PageBreakMarker
+                      pageNumber={index / VERSES_PER_PAGE + 1}
+                      totalPages={totalPages}
+                    />
+                  )}
+                  <VerseRow
+                    item={verse}
+                    showEnglish
+                    isActive={!isBasmalahActive && index === activeVerseIndex}
+                    fontScale={fontScale}
+                    isSearchHighlight={index === searchHighlightIndex}
+                  />
+                </React.Fragment>
               ))
             ) : (
-              /* Inline Mushaf mode — all ayat flow as one continuous RTL paragraph */
+              /* Inline Mushaf mode — each Mushaf page is its own paragraph block */
               <View style={styles.verseBlock}>
-                <Text style={styles.verseArabic}>
-                  {surah.verses.map((verse, index) => {
-                    const isActive = !isBasmalahActive && index === activeVerseIndex;
-                    return (
-                      <Text
-                        key={verse.id}
-                        style={isActive ? styles.verseArabicActiveInline : undefined}
-                      >
-                        {verse.text.ar}
-                        <Text style={[styles.verseEndMarker, isActive && styles.verseEndMarkerActive]}>
-                          {' ﴿'}{toEastern(verse.verse_number)}{'﴾ '}
-                        </Text>
-                      </Text>
-                    );
-                  })}
-                </Text>
+                {pages.map((pageVerses, pageIdx) => (
+                  <React.Fragment key={`vpage-${pageIdx}`}>
+                    {pageIdx > 0 && (
+                      <PageBreakMarker pageNumber={pageIdx + 1} totalPages={totalPages} />
+                    )}
+                    <Text style={[styles.verseArabic, fontScale !== 'md' && { fontSize: ARABIC_FONT_SIZES[fontScale], lineHeight: ARABIC_LINE_HEIGHTS[fontScale] }]}>
+                      {pageVerses.map((verse, i) => {
+                        const verseIdx = pageIdx * VERSES_PER_PAGE + i;
+                        const isActive = !isBasmalahActive && verseIdx === activeVerseIndex;
+                        return (
+                          <Text
+                            key={verse.id}
+                            style={isActive ? styles.verseArabicActiveInline : undefined}
+                          >
+                            {verse.text.ar}
+                            <Text style={[styles.verseEndMarker, isActive && styles.verseEndMarkerActive]}>
+                              {' ﴿'}{toEastern(verse.verse_number)}{'﴾ '}
+                            </Text>
+                          </Text>
+                        );
+                      })}
+                    </Text>
+                  </React.Fragment>
+                ))}
               </View>
             )}
           </View>
         </ScrollView>
+        ) : (
+          <FlatList
+            ref={pagerRef}
+            data={pages}
+            keyExtractor={(_, i) => `page-${i}`}
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            inverted={isArabic}
+            initialScrollIndex={getPageIndexForVerseIndex(Math.max(0, activeVerseIndex))}
+            viewabilityConfig={viewabilityConfig}
+            onViewableItemsChanged={onViewableItemsChanged}
+            getItemLayout={(_, index) => ({ length: windowWidth, offset: windowWidth * index, index })}
+            onScrollToIndexFailed={(info) => {
+              setTimeout(() => {
+                pagerRef.current?.scrollToOffset({ offset: windowWidth * info.index, animated: false });
+              }, 100);
+            }}
+            renderItem={({ item: pageVerses, index: pageIdx }) => (
+              <ScrollView
+                style={{ width: windowWidth }}
+                contentContainerStyle={styles.pageContent}
+                showsVerticalScrollIndicator={false}
+              >
+                {pageIdx === 0 && (
+                  <SurahHeader
+                    surah={surah}
+                    language={language}
+                    t={t}
+                    isBasmalahActive={isBasmalahActive}
+                  />
+                )}
+                {showEnglish ? (
+                  pageVerses.map((verse, i) => {
+                    const verseIdx = pageIdx * VERSES_PER_PAGE + i;
+                    return (
+                      <VerseRow
+                        key={verse.id}
+                        item={verse}
+                        showEnglish
+                        isActive={!isBasmalahActive && verseIdx === activeVerseIndex}
+                        fontScale={fontScale}
+                        isSearchHighlight={verseIdx === searchHighlightIndex}
+                      />
+                    );
+                  })
+                ) : (
+                  <View style={styles.verseBlock}>
+                    <Text style={[styles.verseArabic, fontScale !== 'md' && { fontSize: ARABIC_FONT_SIZES[fontScale], lineHeight: ARABIC_LINE_HEIGHTS[fontScale] }]}>
+                      {pageVerses.map((verse, i) => {
+                        const verseIdx = pageIdx * VERSES_PER_PAGE + i;
+                        const isActive = !isBasmalahActive && verseIdx === activeVerseIndex;
+                        return (
+                          <Text key={verse.id} style={isActive ? styles.verseArabicActiveInline : undefined}>
+                            {verse.text.ar}
+                            <Text style={[styles.verseEndMarker, isActive && styles.verseEndMarkerActive]}>
+                              {' ﴿'}{toEastern(verse.verse_number)}{'﴾ '}
+                            </Text>
+                          </Text>
+                        );
+                      })}
+                    </Text>
+                  </View>
+                )}
+                <View style={styles.pageIndicator}>
+                  <Text style={styles.pageIndicatorText}>
+                    ﴾ {toEastern(pageIdx + 1)} / {toEastern(totalPages)} ﴿
+                  </Text>
+                </View>
+              </ScrollView>
+            )}
+          />
+        )}
+
+        {/* Bookmark FAB — tap to open the bookmark sheet */}
+        <TouchableOpacity
+          style={[
+            styles.bookmarkFab,
+            isCurrentBookmarked && styles.bookmarkFabActive,
+            { bottom: currentRecitation ? 210 : 70 },
+          ]}
+          onPress={() => setBookmarkModalOpen(true)}
+          activeOpacity={0.8}
+        >
+          <Ionicons
+            name={isCurrentBookmarked ? 'bookmark' : 'bookmark-outline'}
+            size={22}
+            color={isCurrentBookmarked ? palette.text.onBrand : palette.brand[500]}
+          />
+        </TouchableOpacity>
 
       </View>
 
@@ -724,6 +1118,64 @@ export default function MushafReaderScreen() {
           </View>
         </TouchableOpacity>
       )}
+      <Modal
+        visible={bookmarkModalOpen}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setBookmarkModalOpen(false)}
+      >
+        <Pressable style={styles.bookmarkOverlay} onPress={() => setBookmarkModalOpen(false)}>
+          <Pressable style={styles.bookmarkSheet} onPress={(e) => e.stopPropagation()}>
+            <View style={styles.bookmarkSheetHandle} />
+            <Text style={styles.bookmarkSheetTitle}>{t.reader.bookmarks}</Text>
+
+            <View style={styles.bookmarkCurrentRow}>
+              <Text style={styles.bookmarkCurrentLabel}>
+                {t.reader.page} {toEastern(currentPageIndex + 1)} / {toEastern(totalPages)}
+              </Text>
+              <TouchableOpacity
+                style={[styles.bookmarkCurrentBtn, isCurrentBookmarked && styles.bookmarkCurrentBtnActive]}
+                onPress={handleToggleBookmark}
+                activeOpacity={0.7}
+              >
+                <Ionicons
+                  name={isCurrentBookmarked ? 'bookmark' : 'bookmark-outline'}
+                  size={14}
+                  color={isCurrentBookmarked ? palette.text.onBrand : palette.brand[500]}
+                />
+                <Text style={[styles.bookmarkCurrentBtnText, isCurrentBookmarked && styles.bookmarkCurrentBtnTextActive]}>
+                  {isCurrentBookmarked ? t.reader.removeBookmark : t.reader.bookmarkThisPage}
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.bookmarkDivider} />
+
+            {surahBookmarks.length === 0 ? (
+              <Text style={styles.bookmarkListEmpty}>{t.reader.noBookmarks}</Text>
+            ) : (
+              <ScrollView style={styles.bookmarkList}>
+                {surahBookmarks.map((b) => (
+                  <TouchableOpacity
+                    key={`${b.surahId}-${b.pageIndex}`}
+                    style={[
+                      styles.bookmarkListItem,
+                      isArabic && { flexDirection: 'row-reverse' },
+                    ]}
+                    onPress={() => handleGoToBookmark(b)}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons name="bookmark" size={14} color={palette.brand[500]} />
+                    <Text style={styles.bookmarkListItemText}>
+                      {t.reader.page} {toEastern(b.pageIndex + 1)} / {toEastern(totalPages)}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            )}
+          </Pressable>
+        </Pressable>
+      </Modal>
       <ReciterPickerModal
         visible={showReciterPicker}
         onClose={() => { setShowReciterPicker(false); setReciterSearch(''); }}
@@ -733,6 +1185,89 @@ export default function MushafReaderScreen() {
         reciterSearch={reciterSearch}
         onSearchChange={setReciterSearch}
       />
+
+      {/* ── Verse search modal — top-anchored so the keyboard never covers it ──── */}
+      <Modal
+        visible={searchOpen}
+        transparent
+        animationType="fade"
+        statusBarTranslucent
+        onRequestClose={() => { setSearchOpen(false); setSearchQuery(''); setSearchResults(null); }}
+      >
+        <Pressable
+          style={styles.searchOverlay}
+          onPress={() => { setSearchOpen(false); setSearchQuery(''); setSearchResults(null); }}
+        >
+          <Pressable
+            style={[styles.searchSheet, { marginTop: topInset + 8 }]}
+            onPress={(e) => e.stopPropagation()}
+          >
+            <Text style={styles.bookmarkSheetTitle}>{t.reader.searchTitle}</Text>
+
+            <View style={styles.searchInputRow}>
+              <TouchableOpacity
+                style={styles.searchClearBtn}
+                onPress={() => handleSearch(searchQuery)}
+                hitSlop={8}
+              >
+                <Ionicons name="search" size={18} color={palette.brand[500]} />
+              </TouchableOpacity>
+              <TextInput
+                style={[styles.searchInput, isArabic && { textAlign: 'right' }]}
+                placeholder={t.reader.searchPlaceholder}
+                placeholderTextColor={palette.text.placeholder}
+                value={searchQuery}
+                onChangeText={(text) => { setSearchQuery(text); setSearchResults(null); }}
+                onSubmitEditing={(e) => handleSearch(e.nativeEvent.text)}
+                returnKeyType="search"
+                autoFocus
+              />
+              {searchQuery.length > 0 && (
+                <TouchableOpacity
+                  style={styles.searchClearBtn}
+                  onPress={() => { setSearchQuery(''); setSearchResults(null); }}
+                >
+                  <Ionicons name="close-circle" size={18} color={palette.text.tertiary} />
+                </TouchableOpacity>
+              )}
+            </View>
+
+            <Text style={styles.searchHintText}>{t.reader.searchHint}</Text>
+
+            {isSearching ? (
+              <ActivityIndicator color={palette.brand[500]} style={{ marginTop: 24 }} />
+            ) : searchResults !== null && searchResults.length > 0 ? (
+              <FlatList
+                data={searchResults}
+                keyExtractor={(item) => String(item.id)}
+                style={styles.searchResultList}
+                keyboardShouldPersistTaps="handled"
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    style={styles.searchResultItem}
+                    onPress={() => handleSearchResultPress(item)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.searchResultArabic} numberOfLines={2}>
+                      {item.text.ar}
+                    </Text>
+                    {Boolean(item.text.en) && (
+                      <Text style={styles.searchResultEnglish} numberOfLines={1}>
+                        {item.text.en}
+                      </Text>
+                    )}
+                    <Text style={styles.searchResultMeta}>
+                      {t.reader.verseRef(item.surah_id, item.verse_number)}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              />
+            ) : searchResults !== null ? (
+              <Text style={styles.searchEmpty}>{t.reader.searchEmpty}</Text>
+            ) : null}
+          </Pressable>
+        </Pressable>
+      </Modal>
     </LinearGradient>
   );
 }

@@ -45,25 +45,24 @@ export default function HospitalScreen() {
     refetch();
   }, [refetch]);
 
+  // Header shown above the category grid only in browse mode — the search bar
+  // itself is rendered persistently outside the swappable body (see below).
   const gridHeader = useMemo(
     () => (
       <View style={s.hospitalScreen__gridHeader}>
-        <SearchBar
-          value={query}
-          onChangeText={setQuery}
-          placeholder={t.hospital.searchPlaceholder}
-        />
         <GeneralRuqyahButton />
         <Text style={[s.hospitalScreen__sectionTitle, isArabic && s['hospitalScreen__sectionTitle--rtl']]}>{t.hospital.categories}</Text>
       </View>
     ),
-    [query, setQuery, t, isArabic],
+    [t, isArabic],
   );
 
+  // Only the content area swaps; the search bar above it stays mounted so typing
+  // never dismisses the keyboard or feels like an unexpected navigation.
   let body: React.ReactNode;
   if (hasQuery) {
     body = isSearching ? (
-      <Loader fullScreen message={t.common.loading} />
+      <Loader message={t.common.loading} />
     ) : (
       <DiseaseList
         diseases={results}
@@ -106,6 +105,13 @@ export default function HospitalScreen() {
     <Screen edges={['top']}>
       <PatternedBackground />
       <Header title={t.hospital.title} showBack />
+      <View style={s.hospitalScreen__searchBar}>
+        <SearchBar
+          value={query}
+          onChangeText={setQuery}
+          placeholder={t.hospital.searchPlaceholder}
+        />
+      </View>
       {/* flex: 1 constrains the FlatList so the player panel can sit below it */}
       <View style={{ flex: 1 }}>{body}</View>
       {currentRecording && isGeneralMode && (

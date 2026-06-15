@@ -11,6 +11,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useAppDispatch } from '@/store/hooks';
 import { markSponsorShown } from '@/store/slices/onboardingSlice';
 import { sponsorService } from '@/services/sponsorService';
+import { cachedFetch } from '@/services/contentCache';
 import { cacheKeys } from '@/utils/cacheKeys';
 import { pickText, resolveMediaUrl } from '@/utils/formatters';
 import { sponsorScreenStyles as s } from './SponsorScreen.styles';
@@ -30,7 +31,7 @@ export function SponsorScreen({ children }: { children: React.ReactNode }) {
 
   const { data, isLoading, isError } = useQuery({
     queryKey: cacheKeys.sponsorScreen,
-    queryFn: sponsorService.getSponsorScreen,
+    queryFn: () => cachedFetch('sponsor_screen', sponsorService.getSponsorScreen),
     staleTime: 0,
     retry: 1,
   });

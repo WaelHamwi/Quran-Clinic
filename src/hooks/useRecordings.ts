@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { ruqyahService } from '@/services/ruqyahService';
-import { clinicCache } from '@/services/clinicCache';
+import { cachedFetch } from '@/services/contentCache';
 import { cacheKeys } from '@/utils/cacheKeys';
 import { useAppSelector } from '@/store/hooks';
 import { selectIsPaid } from '@/store/slices/authSlice';
@@ -16,27 +16,16 @@ export interface AccessibleRecording extends Recording {
 
 /**
  * Recordings metadata for a disease, sorted by session, each tagged accessible/locked.
- * Audio files are NOT cached here — the user must explicitly download them via the
- * download manager. Only the metadata (title, duration, url) is persisted offline.
+ * The metadata + ruqyah text (title, description, segments) is cached for offline use;
+ * the audio FILES are not — the user must download those explicitly via the player.
  */
 export function useRecordings(diseaseId: number) {
   const query = useQuery({
     queryKey: cacheKeys.recordings(diseaseId),
-    queryFn: async () => {
-      try {
-        const data = await ruqyahService.getRecordings(diseaseId);
-        await clinicCache.saveRecordings(diseaseId, data);
-        return data;
-      } catch {
-        const cached = await clinicCache.getRecordings(diseaseId);
-        if (cached) return cached;
-        throw new Error('No internet connection and no cached data available');
-      }
-    },
+    queryFn: () =>
+      cachedFetch(`clinic_recordings_${diseaseId}`, () => ruqyahService.getRecordings(diseaseId)),
     enabled: diseaseId > 0,
     staleTime: FIVE_MIN,
-    retry: false,
-    networkMode: 'offlineFirst',
     refetchInterval: 30_000,
   });
 

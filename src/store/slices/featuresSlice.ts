@@ -1,5 +1,6 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
 import type { FeatureFlagMap } from '@/types/feature';
+import { resolveFeatureVisible } from '@/constants/features';
 import type { RootState } from '@/store/rootReducer';
 
 export type FeaturesStatus = 'idle' | 'loading' | 'ready' | 'error';
@@ -32,6 +33,9 @@ export const { setFlags, setFeaturesStatus } = featuresSlice.actions;
 export default featuresSlice.reducer;
 
 export const selectFeatureFlags = (s: RootState): FeatureFlagMap => s.features.flags;
-/** Unknown keys default to visible — a missing flag must not hide a feature. */
+/**
+ * Unknown keys default to visible — a missing flag must not hide a feature.
+ * Applies the parent → child cascade (see `resolveFeatureVisible`).
+ */
 export const selectIsFeatureVisible = (s: RootState, key: string): boolean =>
-  s.features.flags[key] !== false;
+  resolveFeatureVisible(s.features.flags, key);

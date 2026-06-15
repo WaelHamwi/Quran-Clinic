@@ -80,7 +80,7 @@ export function AppSplash({ onReady }: Props) {
               onPress={() => { selectLanguage('ar'); setMenuOpen(false); }}
             >
               <Text style={[s.langOptionText, language === 'ar' && s.langOptionTextActive]}>
-                العربية
+                العربية dasdsad 
               </Text>
               {language === 'ar' && (
                 <Ionicons name="checkmark" size={16} color={palette.brand[500]} />
@@ -92,7 +92,7 @@ export function AppSplash({ onReady }: Props) {
               onPress={() => { selectLanguage('en'); setMenuOpen(false); }}
             >
               <Text style={[s.langOptionText, language === 'en' && s.langOptionTextActive]}>
-                English
+                English dasd asd
               </Text>
               {language === 'en' && (
                 <Ionicons name="checkmark" size={16} color={palette.brand[500]} />

@@ -2,9 +2,10 @@ import { apiGet, apiPost } from '@/services/apiClient';
 import type { Disease } from '@/types/disease';
 
 /**
- * Favorites API (auth-gated on the backend). While auth is bypassed these will
- * 401 — `useFavorites` keeps favorites working locally via redux-persist and
- * treats sync failures gracefully.
+ * Favorites API (auth-gated on the backend). The bearer token is attached by
+ * apiClient when a session exists; for a guest/unauthenticated user these 401 —
+ * `useFavorites` keeps favorites working locally via redux-persist and treats
+ * sync failures gracefully.
  */
 export const favoriteService = {
   getFavorites: (): Promise<Disease[]> => apiGet<Disease[]>('/favorites'),

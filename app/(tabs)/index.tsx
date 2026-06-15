@@ -1,7 +1,7 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { DevSettings, Pressable, RefreshControl, Text, View } from 'react-native';
 import { palette } from '@/theme/colors';
-import { useRouter } from 'expo-router';
+import { Redirect, useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useQueryClient } from '@tanstack/react-query';
 import { Screen } from '@/components/layout/Screen';
@@ -15,6 +15,8 @@ import { HomeSectionPills } from '@/components/lists/HomeSectionPills';
 import { GeneralRuqyahButton } from '@/components/players/GeneralRuqyahButton';
 import { useCategories } from '@/hooks/useCategories';
 import { useDiseaseSearch } from '@/hooks/useDiseaseSearch';
+import { useFeatureVisibility, useRefreshFeatures } from '@/hooks/useFeatures';
+import { FEATURE_KEYS } from '@/constants/features';
 import { useAuth } from '@/context/AuthContext';
 import { useLanguage } from '@/context/LanguageContext';
 import { offlineStorage } from '@/services/offlineStorage';
@@ -26,6 +28,8 @@ export default function HomeScreen() {
   const { user } = useAuth();
   const { t } = useLanguage();
   const queryClient = useQueryClient();
+  const isVisible = useFeatureVisibility();
+  const refreshFeatures = useRefreshFeatures();
 
   const firstName = user?.name?.split(' ')[0] ?? null;
 
@@ -51,9 +55,9 @@ export default function HomeScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
-    await refetch();
+    await Promise.all([refetch(), refreshFeatures()]);
     setRefreshing(false);
-  }, [refetch]);
+  }, [refetch, refreshFeatures]);
 
   const [isClearing, setIsClearing] = useState(false);
   const handleClearCache = useCallback(async () => {
@@ -138,6 +142,18 @@ export default function HomeScreen() {
         }
       />
     );
+  }
+
+  // Clinic (المشفى) is the parent feature for this screen. If an admin hides it,
+  // its tab is removed too — redirect away so the app never lands on hidden
+  // content. Favorites has no flag, so it is always a valid fallback target.
+  if (!isVisible(FEATURE_KEYS.HOSPITAL)) {
+    const target = isVisible(FEATURE_KEYS.MUSHAF)
+      ? '/mushaf'
+      : isVisible(FEATURE_KEYS.ASK_ME)
+        ? '/askme'
+        : '/favorites';
+    return <Redirect href={target} />;
   }
 
   return (

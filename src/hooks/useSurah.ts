@@ -10,12 +10,18 @@ export function useSurah(id: number) {
       try {
         const result = await quranService.getSurah(id);
         const { verses, ...surahMeta } = result.data;
-        // Persist BOTH the verses and the surah's own metadata. Saving the metadata
-        // here (not just in the paginated list) is what makes any surah the user opens
-        // available offline — the list only caches page 1, so surahs beyond #15 would
-        // otherwise have verses but no metadata and fail to reconstruct offline.
-        await offlineStorage.saveVerses(verses);
-        await offlineStorage.saveSurahs([surahMeta]);
+        // Persist for offline use. Save the surah (parent) BEFORE its verses (child),
+        // and isolate the writes in their own try/catch: a SQLite failure here — e.g.
+        // a transient "database is locked" when several queries hit the DB at once on
+        // first launch — must NOT discard an otherwise-successful fetch and fall through
+        // to the (still-empty) offline cache, which is what caused the first-open
+        // "failed to load". The fetched data is returned regardless of cache outcome.
+        try {
+          await offlineStorage.saveSurahs([surahMeta]);
+          await offlineStorage.saveVerses(verses);
+        } catch {
+          // caching is best-effort; the live data below is still valid
+        }
         return result.data;
       } catch {
         const verses = await offlineStorage.getVersesBySurah(id);

@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { AppSplash } from '@/components/AppSplash';
 import { OnboardingPager } from '@/components/onboarding/OnboardingPager';
 import { LoginGate } from '@/components/auth/LoginGate';
@@ -14,7 +14,19 @@ interface AppFlowProps {
 
 export function AppFlow({ fontsLoaded }: AppFlowProps) {
   const { step, go, finish, hasOnboarded } = useAppFlow();
-  const { user, pendingEmail } = useAuth();
+  const { user, awaitingOtp } = useAuth();
+
+  // When an authenticated session ends (sign out / delete account), return to the login
+  // step. Without this the step machine stays on 'app', and the sign-in/OTP transitions
+  // below — all gated on step === 'login' — never fire on a re-signup, so the user can't
+  // re-verify OTP and lands in a half-logged-out ("guest") state. We track the PREVIOUS
+  // user so this fires only on a real authenticated→logged-out transition, never for guest
+  // mode (where user is always null).
+  const wasAuthed = useRef(false);
+  useEffect(() => {
+    if (wasAuthed.current && !user) go('login');
+    wasAuthed.current = !!user;
+  }, [user, go]);
 
   // Google sign-in succeeded → advance. Skip disclaimer if user already accepted it once.
   useEffect(() => {
@@ -23,10 +35,10 @@ export function AppFlow({ fontsLoaded }: AppFlowProps) {
     }
   }, [user, step, hasOnboarded]);
 
-  // New user — backend sent OTP to email → show OTP screen.
+  // New user — backend emailed an OTP → show the native OTP screen.
   useEffect(() => {
-    if (step === 'login' && pendingEmail) go('otp');
-  }, [pendingEmail, step]);
+    if (step === 'login' && awaitingOtp) go('otp');
+  }, [awaitingOtp, step]);
 
   // OTP verified successfully → advance.
   useEffect(() => {
@@ -41,9 +53,14 @@ export function AppFlow({ fontsLoaded }: AppFlowProps) {
     case 'login':       return <LoginGate onSuccess={() => go('disclaimer')} />;
     case 'otp':         return <OtpGate />;
     case 'disclaimer':
+      // Mount MainApp (the expo-router navigator) underneath the disclaimer popup so a
+      // navigator is already present the instant auth completes. The OAuth redirect
+      // arrives as a `quranicclinic://auth-callback` deep link right after sign-in; with
+      // the navigator mounted, +native-intent can resolve it to home instead of the
+      // "Unmatched Route" screen.
       return (
         <>
-          <LoginGate onSuccess={() => {}} />
+          <MainApp />
           <DisclaimerPopup visible onAccept={finish} />
         </>
       );

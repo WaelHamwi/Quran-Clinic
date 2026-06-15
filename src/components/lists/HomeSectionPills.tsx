@@ -3,6 +3,8 @@ import { Pressable, ScrollView, Text } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useLanguage } from '@/context/LanguageContext';
+import { useFeatureVisibility } from '@/hooks/useFeatures';
+import { FEATURE_KEYS } from '@/constants/features';
 import {
   homeSectionPillsStyles as s,
   PILL_ACTIVE_TINT,
@@ -40,6 +42,7 @@ function Pill({ label, icon, active, onPress }: PillProps) {
 export function HomeSectionPills() {
   const { t, isArabic } = useLanguage();
   const router = useRouter();
+  const isVisible = useFeatureVisibility();
   const scrollRef = useRef<ScrollView>(null);
 
   const goCourses = useCallback(() => router.push('/courses'), [router]);
@@ -62,9 +65,15 @@ export function HomeSectionPills() {
       style={s.homeSectionPills__scroll}
     >
       <Pill label={t.home.pillSections} icon="business-outline" active />
-      <Pill label={t.home.pillCourses} icon="school-outline" onPress={goCourses} />
-      <Pill label={t.home.pillAdhkar} icon="book-outline" onPress={goAdhkar} />
-      <Pill label={t.home.pillTahsinat} icon="shield-checkmark-outline" onPress={goTahsinat} />
+      {isVisible(FEATURE_KEYS.COURSES) && (
+        <Pill label={t.home.pillCourses} icon="school-outline" onPress={goCourses} />
+      )}
+      {isVisible(FEATURE_KEYS.ADHKAR) && (
+        <Pill label={t.home.pillAdhkar} icon="book-outline" onPress={goAdhkar} />
+      )}
+      {isVisible(FEATURE_KEYS.TAHSINAT) && (
+        <Pill label={t.home.pillTahsinat} icon="shield-checkmark-outline" onPress={goTahsinat} />
+      )}
     </ScrollView>
   );
 }

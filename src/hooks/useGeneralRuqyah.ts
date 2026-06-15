@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 import { ruqyahService } from '@/services/ruqyahService';
-import { clinicCache } from '@/services/clinicCache';
+import { contentCache } from '@/services/contentCache';
 import { useRuqyahEngine } from '@/context/PlayerContext';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import {
@@ -54,14 +54,14 @@ export function useGeneralRuqyah() {
     setIsLoading(true);
     try {
       const all = await ruqyahService.getGeneralRuqyah();
-      await clinicCache.saveGeneralRuqyah(all);
+      void contentCache.setItem('clinic_general_ruqyah', all);
       const filtered = isPaid ? all : all.filter((r) => r.session_number === 1);
       const shuffled = shuffle(filtered);
       if (!shuffled.length) return;
       dispatch(setQueue({ recordings: shuffled, index: 0 }));
       loadQueueTrack(shuffled, 0);
     } catch {
-      const cached = await clinicCache.getGeneralRuqyah();
+      const cached = await contentCache.getItem<Recording[]>('clinic_general_ruqyah');
       if (cached?.length) {
         const filtered = isPaid ? cached : cached.filter((r) => r.session_number === 1);
         const shuffled = shuffle(filtered);

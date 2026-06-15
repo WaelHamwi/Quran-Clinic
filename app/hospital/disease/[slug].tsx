@@ -206,6 +206,8 @@ export default function DiseaseDetailScreen() {
         }
       />
 
+   
+
       {/* ── Main content area ─────────────────────────────────── */}
       <View style={s.content}>
         {/* Session tabs (≤3) or wird pager (>3) — Figma nodes 18032:3101 / 18900:2907 */}

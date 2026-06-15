@@ -13,7 +13,7 @@ import type { Disease } from '@/types/disease';
 
 /**
  * Favorited diseases. Toggles update Redux optimistically and persist locally;
- * server sync is attempted and queued on failure (offline or auth bypassed).
+ * server sync is attempted and queued on failure (offline or unauthenticated).
  */
 export function useFavorites() {
   const dispatch = useAppDispatch();

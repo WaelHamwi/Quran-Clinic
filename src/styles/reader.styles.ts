@@ -9,6 +9,7 @@ const OVERLAY_15 = 'rgba(255,255,255,0.15)'; // seek track empty
 const OVERLAY_25 = 'rgba(255,255,255,0.25)'; // seek track filled bg
 const OVERLAY_60 = 'rgba(255,255,255,0.60)'; // time text on dark player
 const OVERLAY_85 = 'rgba(255,255,255,0.85)'; // cached badge text on brand bg
+const SHEET_BACKDROP = 'rgba(0,0,0,0.45)'; // bookmark modal backdrop tint
 
 // Figma 18085:1755 — solid sage-green mushaf background.
 // Both stops identical → LinearGradient renders as a flat solid colour.
@@ -62,16 +63,25 @@ export function createReaderStyles(theme: Theme) {
 
     // ── Header — Figma 18085:1437 nav bar ───────────────────────────────────────
     header: {
-      flexDirection: 'row',
-      alignItems: 'center',
       backgroundColor: palette.bg.overlay, // rgba(255,255,255,0.5) — glass on glass
       borderBottomWidth: 1,
       borderBottomColor: palette.border.tertiary,
       paddingHorizontal: 16,
-      paddingVertical: 12,
+      paddingVertical: 10,
+      gap: 10,
+    },
+    navRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
       gap: 8,
     },
-    headerRtl: { flexDirection: 'row-reverse' },
+    toolbarRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 10,
+    },
+    rowRtl: { flexDirection: 'row-reverse' },
     navBtn: {
       width: 36,
       height: 36,
@@ -128,6 +138,226 @@ export function createReaderStyles(theme: Theme) {
       letterSpacing: 0.8,
     },
     langToggleTextActive: { color: palette.text.onBrand },
+    modeToggle: {
+      width: 36,
+      height: 36,
+      borderRadius: 999,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: palette.brand[25],
+      borderWidth: 1,
+      borderColor: palette.brand[50],
+    },
+    pageContent: {
+      paddingTop: 8,
+      paddingBottom: 180,
+    },
+
+    fontSizeToggle: {
+      width: 36,
+      height: 36,
+      borderRadius: 999,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: palette.brand[25],
+      borderWidth: 1,
+      borderColor: palette.brand[50],
+    },
+    fontSizeToggleActive: {
+      backgroundColor: palette.brand[500],
+      borderColor: palette.brand[500],
+    },
+    fontSizeRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      alignSelf: 'center',
+      gap: 6,
+      paddingHorizontal: 6,
+      paddingVertical: 5,
+      borderRadius: 999,
+      backgroundColor: palette.white,
+      borderWidth: 1,
+      borderColor: palette.brand[50],
+    },
+    fontSizeChip: {
+      minWidth: 34,
+      alignItems: 'center',
+      paddingHorizontal: 10,
+      paddingVertical: 5,
+      borderRadius: 999,
+    },
+    fontSizeChipActive: {
+      backgroundColor: palette.brand[500],
+    },
+    fontSizeChipText: {
+      color: palette.brand[600],
+      fontSize: 10,
+      fontFamily: fontFamily.alexandriaBold,
+      letterSpacing: 0.4,
+    },
+    fontSizeChipTextActive: {
+      color: palette.text.onBrand,
+    },
+
+    pageBreak: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 20,
+      paddingVertical: 14,
+      gap: 8,
+    },
+    pageBreakLine: {
+      flex: 1,
+      height: 1,
+      backgroundColor: palette.brand[50],
+    },
+    pageBreakBadge: {
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      borderRadius: 999,
+      borderWidth: 1,
+      borderColor: palette.brand[50],
+      backgroundColor: palette.brand[25],
+    },
+    pageBreakText: {
+      fontSize: 11,
+      color: palette.brand[600],
+      fontFamily: fontFamily.alexandriaBold,
+      letterSpacing: 0.4,
+    },
+    pageIndicator: {
+      alignItems: 'center',
+      paddingTop: 16,
+      paddingBottom: 24,
+    },
+    pageIndicatorText: {
+      fontSize: 12,
+      color: palette.brand[600],
+      fontFamily: fontFamily.alexandriaBold,
+      letterSpacing: 0.6,
+    },
+
+    bookmarkFab: {
+      position: 'absolute',
+      right: 16,
+      width: 48,
+      height: 48,
+      borderRadius: 999,
+      backgroundColor: palette.white,
+      justifyContent: 'center',
+      alignItems: 'center',
+      borderWidth: 1,
+      borderColor: palette.border.secondary,
+      shadowColor: palette.shadow,
+      shadowOpacity: 0.18,
+      shadowOffset: { width: 0, height: 4 },
+      shadowRadius: 8,
+      elevation: 5,
+      zIndex: 6,
+    },
+    bookmarkFabActive: {
+      backgroundColor: palette.brand[500],
+      borderColor: palette.brand[500],
+      shadowColor: palette.brand[500],
+      shadowOpacity: 0.4,
+    },
+
+    bookmarkOverlay: {
+      flex: 1,
+      backgroundColor: SHEET_BACKDROP,
+      justifyContent: 'flex-end',
+    },
+    bookmarkSheet: {
+      backgroundColor: palette.white,
+      borderTopLeftRadius: 20,
+      borderTopRightRadius: 20,
+      paddingTop: 10,
+      paddingHorizontal: 18,
+      paddingBottom: 24,
+      maxHeight: '75%',
+    },
+    bookmarkSheetHandle: {
+      alignSelf: 'center',
+      width: 40,
+      height: 4,
+      borderRadius: 2,
+      backgroundColor: palette.border.primary,
+      marginBottom: 14,
+    },
+    bookmarkSheetTitle: {
+      fontSize: 16,
+      lineHeight: 22,
+      fontFamily: fontFamily.alexandriaBold,
+      color: palette.text.primary,
+      textAlign: 'center',
+      marginBottom: 14,
+    },
+    bookmarkCurrentRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 12,
+      paddingVertical: 4,
+    },
+    bookmarkCurrentLabel: {
+      flex: 1,
+      fontSize: 13,
+      fontFamily: fontFamily.alexandriaMedium,
+      color: palette.text.secondary,
+    },
+    bookmarkCurrentBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      borderRadius: 999,
+      borderWidth: 1,
+      borderColor: palette.brand[50],
+      backgroundColor: palette.brand[25],
+    },
+    bookmarkCurrentBtnActive: {
+      backgroundColor: palette.brand[500],
+      borderColor: palette.brand[500],
+    },
+    bookmarkCurrentBtnText: {
+      fontSize: 12,
+      color: palette.brand[600],
+      fontFamily: fontFamily.alexandriaBold,
+    },
+    bookmarkCurrentBtnTextActive: {
+      color: palette.text.onBrand,
+    },
+    bookmarkDivider: {
+      height: 1,
+      backgroundColor: palette.border.tertiary,
+      marginVertical: 14,
+    },
+    bookmarkListEmpty: {
+      fontSize: 13,
+      fontFamily: fontFamily.alexandria,
+      color: palette.text.tertiary,
+      textAlign: 'center',
+      paddingVertical: 24,
+    },
+    bookmarkList: {
+      maxHeight: 360,
+    },
+    bookmarkListItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      paddingVertical: 12,
+      paddingHorizontal: 8,
+      borderBottomWidth: 1,
+      borderBottomColor: palette.border.tertiary,
+    },
+    bookmarkListItemText: {
+      fontSize: 13,
+      color: palette.text.primary,
+      fontFamily: fontFamily.alexandriaMedium,
+    },
 
     // ── Surah header (ListHeaderComponent) — double-frame calligraphic banner ───
     surahHeader: {
@@ -444,6 +674,97 @@ export function createReaderStyles(theme: Theme) {
       color: palette.brand[500],
       fontSize: 14,
       fontFamily: fontFamily.alexandriaMedium,
+    },
+
+    // ── Verse search ──────────────────────────────────────────────────────────────
+    // Top-anchored overlay: the sheet sits at the top of the screen so the
+    // keyboard (which rises from the bottom) never covers the input or results.
+    searchOverlay: {
+      flex: 1,
+      backgroundColor: SHEET_BACKDROP,
+      justifyContent: 'flex-start',
+    },
+    searchSheet: {
+      backgroundColor: palette.white,
+      borderRadius: 20,
+      marginHorizontal: 12,
+      paddingTop: 16,
+      paddingHorizontal: 18,
+      paddingBottom: 18,
+      maxHeight: '72%',
+      shadowColor: palette.shadow,
+      shadowOpacity: 0.2,
+      shadowOffset: { width: 0, height: 6 },
+      shadowRadius: 14,
+      elevation: 8,
+    },
+    searchInputRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      borderWidth: 1,
+      borderColor: palette.border.primary,
+      borderRadius: 12,
+      paddingHorizontal: 12,
+      marginBottom: 6,
+      gap: 6,
+    },
+    searchInput: {
+      flex: 1,
+      paddingVertical: 10,
+      fontSize: 15,
+      fontFamily: fontFamily.alexandria,
+      color: palette.text.primary,
+    },
+    searchClearBtn: {
+      padding: 4,
+    },
+    searchHintText: {
+      color: palette.text.tertiary,
+      fontSize: 12,
+      fontFamily: fontFamily.alexandriaLight,
+      marginBottom: 12,
+    },
+    searchResultList: {
+      maxHeight: 340,
+    },
+    searchResultItem: {
+      paddingVertical: 12,
+      paddingHorizontal: 4,
+      borderBottomWidth: 1,
+      borderBottomColor: palette.border.tertiary,
+    },
+    searchResultArabic: {
+      fontSize: 18,
+      lineHeight: 32,
+      textAlign: 'right',
+      writingDirection: 'rtl',
+      color: palette.text.primary,
+      fontFamily: fontFamily.arabic,
+    },
+    searchResultEnglish: {
+      fontSize: 12,
+      lineHeight: 18,
+      color: palette.text.secondary,
+      fontFamily: fontFamily.alexandria,
+      marginTop: 3,
+    },
+    searchResultMeta: {
+      fontSize: 11,
+      color: palette.text.tertiary,
+      fontFamily: fontFamily.alexandriaLight,
+      marginTop: 4,
+    },
+    searchEmpty: {
+      color: palette.text.tertiary,
+      fontSize: 14,
+      fontFamily: fontFamily.alexandria,
+      textAlign: 'center',
+      marginTop: 32,
+    },
+    // Search result highlight — distinct from audio-active (brand[25]/brand[400])
+    verseSearchHighlight: {
+      backgroundColor: palette.secondaryGreen[25],
+      borderRightColor: palette.secondaryGreen[600],
     },
   });
 }

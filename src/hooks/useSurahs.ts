@@ -11,7 +11,9 @@ export function useSurahs() {
       const page = pageParam as number;
       try {
         const result = await quranService.getSurahs(page);
-        if (page === 1) await offlineStorage.saveSurahs(result.data);
+        // Cache every page the user scrolls through — not just page 1 — so the full
+        // browsed list is rebuildable offline.
+        await offlineStorage.saveSurahs(result.data);
         return result;
       } catch {
         if (page !== 1) throw new Error('Failed to load more surahs');

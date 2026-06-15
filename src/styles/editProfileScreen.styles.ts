@@ -10,6 +10,19 @@ export const editProfileStyles = StyleSheet.create({
     paddingBottom: 96,
   },
 
+  avatarSection: {
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingBottom: spacing.sm,
+  },
+  avatarName: {
+    fontFamily: fontFamily.alexandriaSemiBold,
+    fontSize: fontSize.md,
+    lineHeight: lineHeight.md,
+    color: palette.text.primary,
+    textAlign: 'center',
+  },
+
   fieldGroup: {
     gap: spacing.xs,
   },

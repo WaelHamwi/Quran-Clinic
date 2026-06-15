@@ -1,7 +1,9 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   FlatList,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   Pressable,
   Text,
   TextInput,
@@ -26,16 +28,36 @@ interface Props {
   onClose: () => void;
 }
 
+// Fold away Arabic diacritics and unify the alef/ya/ta-marbuta variants so a search for
+// "مصر" or "السعوديه" matches regardless of how the entry was typed.
+function normalizeAr(value: string): string {
+  return value
+    .replace(/[ً-ْـ]/g, '')
+    .replace(/[آأإ]/g, 'ا')
+    .replace(/ى/g, 'ي')
+    .replace(/ة/g, 'ه');
+}
+
 export function CountryPickerModal({ visible, selected, onSelect, onClose }: Props) {
   const { language, isArabic } = useLanguage();
   const labels = LABELS[language];
   const [query, setQuery] = useState('');
 
+  // Clear the search whenever the sheet is dismissed so it reopens fresh — otherwise a
+  // stale filter from the previous visit hides most of the list.
+  useEffect(() => {
+    if (!visible) setQuery('');
+  }, [visible]);
+
   const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return COUNTRIES;
+    const raw = query.trim();
+    if (!raw) return COUNTRIES;
+    const en = raw.toLowerCase();
+    const ar = normalizeAr(raw);
+    // Match against both languages regardless of the active locale, so the picker is usable
+    // whichever script the user types.
     return COUNTRIES.filter(
-      (c) => c.en.toLowerCase().includes(q) || c.ar.includes(query.trim()),
+      (c) => c.en.toLowerCase().includes(en) || normalizeAr(c.ar).includes(ar),
     );
   }, [query]);
 
@@ -71,7 +93,10 @@ export function CountryPickerModal({ visible, selected, onSelect, onClose }: Pro
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <Pressable style={s.backdrop} onPress={onClose}>
-        <Pressable style={s.sheet} onPress={() => {}}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        >
+          <Pressable style={s.sheet} onPress={() => {}}>
           <View style={s.handle} />
 
           {/* Header */}
@@ -122,7 +147,8 @@ export function CountryPickerModal({ visible, selected, onSelect, onClose }: Pro
             showsVerticalScrollIndicator={false}
             ListEmptyComponent={<Text style={s.empty}>{labels.empty}</Text>}
           />
-        </Pressable>
+          </Pressable>
+        </KeyboardAvoidingView>
       </Pressable>
     </Modal>
   );

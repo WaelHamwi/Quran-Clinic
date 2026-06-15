@@ -2,6 +2,7 @@ import { API_URL, API_HEADERS, PRODUCTION_API_URL } from '@/services/api';
 import type { ApiResponse, PaginatedResponse, Surah, SurahWithVerses } from '@/types/surah';
 import type { Recitation } from '@/types/recitation';
 import type { Reciter } from '@/types/reciter';
+import type { Verse } from '@/types/verse';
 
 async function doFetch<T>(url: string, path: string, timeoutMs?: number): Promise<T> {
   const ctrl = new AbortController();
@@ -43,4 +44,7 @@ export const quranService = {
 
   getSurahRecitations: (surahId: number) =>
     request<ApiResponse<Recitation[]>>(`/surahs/${surahId}/recitations`),
+
+  searchVerses: (q: string, perPage = 15) =>
+    request<PaginatedResponse<Verse>>(`/verses/search?q=${encodeURIComponent(q)}&per_page=${perPage}`),
 };

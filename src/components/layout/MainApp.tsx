@@ -38,6 +38,7 @@ export function MainApp() {
       <View style={{ flex: 1 }}>
         <Stack screenOptions={{ headerShown: false }}>
           <Stack.Screen name="(tabs)" />
+          <Stack.Screen name="auth-callback" />
           <Stack.Screen name="hospital" />
           <Stack.Screen name="adhkar" />
           <Stack.Screen name="adhkar/[slug]" />
@@ -63,6 +64,7 @@ export function MainApp() {
           <Stack.Screen name="about-us" />
           <Stack.Screen name="contact-us" />
           <Stack.Screen name="report-bug" />
+          <Stack.Screen name="notifications" />
         </Stack>
         <DrivingModeOverlay
           visible={isDriving}

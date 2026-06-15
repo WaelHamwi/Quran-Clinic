@@ -12,7 +12,7 @@ import { pickText, formatDate } from '@/utils/formatters';
 import { courseDetailStyles as s } from '@/styles/courseDetailScreen.styles';
 
 export default function CourseDetailScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id } = useLocalSearchParams() as { id: string };
   const { courses, isLoading } = useCourses();
   const { t, isArabic, language } = useLanguage();
 

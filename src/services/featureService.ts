@@ -1,14 +1,11 @@
 import { apiGet } from '@/services/apiClient';
-import type { FeatureFlag, FeatureFlagMap } from '@/types/feature';
+import type { FeatureFlagMap } from '@/types/feature';
 
 export const featureService = {
-  /** GET /features → flattened `{ key: visible }` map for `featuresSlice`. */
-  getFeatures: async (): Promise<FeatureFlagMap> => {
-    const flags = await apiGet<FeatureFlag[]>('/features');
-    const map: FeatureFlagMap = {};
-    for (const flag of flags) {
-      map[flag.feature_key] = flag.is_visible;
-    }
-    return map;
-  },
+  /**
+   * GET /features → `{ key: visible }` map for `featuresSlice`.
+   * The backend already returns a flattened `{ feature_key: is_visible }` object,
+   * so it maps straight onto `FeatureFlagMap`.
+   */
+  getFeatures: (): Promise<FeatureFlagMap> => apiGet<FeatureFlagMap>('/features'),
 };

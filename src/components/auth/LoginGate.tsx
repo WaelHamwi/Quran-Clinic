@@ -21,7 +21,7 @@ export function LoginGate({ onSuccess }: Props) {
   const handleGoogleSignIn = async () => {
     try {
       await signIn();
-      // AppFlow watches user + pendingEmail to advance automatically.
+      // AppFlow watches user + awaitingOtp to advance automatically.
     } catch (error: any) {
       if (error?.message === 'too_many_requests') {
         Alert.alert(t.login.error, t.login.rateLimitError);

@@ -19,18 +19,32 @@ import { clearAuth } from '@/store/slices/authSlice';
 import { setUnauthorizedHandler } from '@/services/apiClient';
 
 type DownloadsSlice = RootState['downloads'];
-type DownloadsPersisted = Pick<DownloadsSlice, 'completed' | 'wifiOnly'>;
+type DownloadsPersisted = Pick<DownloadsSlice, 'completed' | 'wifiOnly' | 'tasks'>;
 
-/** Persist only `completed` + `wifiOnly`; live `tasks` are dropped, storage recomputed. */
+/**
+ * Persist `completed` + `wifiOnly`, plus any unfinished `tasks` (pending/downloading/failed)
+ * so an interrupted download can be resumed on the next launch. Storage is recomputed from
+ * the persisted `completed` map rather than persisted directly.
+ */
 const downloadsTransform = createTransform<DownloadsSlice, DownloadsPersisted>(
-  (state) => ({ completed: state.completed, wifiOnly: state.wifiOnly }),
+  (state) => {
+    const tasks = Object.fromEntries(
+      Object.entries(state.tasks).filter(([, t]) => t.status !== 'cancelled'),
+    );
+    return { completed: state.completed, wifiOnly: state.wifiOnly, tasks };
+  },
   (persisted) => {
     const completed = persisted.completed ?? {};
     const storageUsed = Object.values(completed).reduce(
       (sum, d: CompletedDownload) => sum + (d.size ?? 0),
       0,
     );
-    return { tasks: {}, completed, wifiOnly: persisted.wifiOnly ?? true, storageUsed };
+    return {
+      tasks: persisted.tasks ?? {},
+      completed,
+      wifiOnly: persisted.wifiOnly ?? true,
+      storageUsed,
+    };
   },
   { whitelist: ['downloads'] },
 );
@@ -65,6 +79,8 @@ const persistConfig: PersistConfig<RootState> = {
   key: 'root',
   version: 2,
   storage: AsyncStorage,
+  // Batch writes: download progress dispatches many times/sec; cap persistence to ~1 write/s.
+  throttle: 1000,
   migrate: createMigrate(migrations as any, { debug: false }),
   // `player` and `ui` are intentionally ephemeral.
   whitelist: ['auth', 'favorites', 'readings', 'features', 'onboarding', 'notifications', 'downloads', 'offlineQueue'],

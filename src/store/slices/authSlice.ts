@@ -14,8 +14,9 @@ const initialState: AuthState = { user: null, status: 'idle', error: null };
 
 /**
  * Auth / session / subscription. The token itself lives in `expo-secure-store`
- * (tokenManager) — never in persisted Redux state. Auth is bypassed in
- * development, so `user` stays null; selectors degrade gracefully.
+ * (written by AuthContext, read back via tokenManager) — never in persisted
+ * Redux state. For a guest/unauthenticated user `user` stays null; selectors
+ * degrade gracefully.
  */
 const authSlice = createSlice({
   name: 'auth',

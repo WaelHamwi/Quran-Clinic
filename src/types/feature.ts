@@ -1,8 +1,5 @@
-/** A single admin-controlled feature visibility flag. */
-export interface FeatureFlag {
-  feature_key: string;
-  is_visible: boolean;
-}
-
-/** Flattened flag map consumed by `featuresSlice`. */
+/**
+ * Flattened admin feature-visibility map: `{ feature_key: is_visible }`.
+ * Returned directly by `GET /features` and consumed by `featuresSlice`.
+ */
 export type FeatureFlagMap = Record<string, boolean>;

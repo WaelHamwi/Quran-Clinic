@@ -82,6 +82,12 @@ async function downloadRecording(
   downloadUrl: string,
   recordingId: number,
   onProgress?: (progress: number, totalBytes: number) => void,
+  // A previously persisted resume token (`DownloadResumable.savable().resumeData`). When
+  // present we continue the partial download instead of starting over.
+  resumeData?: string | null,
+  // Called whenever the OS hands back a fresh resume token, so the caller can persist it for
+  // continuation after an app kill.
+  onSnapshot?: (resumeData: string) => void,
 ): Promise<{ uri: string; size: number }> {
   const localPath = getRecordingPath(recordingId);
   await ensureAudioDir(localPath);
@@ -97,12 +103,28 @@ async function downloadRecording(
           p.totalBytesExpectedToWrite,
         );
       }
+      if (onSnapshot) {
+        const token = resumable.savable().resumeData;
+        if (token) onSnapshot(token);
+      }
     },
+    resumeData ?? undefined,
   );
   activeRecordingDownloads.set(recordingId, resumable);
 
   try {
-    const result = await resumable.downloadAsync();
+    // Resume the partial download when we hold a token; fall back to a fresh download if the
+    // token is stale/rejected by the OS.
+    let result: Awaited<ReturnType<typeof resumable.downloadAsync>>;
+    if (resumeData) {
+      try {
+        result = await resumable.resumeAsync();
+      } catch {
+        result = await resumable.downloadAsync();
+      }
+    } else {
+      result = await resumable.downloadAsync();
+    }
     if (!result) throw new Error('Download cancelled');
     const info = await FileSystem.getInfoAsync(result.uri);
     return {
@@ -146,6 +168,19 @@ async function getRecordingsStorageUsage(): Promise<number> {
   return total;
 }
 
+/** Device-wide storage figures (bytes) used by the Downloads screen. */
+async function getDeviceStorage(): Promise<{ free: number; total: number }> {
+  try {
+    const [free, total] = await Promise.all([
+      FileSystem.getFreeDiskStorageAsync(),
+      FileSystem.getTotalDiskCapacityAsync(),
+    ]);
+    return { free, total };
+  } catch {
+    return { free: 0, total: 0 };
+  }
+}
+
 async function clearAllRecordings(): Promise<void> {
   const base = FileSystem.documentDirectory ?? FileSystem.cacheDirectory ?? '';
   const dir = `${base}audio`;
@@ -172,5 +207,6 @@ export const audioService = {
   cancelRecordingDownload,
   deleteRecording,
   getRecordingsStorageUsage,
+  getDeviceStorage,
   clearAllRecordings,
 };

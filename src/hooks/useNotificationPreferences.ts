@@ -3,10 +3,12 @@ import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import {
   setAdhkarPref,
   setWakingHours,
+  setWakingAuto,
   setPreferences,
   selectNotifications,
 } from '@/store/slices/notificationsSlice';
 import { notificationService } from '@/services/notificationService';
+import { prayerTimesService } from '@/services/prayerTimesService';
 import type { AdhkarTime } from '@/types/adhkar';
 import type { NotificationPreferences } from '@/types/notification';
 
@@ -57,17 +59,46 @@ export function useNotificationPreferences() {
     [dispatch, toPayload],
   );
 
+  /** Toggle automatic (prayer-time) waking window. When enabled, immediately
+   *  compute the window from today's Fajr→sunrise and persist it. */
+  const setAutoWaking = useCallback(
+    async (enabled: boolean) => {
+      dispatch(setWakingAuto(enabled));
+      if (!enabled) return;
+      const { start, end } = await prayerTimesService.getWakingWindow();
+      dispatch(setWakingHours({ start, end }));
+      notificationService
+        .savePreferences(toPayload({ waking_start_time: start, waking_end_time: end }))
+        .catch(() => {});
+    },
+    [dispatch, toPayload],
+  );
+
+  /** Recompute the auto window (e.g. on screen focus / new day). No-op if manual. */
+  const refreshAutoWindow = useCallback(async () => {
+    if (!prefs.wakingAuto) return;
+    const { start, end } = await prayerTimesService.getWakingWindow();
+    dispatch(setWakingHours({ start, end }));
+  }, [dispatch, prefs.wakingAuto]);
+
   const refreshFromServer = useCallback(async () => {
     try {
       const remote = await notificationService.getPreferences();
       dispatch(setPreferences(remote));
     } catch {
-      /* offline / auth bypassed */
+      /* offline / unauthenticated */
     }
   }, [dispatch]);
 
   return useMemo(
-    () => ({ prefs, updatePreference, updateWakingHours, refreshFromServer }),
-    [prefs, updatePreference, updateWakingHours, refreshFromServer],
+    () => ({
+      prefs,
+      updatePreference,
+      updateWakingHours,
+      setAutoWaking,
+      refreshAutoWindow,
+      refreshFromServer,
+    }),
+    [prefs, updatePreference, updateWakingHours, setAutoWaking, refreshAutoWindow, refreshFromServer],
   );
 }

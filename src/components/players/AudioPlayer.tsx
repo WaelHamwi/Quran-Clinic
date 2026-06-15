@@ -33,8 +33,9 @@ const SKIP_MS = 15000;
 
 // Font size steps: left = كبير (large), right = صغير (small)
 const FONT_STEPS = [22, 20, 18, 16, 14];
-// Speed steps: left = سريعة (fast), right = بطيئة (slow)
-const SPEED_STEPS = [1.5, 1.25, 1.0, 0.75, 0.5];
+// Speed steps: left = سريعة (fast), right = بطيئة (slow).
+// Mirrors the Mushaf reader's speed set (useAudio PLAYBACK_SPEEDS: 0.5–2×).
+const SPEED_STEPS = [2.0, 1.5, 1.0, 0.75, 0.5];
 
 const TEXT_COLOR_PRESETS: Array<{ color: string; label: { ar: string; en: string } }> = [
   { color: palette.text.primary,   label: { ar: 'داكن',        en: 'Dark'       } },

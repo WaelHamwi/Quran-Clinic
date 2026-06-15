@@ -17,6 +17,7 @@
       "bundleIdentifier": "com.quranicclinic.dev",
       "infoPlist": {
         "UIBackgroundModes": [
+          "audio",
           "audio"
         ]
       }
@@ -29,7 +30,24 @@
       "package": "com.quranicclinic.dev",
       "permissions": [
         "android.permission.RECORD_AUDIO",
-        "android.permission.MODIFY_AUDIO_SETTINGS"
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION"
+      ],
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": false,
+          "category": ["BROWSABLE", "DEFAULT"],
+          "data": [
+            {
+              "scheme": "quranicclinic",
+              "host": "auth-callback"
+            }
+          ]
+        }
       ]
     },
     "web": {
@@ -40,7 +58,7 @@
       "API_BASE_URL": "https://mashfa.odooclick.com/api",
       "router": {},
       "eas": {
-        "projectId": "efcf776d-ba62-46a2-b48b-afb4b881394a"
+        "projectId": "c44a0590-7866-4458-b3d0-e01e4a9ca4d8"
       }
     },
     "plugins": [
@@ -48,14 +66,20 @@
       "expo-web-browser",
       "expo-secure-store",
       "expo-notifications",
-      "expo-audio"
+      "expo-audio",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Quranic Clinic uses your location to calculate accurate prayer times for the automatic waking-adhkar reminder."
+        }
+      ]
     ],
-    "owner": "wael_hamwi",
+    "owner": "wael-hamwi",
     "runtimeVersion": {
       "policy": "appVersion"
     },
     "updates": {
-      "url": "https://u.expo.dev/efcf776d-ba62-46a2-b48b-afb4b881394a"
+      "url": "https://u.expo.dev/c44a0590-7866-4458-b3d0-e01e4a9ca4d8"
     }
   }
 }

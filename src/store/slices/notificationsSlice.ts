@@ -8,6 +8,9 @@ interface NotificationsState {
   adhkarEvening: boolean;
   adhkarSleep: boolean;
   adhkarWaking: boolean;
+  /** When true the waking window is derived from prayer times, not set manually.
+   *  Local-only preference — not part of the backend NotificationPreferences payload. */
+  wakingAuto: boolean;
   wakingStartTime: string;
   wakingEndTime: string;
   pushToken: string | null;
@@ -19,6 +22,7 @@ const initialState: NotificationsState = {
   adhkarEvening: false,
   adhkarSleep: false,
   adhkarWaking: false,
+  wakingAuto: false,
   wakingStartTime: '04:30',
   wakingEndTime: '07:30',
   pushToken: null,
@@ -50,6 +54,9 @@ const notificationsSlice = createSlice({
       state.wakingStartTime = action.payload.start;
       state.wakingEndTime = action.payload.end;
     },
+    setWakingAuto(state, action: PayloadAction<boolean>) {
+      state.wakingAuto = action.payload;
+    },
     setPushToken(state, action: PayloadAction<string | null>) {
       state.pushToken = action.payload;
     },
@@ -71,6 +78,7 @@ const notificationsSlice = createSlice({
 export const {
   setAdhkarPref,
   setWakingHours,
+  setWakingAuto,
   setPushToken,
   setPermissionGranted,
   setPreferences,

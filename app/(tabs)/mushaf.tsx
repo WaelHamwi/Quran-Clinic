@@ -11,6 +11,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { palette } from '@/theme/colors';
 import { PatternedBackground } from '@/components/layout/PatternedBackground';
 import { SurahItem } from '@/components/lists/SurahItem';
@@ -22,6 +23,7 @@ import { useLanguage } from '@/context/LanguageContext';
 import { useMushafScreen } from '@/hooks/useMushafScreen';
 import type { SurahTypeFilter, DisplayMode } from '@/hooks/useMushafScreen';
 import { useReadings } from '@/hooks/useReadings';
+import { getAllPageBookmarks, type PageBookmark } from '@/services/bookmarks';
 import { createMushafStyles } from '@/styles/mushaf.styles';
 import type { Surah } from '@/types/surah';
 
@@ -49,7 +51,28 @@ export default function MushafScreen() {
     handleEndReached, handleSurahPress, fetchNextPage,
   } = useMushafScreen();
 
-  const { readSurahs, isRead, toggleRead } = useReadings();
+  const { isRead, toggleRead } = useReadings();
+  const router = useRouter();
+
+  // "My Reads" aggregates every bookmarked page across ALL surahs (the in-reader
+  // sheet is scoped to a single surah). Reload each time the tab regains focus so
+  // marks added inside the reader appear here immediately.
+  const [pageBookmarks, setPageBookmarks] = useState<PageBookmark[]>([]);
+  useFocusEffect(
+    useCallback(() => {
+      getAllPageBookmarks().then(setPageBookmarks).catch(() => {});
+    }, [])
+  );
+
+  const surahMap = useMemo(() => new Map(surahs.map((s) => [s.id, s])), [surahs]);
+  const surahLabel = useCallback(
+    (id: number) => {
+      const s = surahMap.get(id);
+      if (!s) return `${t.reader.surah} ${id}`;
+      return language === 'ar' ? s.name.ar : (s.name.en ?? s.name.ar);
+    },
+    [surahMap, language, t]
+  );
 
   const renderSurah = useCallback(
     ({ item }: { item: Surah }) => (
@@ -61,6 +84,28 @@ export default function MushafScreen() {
       />
     ),
     [handleSurahPress, isRead, toggleRead]
+  );
+
+  const renderBookmark = useCallback(
+    ({ item }: { item: PageBookmark }) => (
+      <TouchableOpacity
+        style={[styles.readRow, isArabic && { flexDirection: 'row-reverse' }]}
+        onPress={() => router.push(`/mushaf/${item.surahId}` as never)}
+        activeOpacity={0.7}
+      >
+        <Ionicons name="bookmark" size={18} color={palette.brand[500]} />
+        <View style={styles.readRowTexts}>
+          <Text style={styles.readRowTitle} numberOfLines={1}>{surahLabel(item.surahId)}</Text>
+          <Text style={styles.readRowMeta}>{t.reader.page} {item.pageIndex + 1}</Text>
+        </View>
+        <Ionicons
+          name={isArabic ? 'chevron-back' : 'chevron-forward'}
+          size={16}
+          color={palette.text.tertiary}
+        />
+      </TouchableOpacity>
+    ),
+    [styles, isArabic, router, surahLabel, t]
   );
 
   // Surah filter options
@@ -153,8 +198,8 @@ export default function MushafScreen() {
       <SafeAreaView style={styles.body} edges={['bottom']}>
 
         {activeTab === 'myReadings' ? (
-          /* ── My Readings ──────────────────────────────────────────────── */
-          readSurahs.length === 0 ? (
+          /* ── My Readings — every bookmarked page across all surahs ─────── */
+          pageBookmarks.length === 0 ? (
             <View style={styles.myReadingsWrap}>
               <Ionicons name="bookmark-outline" size={48} color={palette.border.primary} />
               <Text style={styles.myReadingsEmptyText}>{t.mushaf.myReadingsEmpty}</Text>
@@ -162,9 +207,9 @@ export default function MushafScreen() {
             </View>
           ) : (
             <FlatList
-              data={readSurahs}
-              keyExtractor={(item) => String(item.id)}
-              renderItem={renderSurah}
+              data={pageBookmarks}
+              keyExtractor={(item) => `${item.surahId}-${item.pageIndex}`}
+              renderItem={renderBookmark}
               contentContainerStyle={styles.list}
             />
           )

@@ -232,6 +232,30 @@ export function createMushafStyles(_theme: Theme) {
       textAlign: 'center',
     },
 
+    // ── My Reads — bookmarked-page rows (all surahs) ───────────────────────────
+    readRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      paddingVertical: 12,
+      paddingHorizontal: 14,
+      borderRadius: 12,
+      backgroundColor: WHITE,
+      borderWidth: 1,
+      borderColor: BORDER_TERTIARY,
+    },
+    readRowTexts: { flex: 1, gap: 2 },
+    readRowTitle: {
+      fontSize: 15,
+      fontFamily: fontFamily.alexandriaSemiBold,
+      color: TEXT_PRIMARY,
+    },
+    readRowMeta: {
+      fontSize: 12,
+      fontFamily: fontFamily.alexandriaLight,
+      color: TEXT_TERTIARY,
+    },
+
     // ── Surah list ───────────────────────────────────────────────────────────
     list: { paddingHorizontal: 16, paddingTop: 4, paddingBottom: 100, gap: 4 },
     emptyText: {

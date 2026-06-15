@@ -1,15 +1,19 @@
-import React, { useCallback, useMemo } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, { useCallback, useEffect } from 'react';
+import { Pressable, ScrollView, Switch, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { Screen } from '@/components/layout/Screen';
+import { PatternedBackground } from '@/components/layout/PatternedBackground';
 import { Header } from '@/components/layout/Header';
 import { Toggle } from '@/components/forms/Toggle';
-import { IconButton } from '@/components/common/IconButton';
 import { useNotificationPreferences } from '@/hooks/useNotificationPreferences';
 import { useLanguage } from '@/context/LanguageContext';
-import { useTheme } from '@/context/ThemeContext';
-import type { Theme } from '@/theme/colors';
-import { spacing, radius } from '@/theme/spacing';
-import { fontSize, fontWeight } from '@/theme/typography';
+import {
+  notificationsScreenStyles as s,
+  SWITCH_TRACK_OFF,
+  SWITCH_TRACK_ON,
+  ICON_BRAND,
+} from '@/styles/notificationsScreen.styles';
+import { palette } from '@/theme/colors';
 
 function shiftTime(hhmm: string, deltaMin: number): string {
   const [h, m] = hhmm.split(':').map(Number);
@@ -19,14 +23,21 @@ function shiftTime(hhmm: string, deltaMin: number): string {
 
 export default function NotificationsScreen() {
   const { t } = useLanguage();
-  const { theme } = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
-  const { prefs, updatePreference, updateWakingHours } = useNotificationPreferences();
+  const { prefs, updatePreference, updateWakingHours, setAutoWaking, refreshAutoWindow } =
+    useNotificationPreferences();
+
+  // Keep the auto window fresh (new day / new location) whenever the screen opens.
+  useEffect(() => {
+    void refreshAutoWindow();
+  }, [refreshAutoWindow]);
 
   const onMorning = useCallback((v: boolean) => updatePreference('morning', v), [updatePreference]);
   const onEvening = useCallback((v: boolean) => updatePreference('evening', v), [updatePreference]);
   const onSleep = useCallback((v: boolean) => updatePreference('sleep', v), [updatePreference]);
-  const onWaking = useCallback((v: boolean) => updatePreference('waking', v), [updatePreference]);
+  const onSmartWaking = useCallback((v: boolean) => updatePreference('waking', v), [updatePreference]);
+
+  const onManual = useCallback(() => void setAutoWaking(false), [setAutoWaking]);
+  const onAuto = useCallback(() => void setAutoWaking(true), [setAutoWaking]);
 
   const shiftStart = useCallback(
     (delta: number) => updateWakingHours(shiftTime(prefs.wakingStartTime, delta), prefs.wakingEndTime),
@@ -37,107 +48,133 @@ export default function NotificationsScreen() {
     [updateWakingHours, prefs.wakingStartTime, prefs.wakingEndTime],
   );
 
+  const isAuto = prefs.wakingAuto;
+
   return (
-    <Screen>
-      <Header title={t.notifications.title} />
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={styles.group}>
+    <Screen edges={['top']}>
+      <PatternedBackground />
+      <Header title={t.notifications.title} showBack />
+      <ScrollView contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
+        {/* ── Adhkar reminders ─────────────────────────── */}
+        <Text style={s.sectionTitle}>{t.notifications.remindersSection}</Text>
+        <View style={s.group}>
           <Toggle
             icon="sunny-outline"
             label={t.notifications.morning}
             value={prefs.adhkarMorning}
             onValueChange={onMorning}
           />
+          <View style={s.separator} />
           <Toggle
             icon="partly-sunny-outline"
             label={t.notifications.evening}
             value={prefs.adhkarEvening}
             onValueChange={onEvening}
           />
+          <View style={s.separator} />
           <Toggle
             icon="moon-outline"
             label={t.notifications.sleep}
             value={prefs.adhkarSleep}
             onValueChange={onSleep}
           />
-          <Toggle
-            icon="alarm-outline"
-            label={t.notifications.waking}
-            value={prefs.adhkarWaking}
-            onValueChange={onWaking}
-          />
         </View>
 
-        <Text style={styles.sectionTitle}>{t.notifications.wakingHours}</Text>
-        <View style={styles.group}>
-          <TimeRow
-            label={t.notifications.startTime}
-            value={prefs.wakingStartTime}
-            onShift={shiftStart}
-            styles={styles}
-            theme={theme}
-          />
-          <TimeRow
-            label={t.notifications.endTime}
-            value={prefs.wakingEndTime}
-            onShift={shiftEnd}
-            styles={styles}
-            theme={theme}
-          />
+        {/* ── Smart waking card (Figma 18524:2887) ─────── */}
+        <View style={s.smartCard}>
+          <View style={s.smartHeader}>
+            <Switch
+              value={prefs.adhkarWaking}
+              onValueChange={onSmartWaking}
+              trackColor={{ false: SWITCH_TRACK_OFF, true: SWITCH_TRACK_ON }}
+              thumbColor={palette.white}
+            />
+            <View style={s.smartTexts}>
+              <Text style={s.smartTitle}>{t.notifications.smartWaking}</Text>
+              <Text style={s.smartSubtitle}>{t.notifications.smartWakingDesc}</Text>
+            </View>
+          </View>
+
+          {prefs.adhkarWaking ? (
+            <>
+              {/* Manual / Automatic selector */}
+              <View style={s.modeRow}>
+                <Pressable
+                  style={[s.modePill, !isAuto && s.modePillActive]}
+                  onPress={onManual}
+                >
+                  <Text style={[s.modePillText, !isAuto && s.modePillTextActive]}>
+                    {t.notifications.timeModeManual}
+                  </Text>
+                </Pressable>
+                <Pressable
+                  style={[s.modePill, isAuto && s.modePillActive]}
+                  onPress={onAuto}
+                >
+                  <Text style={[s.modePillText, isAuto && s.modePillTextActive]}>
+                    {t.notifications.timeModeAuto}
+                  </Text>
+                </Pressable>
+              </View>
+
+              {/* End time (left) + Start time (right) — Figma RTL order */}
+              <View style={s.timesRow}>
+                <TimeField
+                  label={t.notifications.endTime}
+                  value={prefs.wakingEndTime}
+                  onShift={shiftEnd}
+                  editable={!isAuto}
+                />
+                <TimeField
+                  label={t.notifications.startTime}
+                  value={prefs.wakingStartTime}
+                  onShift={shiftStart}
+                  editable={!isAuto}
+                />
+              </View>
+
+              {isAuto ? <Text style={s.autoHint}>{t.notifications.timeModeAutoHint}</Text> : null}
+            </>
+          ) : null}
         </View>
-        <Text style={styles.hint}>{t.notifications.permissionNeeded}</Text>
+
+        <Text style={s.permissionHint}>{t.notifications.permissionNeeded}</Text>
       </ScrollView>
     </Screen>
   );
 }
 
-interface TimeRowProps {
+interface TimeFieldProps {
   label: string;
   value: string;
   onShift: (delta: number) => void;
-  styles: ReturnType<typeof createStyles>;
-  theme: Theme;
+  editable: boolean;
 }
 
-function TimeRow({ label, value, onShift, styles, theme }: TimeRowProps) {
+function TimeField({ label, value, onShift, editable }: TimeFieldProps) {
   return (
-    <View style={styles.timeRow}>
-      <Text style={styles.timeLabel}>{label}</Text>
-      <View style={styles.stepper}>
-        <IconButton icon="remove-circle-outline" color={theme.primary} onPress={() => onShift(-30)} />
-        <Text style={styles.timeValue}>{value}</Text>
-        <IconButton icon="add-circle-outline" color={theme.primary} onPress={() => onShift(30)} />
+    <View style={s.timeField}>
+      <Text style={s.timeLabel}>{label}</Text>
+      <View style={[s.timeInput, !editable && s.timeInputDisabled]}>
+        {editable ? (
+          <Pressable style={s.stepBtn} onPress={() => onShift(-30)} hitSlop={8}>
+            <Ionicons name="remove" size={18} color={ICON_BRAND} />
+          </Pressable>
+        ) : (
+          <View style={s.stepBtn} />
+        )}
+        <View style={s.timeInputContent}>
+          <Text style={s.timeInputText}>{value}</Text>
+          <Ionicons name="time-outline" size={18} color={ICON_BRAND} />
+        </View>
+        {editable ? (
+          <Pressable style={s.stepBtn} onPress={() => onShift(30)} hitSlop={8}>
+            <Ionicons name="add" size={18} color={ICON_BRAND} />
+          </Pressable>
+        ) : (
+          <View style={s.stepBtn} />
+        )}
       </View>
     </View>
   );
-}
-
-function createStyles(theme: Theme) {
-  return StyleSheet.create({
-    content: { padding: spacing.lg, gap: spacing.lg },
-    group: {
-      backgroundColor: theme.surface,
-      borderRadius: radius.lg,
-      paddingHorizontal: spacing.lg,
-      borderWidth: 1,
-      borderColor: theme.border,
-    },
-    sectionTitle: { fontSize: fontSize.md, fontWeight: fontWeight.bold, color: theme.text },
-    timeRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      paddingVertical: spacing.sm,
-    },
-    timeLabel: { fontSize: fontSize.md, color: theme.text },
-    stepper: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-    timeValue: {
-      fontSize: fontSize.lg,
-      fontWeight: fontWeight.bold,
-      color: theme.text,
-      minWidth: 56,
-      textAlign: 'center',
-    },
-    hint: { fontSize: fontSize.xs, color: theme.textMuted, textAlign: 'center' },
-  });
 }

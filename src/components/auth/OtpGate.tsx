@@ -18,15 +18,9 @@ import { otpGateStyles as s } from './OtpGate.styles';
 const OTP_LENGTH = 6;
 const RESEND_COOLDOWN = 60;
 
-function maskEmail(email: string): string {
-  const [local, domain] = email.split('@');
-  const visible = local.slice(0, 2);
-  return `${visible}${'*'.repeat(Math.max(local.length - 2, 2))}@${domain}`;
-}
-
 export function OtpGate() {
   const { t } = useLanguage();
-  const { pendingEmail, verifyOtp, resendOtp, loading } = useAuth();
+  const { verifyOtp, resendOtp, loading } = useAuth();
 
   const [digits, setDigits] = useState<string[]>(Array(OTP_LENGTH).fill(''));
   const [error, setError] = useState<string | null>(null);
@@ -97,12 +91,7 @@ export function OtpGate() {
       <SafeAreaView style={s.flex} edges={['bottom']}>
         <View style={s.body}>
           <Text style={s.heading}>{t.otp.heading}</Text>
-          {pendingEmail && (
-            <Text style={s.emailHint}>
-              {t.otp.sentTo}{' '}
-              <Text style={s.emailBold}>{maskEmail(pendingEmail)}</Text>
-            </Text>
-          )}
+          <Text style={s.emailHint}>{t.otp.sentToGeneric}</Text>
 
           <View style={s.boxRow}>
             {digits.map((digit, i) => (

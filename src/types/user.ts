@@ -7,7 +7,7 @@ export interface User {
   phone: string | null;
   country: string | null;
   gender: Gender | null;
-  avatar_url: string | null;
+  avatar_path: string | null;
   is_subscribed: boolean;
   has_active_trial: boolean;
   can_grant_trial: boolean;

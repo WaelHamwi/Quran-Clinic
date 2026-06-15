@@ -92,7 +92,13 @@ export const adhkarItemsScreenStyles = StyleSheet.create({
     lineHeight: 16,
     color: palette.text.tertiary,
   },
-  nextBtn: {
+  // Figma 18086:1614 — Next + Previous buttons sit side by side, gap 12.
+  navRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  navBtn: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -101,15 +107,14 @@ export const adhkarItemsScreenStyles = StyleSheet.create({
     borderRadius: radius.md,
     paddingHorizontal: 16,
     paddingVertical: 12,
-    width: '100%',
   },
-  nextBtnText: {
+  navBtnText: {
     fontFamily: fontFamily.alexandria,
     fontSize: 16,
     lineHeight: 24,
     color: palette.brand[500],
   },
-  nextBtnDisabled: {
+  navBtnDisabled: {
     opacity: 0.4,
   },
 });

@@ -19,6 +19,7 @@ import {
   clearQueue,
   selectQueue,
   selectQueueIndex,
+  selectPlaybackRate,
 } from '@/store/slices/playerSlice';
 import type { Recording } from '@/types/recording';
 
@@ -62,6 +63,13 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => { queueRef.current = queue; }, [queue]);
   useEffect(() => { queueIndexRef.current = queueIndex; }, [queueIndex]);
 
+  // Mirror the chosen playback speed so it can be re-applied after a source
+  // swap (expo-audio resets the rate to 1× on `replace`), keeping audio — and
+  // therefore the karaoke highlight — at the user's selected speed.
+  const playbackRate = useAppSelector(selectPlaybackRate);
+  const rateRef = useRef(playbackRate);
+  useEffect(() => { rateRef.current = playbackRate; }, [playbackRate]);
+
   useEffect(() => {
     setAudioModeAsync({
       allowsRecording: false,
@@ -92,9 +100,16 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   // Auto-play as soon as the source is ready when a play was requested.
   useEffect(() => {
     isLoadedRef.current = status.isLoaded;
-    if (status.isLoaded && pendingPlayRef.current) {
-      pendingPlayRef.current = false;
-      player.play();
+    if (status.isLoaded) {
+      // Re-apply the chosen speed after a new source loads. Guarded to a 1× no-op
+      // so the regular (un-changed) case behaves exactly as before.
+      if (rateRef.current !== 1.0) {
+        try { player.setPlaybackRate(rateRef.current); } catch {}
+      }
+      if (pendingPlayRef.current) {
+        pendingPlayRef.current = false;
+        player.play();
+      }
     }
   }, [status.isLoaded, player]);
 
@@ -172,7 +187,8 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   );
   const setRate = useCallback(
     (rate: number) => {
-      player.setPlaybackRate(rate);
+      // Match the Mushaf engine — guard against calls before a source is ready.
+      try { player.setPlaybackRate(rate); } catch {}
     },
     [player],
   );

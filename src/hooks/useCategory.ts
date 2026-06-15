@@ -1,8 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { ruqyahService } from '@/services/ruqyahService';
-import { clinicCache } from '@/services/clinicCache';
+import { cachedFetch } from '@/services/contentCache';
 import { cacheKeys } from '@/utils/cacheKeys';
-import type { Category } from '@/types/category';
 
 const FIVE_MIN = 1000 * 60 * 5;
 
@@ -10,25 +9,13 @@ const FIVE_MIN = 1000 * 60 * 5;
 export function useCategory(slug: string) {
   const query = useQuery({
     queryKey: cacheKeys.category(slug),
-    queryFn: async () => {
-      try {
-        const data = await ruqyahService.getCategory(slug);
-        await clinicCache.saveCategory(slug, data);
-        return data;
-      } catch {
-        const cached = await clinicCache.getCategory(slug);
-        if (cached) return cached;
-        throw new Error('No internet connection and no cached data available');
-      }
-    },
+    queryFn: () => cachedFetch(`clinic_category_${slug}`, () => ruqyahService.getCategory(slug)),
     enabled: slug.length > 0,
     staleTime: FIVE_MIN,
-    retry: false,
-    networkMode: 'offlineFirst',
     refetchInterval: 30_000,
   });
   return {
-    category: query.data as Category | undefined,
+    category: query.data,
     subcategories: query.data?.subcategories ?? [],
     directDiseases: query.data?.direct_diseases ?? [],
     recordings: query.data?.recordings ?? [],

@@ -16,7 +16,7 @@ import { palette } from '@/theme/colors';
 import { adhkarItemsScreenStyles as s } from '@/styles/adhkarItemsScreen.styles';
 
 export default function AdhkarItemsScreen() {
-  const { slug } = useLocalSearchParams<{ slug: string }>();
+  const { slug } = useLocalSearchParams() as { slug: string };
   const { t, isArabic } = useLanguage();
   const { category, isLoading, error, refetch } = useAdhkarItems(slug ?? '');
 
@@ -40,12 +40,21 @@ export default function AdhkarItemsScreen() {
     setCount((c) => (c >= item.repetitions ? 0 : c + 1));
   }, [item]);
 
+  const isFirst = currentIndex <= 0;
+
   const handleNext = useCallback(() => {
     if (isLast) return;
     setCurrentIndex((i) => i + 1);
     setCount(0);
     setShowDaleel(false);
   }, [isLast]);
+
+  const handlePrevious = useCallback(() => {
+    if (isFirst) return;
+    setCurrentIndex((i) => i - 1);
+    setCount(0);
+    setShowDaleel(false);
+  }, [isFirst]);
 
   const toggleDaleel = useCallback(() => setShowDaleel((v) => !v), []);
   const handleRetry = useCallback(() => refetch(), [refetch]);
@@ -127,21 +136,36 @@ export default function AdhkarItemsScreen() {
             </Text>
           </View>
 
-          {/* Next / Done button */}
-          <Pressable
-            onPress={handleNext}
-            style={[s.nextBtn, isLast && s.nextBtnDisabled]}
-            disabled={isLast}
-          >
-            <Ionicons
-              name={isArabic ? 'arrow-back' : 'arrow-forward'}
-              size={20}
-              color={palette.brand[500]}
-            />
-            <Text style={s.nextBtnText}>
-              {isLast ? t.adhkar.done : t.adhkar.next}
-            </Text>
-          </Pressable>
+          {/* Next (left) + Previous (right) — Figma 18086:1614 RTL order */}
+          <View style={s.navRow}>
+            <Pressable
+              onPress={handleNext}
+              style={[s.navBtn, isLast && s.navBtnDisabled]}
+              disabled={isLast}
+            >
+              <Ionicons
+                name={isArabic ? 'arrow-back' : 'arrow-forward'}
+                size={20}
+                color={palette.brand[500]}
+              />
+              <Text style={s.navBtnText}>
+                {isLast ? t.adhkar.done : t.adhkar.next}
+              </Text>
+            </Pressable>
+
+            <Pressable
+              onPress={handlePrevious}
+              style={[s.navBtn, isFirst && s.navBtnDisabled]}
+              disabled={isFirst}
+            >
+              <Text style={s.navBtnText}>{t.adhkar.previous}</Text>
+              <Ionicons
+                name={isArabic ? 'arrow-forward' : 'arrow-back'}
+                size={20}
+                color={palette.brand[500]}
+              />
+            </Pressable>
+          </View>
         </View>
       </View>
     </Screen>

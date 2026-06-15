@@ -2,8 +2,13 @@
 import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 
-const TOKEN_KEY = 'auth_token';
-const USER_KEY = 'auth_user';
+// These keys MUST match the keys AuthContext writes to in expo-secure-store.
+// AuthContext is the single writer of the session (see context/AuthContext.tsx —
+// persistAuth/signOut), and apiClient reads the bearer token back through
+// TokenManager.getToken() to set the Authorization header. A mismatch here means
+// every auth-gated request goes out unauthenticated (401/403 in production).
+const TOKEN_KEY = 'token';
+const USER_KEY = 'user';
 
 export const TokenManager = {
   async getToken(): Promise<string | null> {

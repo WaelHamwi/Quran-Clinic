@@ -14,6 +14,16 @@ export interface DownloadTask {
   progress: number;
   totalBytes: number;
   error: string | null;
+  // Persisted resume metadata — everything needed to restart/continue this download on the
+  // next app launch without the original `Recording` object in hand.
+  downloadUrl: string;
+  diseaseId: number;
+  title: string;
+  sessionNumber: number;
+  localPath: string;
+  // Platform resume token captured from `DownloadResumable.savable()`. Populated only when
+  // the OS hands one back (mainly iOS); when absent, an interrupted task is restarted fresh.
+  resumeData: string | null;
 }
 
 export interface CompletedDownload {
@@ -45,14 +55,33 @@ const downloadsSlice = createSlice({
   name: 'downloads',
   initialState,
   reducers: {
-    startTask(state, action: PayloadAction<number>) {
-      state.tasks[action.payload] = {
-        recordingId: action.payload,
+    startTask(
+      state,
+      action: PayloadAction<{
+        recordingId: number;
+        downloadUrl: string;
+        diseaseId: number;
+        title: string;
+        sessionNumber: number;
+        localPath: string;
+      }>,
+    ) {
+      const { recordingId } = action.payload;
+      state.tasks[recordingId] = {
+        ...action.payload,
         status: 'downloading',
         progress: 0,
         totalBytes: 0,
         error: null,
+        resumeData: null,
       };
+    },
+    saveResumeData(
+      state,
+      action: PayloadAction<{ recordingId: number; resumeData: string }>,
+    ) {
+      const task = state.tasks[action.payload.recordingId];
+      if (task) task.resumeData = action.payload.resumeData;
     },
     updateProgress(
       state,
@@ -104,6 +133,7 @@ const downloadsSlice = createSlice({
 
 export const {
   startTask,
+  saveResumeData,
   updateProgress,
   completeTask,
   failTask,
@@ -117,6 +147,11 @@ export default downloadsSlice.reducer;
 
 export const selectCompletedDownloads = (s: RootState): Record<number, CompletedDownload> =>
   s.downloads.completed;
+/** Tasks interrupted mid-flight (pending/downloading) that should auto-resume on launch. */
+export const selectResumableTasks = (s: RootState): DownloadTask[] =>
+  Object.values(s.downloads.tasks).filter(
+    (t) => t.status === 'downloading' || t.status === 'pending',
+  );
 export const selectDownloadTask = (s: RootState, recordingId: number): DownloadTask | undefined =>
   s.downloads.tasks[recordingId];
 export const selectIsDownloaded = (s: RootState, recordingId: number): boolean =>

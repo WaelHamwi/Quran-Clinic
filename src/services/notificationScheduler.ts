@@ -1,5 +1,6 @@
 import { Accelerometer } from 'expo-sensors';
 import Constants from 'expo-constants';
+import { prayerTimesService, type DayPrayerTimes } from '@/services/prayerTimesService';
 
 // executionEnvironment is 'storeClient' when running inside Expo Go (SDK 48+).
 // appOwnership was removed in SDK 49 so we cannot rely on it.
@@ -35,11 +36,26 @@ export interface ScheduledReminders {
   sleep: boolean;
 }
 
-const DEFAULT_TIMES: Record<ReminderKey, { hour: number; minute: number }> = {
+// Each adhkar reminder fires at its associated prayer time.
+//   morning adhkar → Fajr, evening adhkar → Asr, sleep adhkar → Isha.
+const PRAYER_FOR_KEY: Record<ReminderKey, keyof Omit<DayPrayerTimes, 'date'>> = {
+  morning: 'fajr',
+  evening: 'asr',
+  sleep: 'isha',
+};
+
+// Number of upcoming days to pre-schedule. Prayer times shift daily, so we
+// schedule a rolling window of dated notifications and refresh it each launch.
+const SCHEDULE_DAYS = 7;
+
+// Fixed fallback times, used only if prayer-time computation is unavailable.
+const FALLBACK_TIMES: Record<ReminderKey, { hour: number; minute: number }> = {
   morning: { hour: 6, minute: 30 },
   evening: { hour: 17, minute: 0 },
   sleep: { hour: 22, minute: 0 },
 };
+
+const REMINDER_KEYS: ReminderKey[] = ['morning', 'evening', 'sleep'];
 
 const WAKE_THRESHOLD = 0.7;
 let accelSubscription: { remove: () => void } | null = null;
@@ -68,22 +84,44 @@ async function rescheduleAdhkar(
     if (!anyEnabled) return;
     if (!(await ensurePermission())) return;
 
-    const keys: ReminderKey[] = ['morning', 'evening', 'sleep'];
-    for (const key of keys) {
-      if (!enabled[key]) continue;
-      const time = DEFAULT_TIMES[key];
-      await Notifications.scheduleNotificationAsync({
-        content: {
-          title: texts[key].title,
-          body: texts[key].body,
-          data: { adhkarType: key },
-        },
-        trigger: {
-          type: Notifications.SchedulableTriggerInputTypes.DAILY,
-          hour: time.hour,
-          minute: time.minute,
-        },
-      });
+    // Build the next SCHEDULE_DAYS calendar days starting today.
+    const today = new Date();
+    const dates: Date[] = [];
+    for (let i = 0; i < SCHEDULE_DAYS; i++) {
+      const d = new Date(today);
+      d.setDate(today.getDate() + i);
+      dates.push(d);
+    }
+
+    try {
+      // Official prayer times (Umm al-Qura) for each upcoming day.
+      const daily = await prayerTimesService.getDailyPrayerTimes(dates);
+      const now = Date.now();
+      for (const day of daily) {
+        for (const key of REMINDER_KEYS) {
+          if (!enabled[key]) continue;
+          const when = day[PRAYER_FOR_KEY[key]];
+          if (when.getTime() <= now) continue; // skip already-passed times
+          await Notifications.scheduleNotificationAsync({
+            content: { title: texts[key].title, body: texts[key].body, data: { adhkarType: key } },
+            trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: when },
+          });
+        }
+      }
+    } catch {
+      // Prayer-time computation failed — fall back to fixed daily reminders.
+      for (const key of REMINDER_KEYS) {
+        if (!enabled[key]) continue;
+        const time = FALLBACK_TIMES[key];
+        await Notifications.scheduleNotificationAsync({
+          content: { title: texts[key].title, body: texts[key].body, data: { adhkarType: key } },
+          trigger: {
+            type: Notifications.SchedulableTriggerInputTypes.DAILY,
+            hour: time.hour,
+            minute: time.minute,
+          },
+        });
+      }
     }
   } catch {
     // non-fatal

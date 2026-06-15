@@ -3,6 +3,7 @@ import { palette } from '@/theme/colors';
 import { fontFamily } from '@/theme/typography';
 
 export const hospitalScreenStyles = StyleSheet.create({
+  hospitalScreen__searchBar: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 12 },
   hospitalScreen__gridHeader: { gap: 16, paddingTop: 8 },
   hospitalScreen__sectionTitle: {
     fontFamily: fontFamily.alexandriaSemiBold,
