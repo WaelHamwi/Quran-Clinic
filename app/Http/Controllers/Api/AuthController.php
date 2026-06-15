@@ -68,6 +68,28 @@ class AuthController extends Controller
         return $this->success(new UserResource($request->user()));
     }
 
+    public function updateProfile(Request $request): JsonResponse
+    {
+        try {
+            $user = $request->user();
+
+            $data = $request->validate([
+                'name'    => 'sometimes|required|string|max:255',
+                'phone'   => 'nullable|string|max:30|unique:users,phone,' . $user->id,
+                'country' => 'nullable|string|max:100',
+                'gender'  => 'nullable|in:male,female',
+            ]);
+
+            $user = $this->service->updateProfile($user, $data);
+
+            return $this->success(new UserResource($user), 'Profile updated');
+        } catch (ValidationException $e) {
+            return $this->error('Validation failed', 422, $e->errors());
+        } catch (\Throwable $e) {
+            return $this->error('Server error', 500);
+        }
+    }
+
     public function logout(Request $request): JsonResponse
     {
         try {

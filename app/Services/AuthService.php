@@ -39,6 +39,19 @@ class AuthService
         return $this->tokenResponse($user);
     }
 
+    public function updateProfile(User $user, array $data): User
+    {
+        // Only overwrite columns that were actually submitted, so a partial
+        // update never blanks out fields the client didn't touch.
+        $user->fill(array_filter(
+            $data,
+            static fn ($value) => $value !== null,
+        ));
+        $user->save();
+
+        return $user->fresh();
+    }
+
     public function logout(User $user): void
     {
         $token = $user->currentAccessToken();
