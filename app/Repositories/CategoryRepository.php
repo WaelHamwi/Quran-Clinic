@@ -14,7 +14,7 @@ class CategoryRepository implements CategoryRepositoryInterface
         return Category::active()
             ->ordered()
             ->with([
-                'subcategories'  => fn ($q) => $q->active()->ordered(),
+                'subcategories'  => fn ($q) => $q->active()->ordered()->withCount('diseases'),
                 'directDiseases' => fn ($q) => $q->active()->ordered(),
             ])
             ->get();
