@@ -6,7 +6,10 @@ export const onboardingPagerStyles = StyleSheet.create({
   root: { flex: 1, backgroundColor: palette.white },
   safe: { flex: 1, alignItems: 'center' },
 
-  illoBlock: { width: 309, height: 294, marginTop: 50, position: 'relative' },
+  // Figma places the illustration at y=138 from the top of the screen. The in-flow top
+  // bar (status inset + 44 ≈ 74) already consumes part of that, so this is the remaining
+  // gap below it (138 − 74) — not the raw 50, which left the illustration sitting too high.
+  illoBlock: { width: 309, height: 294, marginTop: 64, position: 'relative' },
   bgVector: {
     position: 'absolute',
     top: 0,

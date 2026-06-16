@@ -138,9 +138,14 @@ export const ar: Translations = {
     diseases: 'العلل',
     diseaseCount: (n: number) => `${n} علة`,
     recordingCount: (n: number) => `${n} تسجيل`,
-    noResults: (q: string) => `لا توجد علل تطابق "${q}"`,
+    noResults: (q: string) => `لا توجد نتائج تطابق "${q}"`,
     searchHint: 'اكتب حرفين على الأقل للبحث',
     emptyCategory: 'لا يوجد محتوى في هذا التصنيف بعد',
+    resultKind: {
+      category: 'تصنيف',
+      subcategory: 'تصنيف فرعي',
+      disease: 'علة',
+    },
   },
   disease: {
     about: 'عن هذه العلة',

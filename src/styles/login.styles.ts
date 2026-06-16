@@ -2,15 +2,14 @@ import { StyleSheet } from 'react-native';
 import { palette } from '@/theme/colors';
 import { fontFamily } from '@/theme/typography';
 
-export const loginGateStyles = StyleSheet.create({
+export const loginStyles = StyleSheet.create({
   root: { flex: 1, backgroundColor: palette.white },
   flex: { flex: 1 },
+
   body: {
     flex: 1,
-    // Figma places the logo at y=90 from the top of the screen. The in-flow top bar
-    // (status inset + 44) already consumes that space, so this is only the remaining
-    // gap below it — not the full 90 (which double-counted the bar and pushed the logo
-    // far too low). Logo then lands at ~90 and the CTA block at Figma's y=428.
+    // See LoginGate.styles.ts — logo sits ~16 below the in-flow top bar so it lands at
+    // Figma's y=90, instead of the old 90 which double-counted the bar.
     paddingTop: 16,
     paddingHorizontal: 24,
     paddingBottom: 24,
@@ -20,17 +19,11 @@ export const loginGateStyles = StyleSheet.create({
   logoBlock: { width: 129, height: 218, marginBottom: 120 },
   logoTop: { position: 'absolute', top: 0, right: '2.63%', bottom: '41.54%', left: '4.45%' },
   logoMid: { position: 'absolute', top: '66.85%', right: '0.84%', bottom: '21.42%', left: '0.46%' },
-  logoBottom: {
-    position: 'absolute',
-    top: '83.47%',
-    right: '0.46%',
-    bottom: '0.09%',
-    left: '1.37%',
-  },
+  logoBottom: { position: 'absolute', top: '83.47%', right: '0.46%', bottom: '0.09%', left: '1.37%' },
 
   ctaBlock: { width: '100%', gap: 24, alignItems: 'center' },
-  textBlock: { width: '100%', alignItems: 'center', gap: 16 },
 
+  textBlock: { width: '100%', alignItems: 'center', gap: 16 },
   welcome: {
     fontFamily: fontFamily.alexandria,
     fontSize: 16,
@@ -61,7 +54,7 @@ export const loginGateStyles = StyleSheet.create({
     minWidth: 260,
   },
   googleBtnText: {
-    color: palette.white,
+    color: palette.text.onBrand,
     fontFamily: fontFamily.alexandria,
     fontSize: 14,
     lineHeight: 20,
@@ -89,6 +82,7 @@ export const loginGateStyles = StyleSheet.create({
   },
 
   pressed: { opacity: 0.85 },
+  disabled: { opacity: 0.6 },
 
   terms: {
     fontFamily: fontFamily.alexandriaLight,

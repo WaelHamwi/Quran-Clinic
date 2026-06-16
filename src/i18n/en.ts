@@ -131,9 +131,14 @@ export const en = {
     diseases: 'Ailments',
     diseaseCount: (n: number) => `${n} ailment${n === 1 ? '' : 's'}`,
     recordingCount: (n: number) => `${n} recording${n === 1 ? '' : 's'}`,
-    noResults: (q: string) => `No ailments match "${q}"`,
+    noResults: (q: string) => `No results match "${q}"`,
     searchHint: 'Type at least 2 letters to search',
     emptyCategory: 'No content in this category yet',
+    resultKind: {
+      category: 'Category',
+      subcategory: 'Subcategory',
+      disease: 'Ailment',
+    },
   },
   disease: {
     about: 'About this ailment',

@@ -8,11 +8,11 @@ import { SearchBar } from '@/components/forms/SearchBar';
 import { Loader } from '@/components/common/Loader';
 import { EmptyState } from '@/components/common/EmptyState';
 import { CategoryGrid } from '@/components/lists/CategoryGrid';
-import { DiseaseList } from '@/components/lists/DiseaseList';
+import { SearchResultList } from '@/components/lists/SearchResultList';
 import { GeneralRuqyahButton } from '@/components/players/GeneralRuqyahButton';
 import { AudioPlayer } from '@/components/players/AudioPlayer';
 import { useCategories } from '@/hooks/useCategories';
-import { useDiseaseSearch } from '@/hooks/useDiseaseSearch';
+import { useHospitalSearch } from '@/hooks/useHospitalSearch';
 import { useGeneralRuqyah } from '@/hooks/useGeneralRuqyah';
 import { usePlayer } from '@/hooks/usePlayer';
 import { useRefresh } from '@/hooks/useRefresh';
@@ -25,7 +25,7 @@ export default function HospitalScreen() {
   const { t, isArabic } = useLanguage();
   const router = useRouter();
   const { categories, isLoading, error, refetch } = useCategories();
-  const { query, setQuery, results, isSearching, hasQuery } = useDiseaseSearch();
+  const { query, setQuery, results, isSearching, hasQuery } = useHospitalSearch(categories);
   const { currentRecording } = usePlayer();
   const { playNext, playPrevious, hasPrevious, hasNext, isGeneralMode } = useGeneralRuqyah();
   const { refreshing, onRefresh } = useRefresh(refetch);
@@ -37,8 +37,8 @@ export default function HospitalScreen() {
     },
     [router, categories],
   );
-  const openDisease = useCallback(
-    (slug: string) => router.push(`/hospital/disease/${slug}`),
+  const openResult = useCallback(
+    (route: string) => router.push(route as never),
     [router],
   );
   const handleRetry = useCallback(() => {
@@ -64,9 +64,9 @@ export default function HospitalScreen() {
     body = isSearching ? (
       <Loader message={t.common.loading} />
     ) : (
-      <DiseaseList
-        diseases={results}
-        onItemPress={openDisease}
+      <SearchResultList
+        results={results}
+        onItemPress={openResult}
         ListEmptyComponent={
           <EmptyState icon="search-outline" title={t.hospital.noResults(query)} />
         }

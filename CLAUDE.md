@@ -78,12 +78,20 @@ color: '#181d27',
 | `palette.secondaryGreen[600]` | `#469b34` | Green action buttons |
 | `palette.secondaryGreen[300]` | `#97d88a` | Active dot indicator |
 
-## Style File Convention
+## Style File Convention — TOP PRIORITY, NON-NEGOTIABLE
+
+**Never mix CSS (styles) with TSX. Styles ALWAYS live in their own file.** This rule
+overrides convenience — if a component has an inline `StyleSheet.create`, extract it
+before doing anything else, and never introduce a new one.
 
 - Component styles live in a `ComponentName.styles.ts` file **beside** the component file.
 - Screen-level styles live in `src/styles/screenName.styles.ts`.
-- Never place styles inline in screen or component files (except trivial one-liners like `{ flex: 1 }`).
+- **Never** place a `StyleSheet.create` block inside a `.tsx` file. The only inline styles
+  allowed are trivial one-liners (`{ flex: 1 }`) or values that MUST be dynamic at runtime
+  (e.g. a computed `marginTop` from safe-area insets) — and even those stay minimal.
 - Import styles as a single aliased object: `import { fooStyles as s } from './Foo.styles';`
+- When touching any `.tsx` that still defines styles inline, migrate it to a `.styles.ts`
+  file as part of the change — do not leave new code that violates this rule.
 
 ## Bilingual Content Rule — Arabic + English Required
 
