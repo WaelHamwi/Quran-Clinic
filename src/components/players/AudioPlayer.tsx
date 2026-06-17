@@ -33,9 +33,8 @@ const SKIP_MS = 15000;
 
 // Font size steps: left = كبير (large), right = صغير (small)
 const FONT_STEPS = [22, 20, 18, 16, 14];
-// Speed steps: left = سريعة (fast), right = بطيئة (slow).
-// Mirrors the Mushaf reader's speed set (useAudio PLAYBACK_SPEEDS: 0.5–2×).
-const SPEED_STEPS = [2.0, 1.5, 1.0, 0.75, 0.5];
+// Speed chips, ascending — mirrors the Mushaf reader's set (useAudio PLAYBACK_SPEEDS).
+const SPEED_STEPS = [0.5, 0.75, 1.0, 1.5, 2.0];
 
 const TEXT_COLOR_PRESETS: Array<{ color: string; label: { ar: string; en: string } }> = [
   { color: palette.text.primary,   label: { ar: 'داكن',        en: 'Dark'       } },
@@ -356,16 +355,25 @@ function AudioPlayerBase({
 
             <View style={s.settingsDivider} />
 
-            {/* Reading speed */}
+            {/* Reading speed — Mushaf-style chips (0.5×–2×) */}
             <View style={s.settingsSectionWrap}>
               <Text style={s.settingsSectionTitle}>{strings.speed}</Text>
-              <StepSlider
-                steps={SPEED_STEPS}
-                value={playbackRate}
-                onChange={setRate}
-                leftLabel={strings.speedFast}
-                rightLabel={strings.speedSlow}
-              />
+              <View style={s.speedRow}>
+                {SPEED_STEPS.map((spd) => {
+                  const active = playbackRate === spd;
+                  return (
+                    <TouchableOpacity
+                      key={spd}
+                      style={[s.speedChip, active && s.speedChipActive]}
+                      onPress={() => setRate(spd)}
+                    >
+                      <Text style={[s.speedChipText, active && s.speedChipTextActive]}>
+                        {`${spd}×`}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
             </View>
 
             <View style={s.settingsDivider} />

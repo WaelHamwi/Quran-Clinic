@@ -10,6 +10,7 @@ const OVERLAY_25 = 'rgba(255,255,255,0.25)'; // seek track filled bg
 const OVERLAY_60 = 'rgba(255,255,255,0.60)'; // time text on dark player
 const OVERLAY_85 = 'rgba(255,255,255,0.85)'; // cached badge text on brand bg
 const SHEET_BACKDROP = 'rgba(0,0,0,0.45)'; // bookmark modal backdrop tint
+const ERROR_TINT_15 = 'rgba(240,68,56,0.15)'; // player error banner bg over dark player (palette.system.error[500] @ 15%)
 
 // Figma 18085:1755 — solid sage-green mushaf background.
 // Both stops identical → LinearGradient renders as a flat solid colour.
@@ -147,6 +148,27 @@ export function createReaderStyles(theme: Theme) {
       backgroundColor: palette.brand[25],
       borderWidth: 1,
       borderColor: palette.brand[50],
+    },
+    // Segmented reading-direction control — vertical scroll ↕ vs horizontal pages ↔
+    modeSegment: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      height: 36,
+      borderRadius: 999,
+      backgroundColor: palette.brand[25],
+      borderWidth: 1,
+      borderColor: palette.brand[50],
+      padding: 2,
+    },
+    modeSegmentBtn: {
+      width: 34,
+      height: 30,
+      borderRadius: 999,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    modeSegmentBtnActive: {
+      backgroundColor: palette.brand[500],
     },
     pageContent: {
       paddingTop: 8,
@@ -576,6 +598,25 @@ export function createReaderStyles(theme: Theme) {
       alignItems: 'center',
       justifyContent: 'center',
       gap: 24,
+    },
+
+    // ── Player error banner — shown when a recitation fails to load ──────────────
+    playerError: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      backgroundColor: ERROR_TINT_15, // translucent red over the dark player
+      borderRadius: 10,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      marginVertical: 6,
+    },
+    playerErrorText: {
+      flex: 1,
+      color: palette.text.onBrand,
+      fontSize: 12,
+      lineHeight: 18,
+      fontFamily: fontFamily.alexandriaMedium,
     },
 
     speedRow: {

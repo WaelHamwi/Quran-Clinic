@@ -8,7 +8,10 @@ export const ICON_FOREGROUND = palette.text.secondary;
 export function createHeaderStyles(theme: Theme) {
   return StyleSheet.create({
     'header--homepage': {
-      height: 88,
+      // No fixed height: the Screen already adds the status-bar inset, so the bar sizes
+      // to its row (~44, same as the login bar). The old height:88 was the Figma figure
+      // that *includes* the status bar, which double-counted the inset and left ~44px of
+      // empty space above the greeting.
       backgroundColor: palette.bg.overlay,
       borderBottomWidth: 1,
       borderBottomColor: palette.border.tertiary,
@@ -17,7 +20,6 @@ export function createHeaderStyles(theme: Theme) {
       shadowOffset: { width: 0, height: 16 },
       shadowRadius: 16,
       elevation: 4,
-      justifyContent: 'flex-end',
     },
     header__row: {
       flexDirection: 'row',

@@ -107,6 +107,7 @@ export const en = {
     saved: '✓ Saved',
     save: '↓ Save',
     selectReciterHint: 'Tap to select a reciter and start listening',
+    recitationUnavailable: "This reciter's recitation isn't available for this surah. Please choose another reciter.",
     verses: 'verses',
     bookmarks: 'Bookmarks',
     noBookmarks: 'No bookmarks yet. Tap the bookmark icon to save the current page.',
@@ -119,6 +120,8 @@ export const en = {
     searchHint: 'Examples: God • 2:255',
     searchEmpty: 'No results found',
     verseRef: (surahId: number, verseNumber: number) => `Surah ${surahId} · Verse ${verseNumber}`,
+    readVertical: 'Vertical scroll',
+    readHorizontal: 'Horizontal pages',
   },
   hospital: {
     title: 'The Clinic',

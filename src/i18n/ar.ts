@@ -114,6 +114,7 @@ export const ar: Translations = {
     saved: '✓ محفوظ',
     save: '↓ حفظ',
     selectReciterHint: 'اضغط لاختيار قارئ والاستماع',
+    recitationUnavailable: 'تلاوة هذا القارئ غير متوفرة لهذه السورة. يرجى اختيار قارئ آخر.',
     verses: 'آيات',
     bookmarks: 'الإشارات المرجعية',
     noBookmarks: 'لا توجد إشارات مرجعية بعد. اضغط على أيقونة الإشارة لحفظ الصفحة الحالية.',
@@ -126,6 +127,8 @@ export const ar: Translations = {
     searchHint: 'أمثلة: الله • ٢:٢٥٥',
     searchEmpty: 'لا توجد نتائج',
     verseRef: (surahId: number, verseNumber: number) => `سورة ${surahId} · آية ${verseNumber}`,
+    readVertical: 'تمرير عمودي',
+    readHorizontal: 'صفحات أفقية',
   },
   hospital: {
     title: 'العيادة',

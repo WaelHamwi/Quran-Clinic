@@ -1,7 +1,8 @@
 import { useEffect } from 'react';
-import { View, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, ActivityIndicator } from 'react-native';
 import { router } from 'expo-router';
 import { palette } from '@/theme/colors';
+import { authCallbackStyles as s } from '@/styles/authCallback.styles';
 
 // Fallback handler for the OAuth `quranicclinic://auth-callback` deep link in case it
 // reaches the router instead of being rewritten by +native-intent. Actual auth
@@ -13,17 +14,8 @@ export default function AuthCallback() {
   }, []);
 
   return (
-    <View style={styles.container}>
+    <View style={s.container}>
       <ActivityIndicator color={palette.brand[500]} />
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: palette.white,
-  },
-});

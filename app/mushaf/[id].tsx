@@ -23,6 +23,7 @@ import { ReciterPickerModal } from '@/components/mushaf/ReciterPickerModal';
 import { useTheme } from '@/context/ThemeContext';
 import { useLanguage } from '@/context/LanguageContext';
 import { useAudio, PLAYBACK_SPEEDS, type PlaybackSpeed } from '@/hooks/useAudio';
+import { useReciterAvailability } from '@/hooks/useReciterAvailability';
 import { useSurah } from '@/hooks/useSurah';
 import { useVerseTiming } from '@/hooks/useVerseTiming';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -337,9 +338,16 @@ export default function MushafReaderScreen() {
 
   const currentRecitation = recitations.find((r) => r.reciter_id === selectedReciterId);
 
+  // Detects reciters whose audio actually 404s for this surah so they can be
+  // hidden from the picker (issue: don't show reciters not available here).
+  const { unavailableReciterIds, markUnavailable } = useReciterAvailability(recitations);
+
   const reciters = useMemo(
-    () => recitations.flatMap((r) => (r.reciter ? [r.reciter] : [])),
-    [recitations]
+    () =>
+      recitations.flatMap((r) =>
+        r.reciter && !unavailableReciterIds.has(r.reciter_id) ? [r.reciter] : []
+      ),
+    [recitations, unavailableReciterIds]
   );
 
   const filteredReciters = useMemo(() => {
@@ -499,8 +507,22 @@ export default function MushafReaderScreen() {
     pagerRef.current?.scrollToIndex({ index: page, animated: true });
   }, [activeVerseIndex, displayMode, audio.isPlaying]);
 
+  // When the selected reciter's audio fails to load (e.g. CDN 404), hide that
+  // reciter from the picker so the user can pick one that actually works.
+  useEffect(() => {
+    if (audio.hasError && selectedReciterId) {
+      markUnavailable(selectedReciterId, currentRecitation?.audio_url);
+    }
+  }, [audio.hasError, selectedReciterId, currentRecitation?.audio_url, markUnavailable]);
+
   const handlePlay = useCallback(async () => {
     if (!currentRecitation || !selectedReciterId) return;
+    // No playable audio for this reciter+surah — guide the user to pick another
+    // instead of retrying a URL that will only fail again.
+    if (audio.hasError || unavailableReciterIds.has(selectedReciterId)) {
+      setShowReciterPicker(true);
+      return;
+    }
     if (audio.isPlaying) {
       await audio.pause();
       return;
@@ -514,7 +536,7 @@ export default function MushafReaderScreen() {
       await audio.loadAudio(uri);
     }
     await audio.play();
-  }, [currentRecitation, selectedReciterId, surahId, audio]);
+  }, [currentRecitation, selectedReciterId, surahId, audio, unavailableReciterIds]);
 
   const handleDownload = useCallback(async () => {
     if (!currentRecitation || !selectedReciterId) return;
@@ -705,6 +727,12 @@ export default function MushafReaderScreen() {
 
   const hasAudio = audio.durationMillis > 0;
 
+  // The selected reciter has no playable audio for this surah — either the load
+  // already failed, or the availability probe confirmed a 4xx ahead of time.
+  const selectedReciterUnavailable =
+    selectedReciterId != null && unavailableReciterIds.has(selectedReciterId);
+  const showAudioError = audio.hasError || selectedReciterUnavailable;
+
   // True while the reciter is saying the basmalah before verse 1.
   // Two cases:
   //   • Timing loaded: active while positionMillis < verseTiming[0].timestampFrom (exact phase)
@@ -777,16 +805,36 @@ export default function MushafReaderScreen() {
               </Text>
             </TouchableOpacity>
 
-            <TouchableOpacity
-              style={styles.modeToggle}
-              onPress={() => setDisplayMode((m) => (m === 'continuous' ? 'pages' : 'continuous'))}
-            >
-              <Ionicons
-                name={displayMode === 'continuous' ? 'book-outline' : 'list-outline'}
-                size={18}
-                color={palette.brand[500]}
-              />
-            </TouchableOpacity>
+            {/* Reading direction — vertical scroll ↕ vs horizontal page-turn ↔.
+                Segmented control: drives the same displayMode, no logic change. */}
+            <View style={styles.modeSegment}>
+              <TouchableOpacity
+                style={[styles.modeSegmentBtn, displayMode === 'continuous' && styles.modeSegmentBtnActive]}
+                onPress={() => setDisplayMode('continuous')}
+                activeOpacity={0.8}
+                accessibilityRole="button"
+                accessibilityLabel={t.reader.readVertical}
+              >
+                <Ionicons
+                  name="swap-vertical"
+                  size={17}
+                  color={displayMode === 'continuous' ? palette.text.onBrand : palette.brand[500]}
+                />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modeSegmentBtn, displayMode === 'pages' && styles.modeSegmentBtnActive]}
+                onPress={() => setDisplayMode('pages')}
+                activeOpacity={0.8}
+                accessibilityRole="button"
+                accessibilityLabel={t.reader.readHorizontal}
+              >
+                <Ionicons
+                  name="swap-horizontal"
+                  size={17}
+                  color={displayMode === 'pages' ? palette.text.onBrand : palette.brand[500]}
+                />
+              </TouchableOpacity>
+            </View>
 
             <TouchableOpacity
               style={[styles.fontSizeToggle, fontScaleOpen && styles.fontSizeToggleActive]}
@@ -1057,6 +1105,22 @@ export default function MushafReaderScreen() {
             <Text style={styles.timeText}>{fmt(audio.positionMillis)}</Text>
             <Text style={styles.timeText}>{fmt(audio.durationMillis)}</Text>
           </View>
+
+          {showAudioError && (
+            <TouchableOpacity
+              style={[styles.playerError, isArabic && styles.rowRtl]}
+              onPress={() => setShowReciterPicker(true)}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="alert-circle-outline" size={18} color={palette.text.onBrand} />
+              <Text style={styles.playerErrorText}>{t.reader.recitationUnavailable}</Text>
+              <Ionicons
+                name={isArabic ? 'chevron-back' : 'chevron-forward'}
+                size={16}
+                color={palette.text.onBrand}
+              />
+            </TouchableOpacity>
+          )}
 
           <View style={styles.controls}>
             <TouchableOpacity

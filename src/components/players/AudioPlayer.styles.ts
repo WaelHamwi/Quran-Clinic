@@ -223,6 +223,35 @@ export const audioPlayerStyles = StyleSheet.create({
     textAlign: 'right',
   },
 
+  // ── Speed chips (Mushaf-style, light sheet) ──────────────────────────────
+  speedRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  speedChip: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 8,
+    borderRadius: radius.pill,
+    backgroundColor: palette.brand[25],
+  },
+  speedChipActive: {
+    backgroundColor: palette.brand[500],
+  },
+  speedChipText: {
+    fontFamily: fontFamily.alexandriaMedium,
+    fontSize: 13,
+    lineHeight: 18,
+    color: palette.brand[500],
+  },
+  speedChipTextActive: {
+    color: palette.text.onBrand,
+  },
+
   // ── Step slider ──────────────────────────────────────────────────────────
   stepSliderRow: {
     flexDirection: 'row',
