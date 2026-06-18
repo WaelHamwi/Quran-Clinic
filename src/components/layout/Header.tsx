@@ -1,5 +1,6 @@
 import React, { useCallback, useMemo } from 'react';
 import { Pressable, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import HomeSearch from '@/assets/figma/home-search.svg';
 import HomeUser from '@/assets/figma/home-user.svg';
@@ -33,6 +34,7 @@ function HeaderBase({
   const { theme } = useTheme();
   const { isArabic, t } = useLanguage();
   const router = useRouter();
+  const { top } = useSafeAreaInsets();
   const s = useMemo(() => createHeaderStyles(theme), [theme]);
 
   const handleBack = useCallback(() => {
@@ -42,7 +44,11 @@ function HeaderBase({
 
   if (variant === 'homepage') {
     return (
-      <View style={s['header--homepage']}>
+      // paddingTop = status-bar inset so the patterned background can bleed up
+      // BEHIND this bar (the home Screen no longer pads the top). The translucent
+      // bar then floats over the pattern, separated only by its box shadow — the
+      // header "sits on" the body instead of a solid white strip above it.
+      <View style={[s['header--homepage'], { paddingTop: top }]}>
         <View style={s.header__row}>
           <Pressable
             onPress={onSearchPress}

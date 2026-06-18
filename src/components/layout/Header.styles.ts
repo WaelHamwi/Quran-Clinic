@@ -54,7 +54,7 @@ export function createHeaderStyles(theme: Theme) {
       position: 'absolute',
       top: '16.67%' as unknown as number,
       left: '16.67%' as unknown as number,
-      right: '16.67%' as unknown as number,
+      right: '16.67%' as unknown as number, 
       bottom: '16.67%' as unknown as number,
     },
     header: {

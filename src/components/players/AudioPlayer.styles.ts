@@ -252,67 +252,29 @@ export const audioPlayerStyles = StyleSheet.create({
     color: palette.text.onBrand,
   },
 
-  // ── Step slider ──────────────────────────────────────────────────────────
-  stepSliderRow: {
+  // ── Font size chips (each shows the glyph at its actual size) ─────────────
+  fontRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    paddingHorizontal: 0,
+    justifyContent: 'space-between',
+    gap: 8,
   },
-  stepSliderLabel: {
-    fontFamily: fontFamily.alexandriaMedium,
-    fontSize: 14,
-    lineHeight: 20,
-    color: palette.text.placeholder,
-    textAlign: 'center',
-    minWidth: 36,
-  },
-  stepSliderTrackWrap: {
+  fontChip: {
     flex: 1,
-    height: 40,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: radius.pill,
+    backgroundColor: palette.brand[25],
   },
-  stepSliderBg: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    top: 17,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: TRACK_BG,
-  },
-  stepSliderFill: {
-    position: 'absolute',
-    left: 0,
-    top: 17,
-    height: 6,
-    borderRadius: 3,
+  fontChipActive: {
     backgroundColor: palette.brand[500],
   },
-  stepSliderThumb: {
-    position: 'absolute',
-    width: 38,
-    height: 24,
-    borderRadius: 100,
-    backgroundColor: palette.white,
-    top: 8,
-    shadowColor: palette.shadow,
-    shadowOffset: { width: 0, height: 0.5 },
-    shadowOpacity: 0.24,
-    shadowRadius: 6,
-    elevation: 4,
+  fontChipText: {
+    fontFamily: fontFamily.alexandriaMedium,
+    color: palette.brand[500],
   },
-  stepSliderTicks: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    top: 27,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  stepSliderTick: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: palette.gray[200],
+  fontChipTextActive: {
+    color: palette.text.onBrand,
   },
 });

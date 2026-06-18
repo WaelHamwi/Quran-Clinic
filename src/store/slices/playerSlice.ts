@@ -70,8 +70,17 @@ const playerSlice = createSlice({
     pause(state) {
       state.isPlaying = false;
     },
-    stop() {
-      return initialState;
+    stop(state) {
+      // Reset playback identity but keep the user's session display/playback
+      // preferences so a later replay reflects the speed/font/colour they chose
+      // (the audio engine retains the rate across replay — keep the UI in sync).
+      return {
+        ...initialState,
+        playbackRate: state.playbackRate,
+        textColor: state.textColor,
+        fontSize: state.fontSize,
+        isDarkMode: state.isDarkMode,
+      };
     },
     setProgress(state, action: PayloadAction<{ position: number; duration: number }>) {
       state.positionMillis = action.payload.position;

@@ -7,11 +7,10 @@ export const loginGateStyles = StyleSheet.create({
   flex: { flex: 1 },
   body: {
     flex: 1,
-    // Figma places the logo at y=90 from the top of the screen. The in-flow top bar
-    // (status inset + 44) already consumes that space, so this is only the remaining
-    // gap below it — not the full 90 (which double-counted the bar and pushed the logo
-    // far too low). Logo then lands at ~90 and the CTA block at Figma's y=428.
-    paddingTop: 16,
+    // Matches the Clinic (home) page exactly: a 20px gap below the box-shadow header
+    // (homeScreen__headerWrap paddingTop: 20). Small enough to read as "stuck" to the
+    // header, not the old detached ~90px gap.
+    paddingTop: 20,
     paddingHorizontal: 24,
     paddingBottom: 24,
     alignItems: 'center',

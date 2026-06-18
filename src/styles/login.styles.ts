@@ -8,9 +8,8 @@ export const loginStyles = StyleSheet.create({
 
   body: {
     flex: 1,
-    // See LoginGate.styles.ts — logo sits ~16 below the in-flow top bar so it lands at
-    // Figma's y=90, instead of the old 90 which double-counted the bar.
-    paddingTop: 16,
+    // Matches the Clinic (home) page's 20px header→content gap. See LoginGate.styles.ts.
+    paddingTop: 20,
     paddingHorizontal: 24,
     paddingBottom: 24,
     alignItems: 'center',

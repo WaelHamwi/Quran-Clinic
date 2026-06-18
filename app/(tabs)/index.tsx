@@ -157,7 +157,7 @@ export default function HomeScreen() {
   }
 
   return (
-    <Screen edges={['top']}>
+    <Screen edges={[]}>
       <PatternedBackground />
       <Header variant="homepage" userName={firstName} onSearchPress={handleSearchPress} />
       {body}

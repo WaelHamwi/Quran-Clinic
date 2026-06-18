@@ -6,10 +6,9 @@ export const onboardingPagerStyles = StyleSheet.create({
   root: { flex: 1, backgroundColor: palette.white },
   safe: { flex: 1, alignItems: 'center' },
 
-  // Figma places the illustration at y=138 from the top of the screen. The in-flow top
-  // bar (status inset + 44 ≈ 74) already consumes part of that, so this is the remaining
-  // gap below it (138 − 74) — not the raw 50, which left the illustration sitting too high.
-  illoBlock: { width: 309, height: 294, marginTop: 64, position: 'relative' },
+  // Matches the Clinic (home) page's 20px header→content gap — small, "stuck" to the
+  // box-shadow header (not the old detached gap).
+  illoBlock: { width: 309, height: 294, marginTop: 20, position: 'relative' },
   bgVector: {
     position: 'absolute',
     top: 0,

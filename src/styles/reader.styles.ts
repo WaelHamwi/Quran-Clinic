@@ -175,6 +175,21 @@ export function createReaderStyles(theme: Theme) {
       paddingBottom: 180,
     },
 
+    // Flip toggle — same footprint as modeToggle/fontSizeToggle
+    flipToggle: {
+      width: 36,
+      height: 36,
+      borderRadius: 999,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: palette.brand[25],
+      borderWidth: 1,
+      borderColor: palette.brand[50],
+    },
+    flipToggleActive: {
+      backgroundColor: palette.brand[500],
+      borderColor: palette.brand[500],
+    },
     fontSizeToggle: {
       width: 36,
       height: 36,

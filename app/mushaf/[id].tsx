@@ -1,4 +1,5 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import * as ScreenOrientation from 'expo-screen-orientation';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -308,6 +309,9 @@ export default function MushafReaderScreen() {
   const [bookmarkModalOpen, setBookmarkModalOpen] = useState(false);
   const [fontScale, setFontScale] = useState<FontScale>('md');
   const [fontScaleOpen, setFontScaleOpen] = useState(false);
+  // Rotates the reading content 180° (flip horizontal + vertical) for reading
+  // from the opposite side of a table. Header, toolbar and player stay upright.
+  const [flipped, setFlipped] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<Verse[] | null>(null);
@@ -473,11 +477,32 @@ export default function MushafReaderScreen() {
     audioService.isAudioCached(surahId, selectedReciterId).then(setIsCached);
   }, [currentRecitation, surahId, selectedReciterId]);
 
+  // Lock to landscape when flip is active; restore portrait on toggle-off or unmount
   useEffect(() => {
+    if (flipped) {
+      ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE).catch(() => {});
+    } else {
+      ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP).catch(() => {});
+    }
     return () => {
-      audio.unload();
+      ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP).catch(() => {});
     };
+  }, [flipped]);
+
+  // Unmount cleanup
+  useEffect(() => {
+    return () => { audio.unload(); };
   }, []);
+
+  // setParams doesn't remount — manually reset when the surah changes
+  useEffect(() => {
+    audio.unload();
+    setActiveVerseIndex(-1);
+    setIsCached(false);
+    lastScrolledIndexRef.current = -1;
+    scrollRef.current?.scrollTo({ y: 0, animated: false });
+    pagerRef.current?.scrollToOffset({ offset: 0, animated: false });
+  }, [surahId]);
 
   useEffect(() => {
     if (!surah || audio.durationMillis === 0) { setActiveVerseIndex(-1); return; }
@@ -604,11 +629,11 @@ export default function MushafReaderScreen() {
   }, [refetchSurah, surahId]);
 
   const goToPrev = useCallback(() => {
-    if (surahId > 1) router.replace(`/mushaf/${surahId - 1}` as any);
+    if (surahId > 1) router.setParams({ id: String(surahId - 1) });
   }, [surahId, router]);
 
   const goToNext = useCallback(() => {
-    if (surahId < TOTAL_SURAHS) router.replace(`/mushaf/${surahId + 1}` as any);
+    if (surahId < TOTAL_SURAHS) router.setParams({ id: String(surahId + 1) });
   }, [surahId, router]);
 
   const isCurrentBookmarked = useMemo(
@@ -759,7 +784,7 @@ export default function MushafReaderScreen() {
       <View style={styles.contentWrapper}>
 
         {/* ── Header ──────────────────────────────────────────────────────── */}
-        <View style={styles.header}>
+        <View style={[styles.header, { paddingTop: topInset + 10 }]}>
           {/* Tier 1 — surah navigation (prev · title · next) */}
           <View style={[styles.navRow, isArabic && styles.rowRtl]}>
             <TouchableOpacity
@@ -848,6 +873,17 @@ export default function MushafReaderScreen() {
             </TouchableOpacity>
 
             <TouchableOpacity
+              style={[styles.flipToggle, flipped && styles.flipToggleActive]}
+              onPress={() => setFlipped((v) => !v)}
+            >
+              <Ionicons
+                name="sync-outline"
+                size={18}
+                color={flipped ? palette.text.onBrand : palette.brand[500]}
+              />
+            </TouchableOpacity>
+
+            <TouchableOpacity
               style={styles.modeToggle}
               onPress={() => setSearchOpen(true)}
             >
@@ -881,7 +917,7 @@ export default function MushafReaderScreen() {
         <ScrollView
           ref={scrollRef}
           style={{ flex: 1 }}
-          contentContainerStyle={styles.verseList}
+          contentContainerStyle={[styles.verseList, null]}
           onContentSizeChange={(_w, h) => { contentHeightRef.current = h; }}
           onScroll={(e) => {
             const y = e.nativeEvent.contentOffset.y;
@@ -987,7 +1023,7 @@ export default function MushafReaderScreen() {
             renderItem={({ item: pageVerses, index: pageIdx }) => (
               <ScrollView
                 style={{ width: windowWidth }}
-                contentContainerStyle={styles.pageContent}
+                contentContainerStyle={[styles.pageContent, null]}
                 showsVerticalScrollIndicator={false}
               >
                 {pageIdx === 0 && (

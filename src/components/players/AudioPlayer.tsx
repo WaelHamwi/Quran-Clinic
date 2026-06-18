@@ -31,8 +31,8 @@ import {
 
 const SKIP_MS = 15000;
 
-// Font size steps: left = كبير (large), right = صغير (small)
-const FONT_STEPS = [22, 20, 18, 16, 14];
+// Font size chips, ascending (small → large)
+const FONT_STEPS = [14, 16, 18, 20, 22];
 // Speed chips, ascending — mirrors the Mushaf reader's set (useAudio PLAYBACK_SPEEDS).
 const SPEED_STEPS = [0.5, 0.75, 1.0, 1.5, 2.0];
 
@@ -68,71 +68,6 @@ const SETTINGS_STRINGS = {
     close:      'Close',
   },
 };
-
-// ── Step slider ───────────────────────────────────────────────────────────────
-interface StepSliderProps {
-  steps: number[];
-  value: number;
-  onChange: (v: number) => void;
-  leftLabel: string;
-  rightLabel: string;
-}
-
-function StepSlider({ steps, value, onChange, leftLabel, rightLabel }: StepSliderProps) {
-  const trackWidthRef = useRef(0);
-  // Keep latest callbacks in refs so the PanResponder closure never goes stale.
-  const stepsRef = useRef(steps);
-  stepsRef.current = steps;
-  const onChangeRef = useRef(onChange);
-  onChangeRef.current = onChange;
-
-  const snap = (locationX: number) => {
-    const w = trackWidthRef.current;
-    if (w <= 0) return;
-    const ratio = Math.max(0, Math.min(1, locationX / w));
-    const idx = Math.round(ratio * (stepsRef.current.length - 1));
-    onChangeRef.current(stepsRef.current[idx]);
-  };
-
-  const pan = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: () => true,
-      onPanResponderGrant: (e) => snap(e.nativeEvent.locationX),
-      onPanResponderMove: (e) => snap(e.nativeEvent.locationX),
-    }),
-  ).current;
-
-  const currentIndex = steps.reduce(
-    (best, s, i) => (Math.abs(s - value) < Math.abs(steps[best] - value) ? i : best),
-    0,
-  );
-  const progress = steps.length > 1 ? currentIndex / (steps.length - 1) : 0;
-  const fillPct = `${Math.round(progress * 100)}%` as `${number}%`;
-
-  return (
-    <View style={s.stepSliderRow}>
-      <Text style={s.stepSliderLabel}>{leftLabel}</Text>
-      <View
-        style={s.stepSliderTrackWrap}
-        onLayout={(e: LayoutChangeEvent) => {
-          trackWidthRef.current = e.nativeEvent.layout.width;
-        }}
-        {...pan.panHandlers}
-      >
-        <View style={s.stepSliderBg} />
-        <View style={[s.stepSliderFill, { width: fillPct }]} />
-        <View style={[s.stepSliderThumb, { left: fillPct, transform: [{ translateX: -19 }] }]} />
-        <View style={s.stepSliderTicks}>
-          {steps.map((_, i) => (
-            <View key={i} style={s.stepSliderTick} />
-          ))}
-        </View>
-      </View>
-      <Text style={s.stepSliderLabel}>{rightLabel}</Text>
-    </View>
-  );
-}
 
 // ── Main player component ─────────────────────────────────────────────────────
 export interface AudioPlayerProps {
@@ -341,16 +276,27 @@ function AudioPlayerBase({
 
             <View style={s.settingsDivider} />
 
-            {/* Font size */}
+            {/* Font size — chips showing each size visually */}
             <View style={s.settingsSectionWrap}>
               <Text style={s.settingsSectionTitle}>{strings.fontSize}</Text>
-              <StepSlider
-                steps={FONT_STEPS}
-                value={fontSize}
-                onChange={setFontSize}
-                leftLabel={strings.fontLarge}
-                rightLabel={strings.fontSmall}
-              />
+              <View style={s.fontRow}>
+                {FONT_STEPS.map((size) => {
+                  const active = fontSize === size;
+                  return (
+                    <TouchableOpacity
+                      key={size}
+                      style={[s.fontChip, active && s.fontChipActive]}
+                      onPress={() => setFontSize(size)}
+                    >
+                      <Text
+                        style={[s.fontChipText, active && s.fontChipTextActive, { fontSize: size }]}
+                      >
+                        {isArabic ? 'أ' : 'A'}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
             </View>
 
             <View style={s.settingsDivider} />

@@ -3,7 +3,7 @@
     "name": "Quranic Clinic",
     "slug": "quranic-clinic",
     "version": "1.0.0",
-    "orientation": "portrait",
+    "orientation": "default",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "scheme": "quranicclinic",
@@ -40,7 +40,10 @@
         {
           "action": "VIEW",
           "autoVerify": false,
-          "category": ["BROWSABLE", "DEFAULT"],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ],
           "data": [
             {
               "scheme": "quranicclinic",
@@ -72,7 +75,9 @@
         {
           "locationWhenInUsePermission": "Quranic Clinic uses your location to calculate accurate prayer times for the automatic waking-adhkar reminder."
         }
-      ]
+      ],
+      "expo-asset",
+      "expo-screen-orientation"
     ],
     "owner": "wael-hamwi",
     "runtimeVersion": {

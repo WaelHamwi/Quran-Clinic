@@ -58,6 +58,8 @@ export function FigmaTopBar({ title, showBrandLogo }: FigmaTopBarProps) {
 }
 
 const styles = StyleSheet.create({
+  // Same box shadow as the home header (Header.styles.ts). With no empty gap below it,
+  // this shadow is what separates the bar from the body — header sits ON the content.
   bar: {
     backgroundColor: palette.bg.overlay,
     borderBottomWidth: 1,

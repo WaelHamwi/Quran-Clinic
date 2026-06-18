@@ -43,15 +43,7 @@ export function MainApp() {
           <Stack.Screen name="adhkar" />
           <Stack.Screen name="adhkar/[slug]" />
           <Stack.Screen name="tahsinat" />
-          <Stack.Screen
-            name="mushaf/[id]"
-            options={{
-              headerShown: true,
-              title: t.reader.title,
-              headerStyle: { backgroundColor: theme.headerBg },
-              headerTintColor: '#fff',
-            }}
-          />
+          <Stack.Screen name="mushaf/[id]" options={{ headerShown: false }} />
           <Stack.Screen name="hospital/subcategories/[slug]" />
           <Stack.Screen name="hospital/diseases/[slug]" />
           <Stack.Screen name="hospital/disease/[slug]" />
