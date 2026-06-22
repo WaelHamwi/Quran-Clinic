@@ -13,6 +13,7 @@ return new class extends Migration
             $table->foreignId('adhkar_category_id')->constrained('adhkar_categories')->cascadeOnDelete();
             $table->foreignId('adhkar_section_id')->nullable()->constrained('adhkar_sections')->nullOnDelete();
             $table->json('text')->nullable();
+            $table->string('image')->nullable();
             $table->unsignedInteger('repetitions')->default(1);
             $table->json('hint')->nullable();
             $table->json('daleel')->nullable();

@@ -4,6 +4,7 @@ namespace App\Filament\Resources\AdhkarItems\Schemas;
 
 use App\Models\AdhkarCategory;
 use App\Models\AdhkarSection;
+use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -33,6 +34,13 @@ class AdhkarItemForm
                 ->searchable(),
             Textarea::make('text.ar')->label('Text (Arabic)')->rows(3),
             Textarea::make('text.en')->label('Text (English)')->rows(3),
+            FileUpload::make('image')
+                ->label('Image (optional)')
+                ->image()
+                ->disk('public')
+                ->directory('adhkar-items')
+                ->maxSize(2048)
+                ->helperText('Optional — an item may carry text, an image, or both. Use an image for calligraphy or illustrated dhikr.'),
             TextInput::make('repetitions')->numeric()->minValue(1)->default(1)->required()
                 ->helperText('How many times this dhikr should be repeated.'),
             Textarea::make('hint.ar')->label('Hint (Arabic)')->rows(2)

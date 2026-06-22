@@ -7,8 +7,8 @@ use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
-use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Columns\ToggleColumn;
 use Filament\Tables\Filters\SelectFilter;
 
 class AdhkarSectionsTable
@@ -18,7 +18,9 @@ class AdhkarSectionsTable
         return [
             TextColumn::make('name')->label('Name')->searchable(),
             TextColumn::make('category.name')->label('Category'),
-            IconColumn::make('order_randomly')->label('Random')->boolean(),
+            ToggleColumn::make('order_randomly')
+                ->label('Order Randomly')
+                ->tooltip('When on, this section\'s items are shuffled into a fresh random order every time it is viewed.'),
             TextColumn::make('display_order')->sortable(),
         ];
     }

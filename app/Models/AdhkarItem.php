@@ -12,11 +12,23 @@ class AdhkarItem extends Model
     use HasTranslations;
 
     protected $fillable = [
-        'adhkar_category_id', 'adhkar_section_id', 'text',
+        'adhkar_category_id', 'adhkar_section_id', 'text', 'image',
         'repetitions', 'hint', 'daleel', 'display_order',
     ];
 
     public array $translatable = ['text', 'hint', 'daleel'];
+
+    /** Absolute URL to the uploaded image, or null when none is set. */
+    public function imageUrl(): ?string
+    {
+        if (! $this->image || ! str_contains($this->image, '/')) {
+            return null;
+        }
+
+        return str_starts_with($this->image, 'http')
+            ? $this->image
+            : asset('storage/' . ltrim($this->image, '/'));
+    }
 
     protected function casts(): array
     {

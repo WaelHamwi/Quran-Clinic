@@ -8,6 +8,7 @@ use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
+use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 
@@ -16,6 +17,7 @@ class AdhkarItemsTable
     public static function getColumns(): array
     {
         return [
+            ImageColumn::make('image')->label('Image')->disk('public')->square(),
             TextColumn::make('text')->label('Text')->limit(50)->searchable(),
             TextColumn::make('category.name')->label('Category'),
             TextColumn::make('section.name')->label('Section'),
