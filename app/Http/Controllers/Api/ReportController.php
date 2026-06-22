@@ -19,7 +19,7 @@ class ReportController extends Controller
                 'type'    => 'required|string|in:bug,suggestion',
                 'message' => 'required|string|max:2000',
                 'name'    => 'nullable|string|max:255', // guest-supplied name
-                'image'   => 'nullable|image|max:5120', // 5 MB
+                'image'   => 'nullable|image|max:8192', // 8 MB (matches PHP upload_max_filesize)
             ]);
 
             // Public endpoint: attribute to the user when a Sanctum token is present,
