@@ -16,6 +16,7 @@ use App\Http\Controllers\Api\FeatureFlagController;
 use App\Http\Controllers\Api\FeedbackController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\RecordingController;
+use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\SponsorController;
 use App\Http\Controllers\Api\SubcategoryController;
 use App\Http\Controllers\Api\TahsinatController;
@@ -77,6 +78,10 @@ Route::middleware(['throttle:api'])->group(function () {
     Route::get('/sponsors', [SponsorController::class, 'index']);
     Route::get('/sponsor-screen', [SponsorController::class, 'screen']);
     Route::get('/features', [FeatureFlagController::class, 'index']);
+
+    // Bug reports & improvement suggestions. Public so guests can submit too;
+    // the report is attributed to the user automatically when a token is sent.
+    Route::post('/reports', [ReportController::class, 'store']);
 
     // ── Authenticated user routes ─────────────────────────────────
     Route::middleware('auth:sanctum')->group(function () {

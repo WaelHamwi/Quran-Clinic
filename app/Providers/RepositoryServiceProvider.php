@@ -15,6 +15,7 @@ use App\Repositories\Contracts\NotificationRepositoryInterface;
 use App\Repositories\Contracts\RecitationRepositoryInterface;
 use App\Repositories\Contracts\ReciterRepositoryInterface;
 use App\Repositories\Contracts\RecordingRepositoryInterface;
+use App\Repositories\Contracts\ReportRepositoryInterface;
 use App\Repositories\Contracts\SponsorRepositoryInterface;
 use App\Repositories\Contracts\SurahRepositoryInterface;
 use App\Repositories\Contracts\TahsinatRepositoryInterface;
@@ -28,6 +29,7 @@ use App\Repositories\NotificationRepository;
 use App\Repositories\RecitationRepository;
 use App\Repositories\ReciterRepository;
 use App\Repositories\RecordingRepository;
+use App\Repositories\ReportRepository;
 use App\Repositories\SponsorRepository;
 use App\Repositories\SurahRepository;
 use App\Repositories\TahsinatRepository;
@@ -52,6 +54,7 @@ class RepositoryServiceProvider extends ServiceProvider
             CourseRepositoryInterface::class      => CourseRepository::class,
             SponsorRepositoryInterface::class     => SponsorRepository::class,
             FeedbackRepositoryInterface::class    => FeedbackRepository::class,
+            ReportRepositoryInterface::class      => ReportRepository::class,
             FeatureFlagRepositoryInterface::class => FeatureFlagRepository::class,
             NotificationRepositoryInterface::class => NotificationRepository::class,
         ];
