@@ -33,7 +33,12 @@ class ReportsTable
                 })
                 ->color(fn (string $state) => $state === 'bug' ? 'danger' : 'info'),
             TextColumn::make('message')->limit(60)->wrap(),
-            ImageColumn::make('image_path')->label('Image')->disk('public')->square(),
+            ImageColumn::make('image_path')
+                ->label('Image')
+                ->disk('public')
+                ->size(56)
+                ->extraImgAttributes(['class' => 'rounded-lg object-cover'])
+                ->placeholder('—'),
             TextColumn::make('status')
                 ->badge()
                 ->color(fn (string $state) => match ($state) {

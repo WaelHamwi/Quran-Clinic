@@ -38,6 +38,10 @@ class ReportForm
                 ->directory('reports')
                 ->disabled()
                 ->dehydrated(false)
+                // Large, clickable preview so admins can actually read the screenshot.
+                ->imagePreviewHeight('360')
+                ->openable()
+                ->downloadable()
                 ->visible(fn ($record) => $record?->image_path)
                 ->columnSpanFull(),
             Select::make('status')
