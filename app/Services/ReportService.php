@@ -6,7 +6,6 @@ use App\Models\Report;
 use App\Repositories\Contracts\ReportRepositoryInterface;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 
 class ReportService
 {
@@ -16,6 +15,9 @@ class ReportService
     {
         $payload = [
             'user_id' => $userId,
+            // Only retain a typed name for anonymous (guest) reports — signed-in
+            // users are already identified by their account.
+            'guest_name' => $userId === null ? ($data['name'] ?? null) : null,
             'type'    => $data['type'],
             'message' => $data['message'],
             'status'  => 'new',

@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class Report extends Model
 {
     protected $fillable = [
-        'user_id', 'type', 'message', 'image_path', 'status',
+        'user_id', 'guest_name', 'type', 'message', 'image_path', 'status',
     ];
 
     protected function casts(): array

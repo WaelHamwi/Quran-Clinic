@@ -24,6 +24,11 @@ echo "==> Installing PHP dependencies…"
 export COMPOSER_ALLOW_SUPERUSER=1
 composer install --no-dev --optimize-autoloader --no-interaction
 
+echo "==> Applying PHP-FPM upload limits…"
+# Drop-in overrides (loaded after php.ini) so larger report screenshots upload.
+# The trailing FPM reload below picks these up.
+cp "$APP_DIR/deploy/php-upload.ini" "/etc/php/8.4/fpm/conf.d/99-mashfa-upload.ini"
+
 echo "==> Running database migrations (additive, --force)…"
 # NOTE: this runs only NEW migration files. The dev rule "amend the migration +
 # migrate:fresh" does NOT apply on production — migrate:fresh DROPS ALL DATA.

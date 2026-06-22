@@ -14,11 +14,11 @@ class ReportForm
         return [
             // Reports are user-submitted and immutable from the CMS — only the
             // triage status is editable so admins can track what they've handled.
-            TextInput::make('user.name')
+            TextInput::make('submitted_by')
                 ->label('Submitted by')
                 ->disabled()
                 ->dehydrated(false)
-                ->placeholder('Guest'),
+                ->formatStateUsing(fn ($record) => $record?->user?->name ?? $record?->guest_name ?? 'Guest'),
             Select::make('type')
                 ->options([
                     'bug'        => 'Technical bug',

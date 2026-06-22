@@ -9,16 +9,21 @@ use Filament\Actions\EditAction;
 use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
+use Illuminate\Database\Eloquent\Builder;
 
 class ReportsTable
 {
     public static function getColumns(): array
     {
         return [
-            TextColumn::make('user.name')
+            TextColumn::make('submitted_by')
                 ->label('User')
-                ->default('Guest')
-                ->searchable(),
+                // Signed-in account name, else the guest-typed name, else a marker.
+                ->state(fn ($record) => $record->user?->name ?? $record->guest_name ?? 'Guest')
+                ->description(fn ($record) => $record->user ? null : 'Guest')
+                ->searchable(query: fn (Builder $query, string $search) => $query
+                    ->whereHas('user', fn (Builder $q) => $q->where('name', 'like', "%{$search}%"))
+                    ->orWhere('guest_name', 'like', "%{$search}%")),
             TextColumn::make('type')
                 ->badge()
                 ->formatStateUsing(fn (string $state) => match ($state) {

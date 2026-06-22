@@ -18,6 +18,7 @@ class ReportController extends Controller
             $data = $request->validate([
                 'type'    => 'required|string|in:bug,suggestion',
                 'message' => 'required|string|max:2000',
+                'name'    => 'nullable|string|max:255', // guest-supplied name
                 'image'   => 'nullable|image|max:5120', // 5 MB
             ]);
 
