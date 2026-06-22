@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Users;
 
 use App\Filament\Resources\Users\Pages;
+use App\Filament\Resources\Users\RelationManagers;
 use App\Filament\Resources\Users\Schemas\UserForm;
 use App\Filament\Resources\Users\Tables\UsersTable;
 use App\Models\User;
@@ -37,6 +38,17 @@ class UserResource extends Resource
             ->actions(UsersTable::getActions())
             ->bulkActions(UsersTable::getBulkActions())
             ->defaultSort('created_at', 'desc');
+    }
+
+    // Per-user activity surfaced on the user's edit page: what they saved,
+    // their reminder preferences, and the reports/suggestions they sent.
+    public static function getRelations(): array
+    {
+        return [
+            RelationManagers\FavoritesRelationManager::class,
+            RelationManagers\NotificationPreferenceRelationManager::class,
+            RelationManagers\ReportsRelationManager::class,
+        ];
     }
 
     public static function getPages(): array

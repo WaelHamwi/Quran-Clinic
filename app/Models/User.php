@@ -68,6 +68,11 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, HasName
         return $this->hasMany(Feedback::class);
     }
 
+    public function reports(): HasMany
+    {
+        return $this->hasMany(Report::class);
+    }
+
     public function notificationPreference(): HasOne
     {
         return $this->hasOne(NotificationPreference::class);
