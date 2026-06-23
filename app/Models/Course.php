@@ -11,11 +11,14 @@ class Course extends Model
     use HasTranslations;
 
     protected $fillable = [
-        'title', 'description', 'instructor_name', 'price', 'start_date',
+        'title', 'description', 'target_audience', 'course_topics', 'registration_info',
+        'instructor_name', 'price', 'start_date', 'image_url',
         'whatsapp_link', 'is_coming_soon', 'is_active', 'display_order',
     ];
 
-    public array $translatable = ['title', 'description'];
+    public array $translatable = [
+        'title', 'description', 'target_audience', 'course_topics', 'registration_info',
+    ];
 
     protected function casts(): array
     {
