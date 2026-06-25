@@ -5,10 +5,14 @@ import { useRouter } from 'expo-router';
 import HomeSearch from '@/assets/figma/home-search.svg';
 import HomeUser from '@/assets/figma/home-user.svg';
 import HomeUserWrap from '@/assets/figma/home-user-wrap.svg';
+import HomeBell from '@/assets/figma/home-bell.svg';
+import HomeBellDot from '@/assets/figma/home-bell-dot.svg';
 import { useTheme } from '@/context/ThemeContext';
 import { useLanguage } from '@/context/LanguageContext';
+import { useAppSelector } from '@/store/hooks';
+import { selectInboxUnreadCount } from '@/store/slices/notificationInboxSlice';
 import { IconButton } from '@/components/common/IconButton';
-import { createHeaderStyles, ICON_FOREGROUND } from './Header.styles';
+import { createHeaderStyles, ICON_FOREGROUND, BELL_DOT_COLOR } from './Header.styles';
 
 interface HeaderProps {
   title?: string;
@@ -36,11 +40,15 @@ function HeaderBase({
   const router = useRouter();
   const { top } = useSafeAreaInsets();
   const s = useMemo(() => createHeaderStyles(theme), [theme]);
+  const unreadCount = useAppSelector(selectInboxUnreadCount);
 
   const handleBack = useCallback(() => {
     if (onBack) onBack();
     else if (router.canGoBack()) router.back();
   }, [onBack, router]);
+
+  // The bell opens the in-app notification inbox (delivered adhkar reminders).
+  const goNotifications = useCallback(() => router.push('/notification-inbox'), [router]);
 
   if (variant === 'homepage') {
     return (
@@ -58,6 +66,20 @@ function HeaderBase({
             style={s.header__icon}
           >
             <HomeSearch width="100%" height="100%" color={ICON_FOREGROUND} />
+          </Pressable>
+          <Pressable
+            onPress={goNotifications}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel={t.notifications.inboxTitle}
+            style={s.header__bell}
+          >
+            <HomeBell width="100%" height="100%" color={ICON_FOREGROUND} />
+            {unreadCount > 0 ? (
+              <View style={s.header__bellDot} pointerEvents="none">
+                <HomeBellDot width="100%" height="100%" color={BELL_DOT_COLOR} />
+              </View>
+            ) : null}
           </Pressable>
           <View style={s.header__greetingGroup}>
             <Text style={s.header__greeting} numberOfLines={1}>

@@ -43,8 +43,10 @@ export function flattenSectioned<TItem extends OrderableItem>(
   const out: TItem[] = [];
 
   for (const section of [...(category.sections ?? [])].sort(byOrder)) {
-    const items = [...(section.items ?? [])].sort(byOrder);
-    out.push(...(section.order_randomly ? shuffle(items) : items));
+    const items = section.items ?? [];
+    // Randomized sections ignore each item's order number and reshuffle on every
+    // view; ordered sections follow the manual order number (display_order).
+    out.push(...(section.order_randomly ? shuffle(items) : [...items].sort(byOrder)));
   }
 
   out.push(...[...(category.items ?? [])].sort(byOrder));

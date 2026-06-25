@@ -38,3 +38,6 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# Play Store service-account key (NEVER commit)
+/credentials/

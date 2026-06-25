@@ -58,17 +58,16 @@ export function FigmaTopBar({ title, showBrandLogo }: FigmaTopBarProps) {
 }
 
 const styles = StyleSheet.create({
-  // Same box shadow as the home header (Header.styles.ts). With no empty gap below it,
-  // this shadow is what separates the bar from the body — header sits ON the content.
+  // Figma "Shadows/xl" as a real CSS box-shadow — renders a soft blurred drop
+  // shadow on BOTH iOS and Android (New Architecture). The header blends into the
+  // patterned body as one piece; this shadow is the only thing distinguishing it.
+  // (Android `elevation` is intentionally NOT used — it won't cast a shadow under a
+  // translucent background.)
   bar: {
     backgroundColor: palette.bg.overlay,
     borderBottomWidth: 1,
     borderBottomColor: palette.border.tertiary,
-    shadowColor: palette.shadow,
-    shadowOpacity: 0.08,
-    shadowOffset: { width: 0, height: 16 },
-    shadowRadius: 16,
-    elevation: 4,
+    boxShadow: '0px 12px 16px -4px rgba(49,57,64,0.12)',
   },
   // Fixed 44 px — the standard iOS nav bar height, adapts to any device's
   // status-bar height because paddingTop is injected inline from insets.top.

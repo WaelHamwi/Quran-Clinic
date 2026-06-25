@@ -9,58 +9,59 @@ export const courseCardStyles = StyleSheet.create({
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: palette.border.secondary,
-    padding: spacing.lg,
-    gap: spacing.sm,
+    overflow: 'hidden',
   },
 
-  headerRow: {
-    flexDirection: 'row-reverse',
-    justifyContent: 'space-between',
+  // Cover image header with the date / coming-soon pill in the top-right corner.
+  cover: {
+    height: 112,
+    flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: spacing.sm,
+    justifyContent: 'flex-end',
+    padding: spacing.md,
+  },
+
+  coverImage: {
+    borderTopLeftRadius: radius.md,
+    borderTopRightRadius: radius.md,
+  },
+
+  datePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    backgroundColor: palette.bg.primary,
+    borderRadius: radius.pill,
+    paddingLeft: 10,
+    paddingRight: spacing.sm,
+    paddingVertical: 2,
+  },
+
+  datePillText: {
+    fontFamily: fontFamily.alexandria,
+    fontSize: fontSize.xs,
+    lineHeight: lineHeight.xs,
+    color: palette.text.primary,
+  },
+
+  body: {
+    padding: spacing.md,
+    gap: spacing.md,
+  },
+
+  textGroup: {
+    gap: spacing.xs,
   },
 
   title: {
-    flex: 1,
-    fontFamily: fontFamily.alexandriaBold,
-    fontSize: fontSize.md,
-    lineHeight: lineHeight.md,
-    color: palette.text.primary,
-    textAlign: 'right',
-  },
-
-  badge: {
-    backgroundColor: palette.brand[25],
-    borderRadius: radius.pill,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 3,
-    flexShrink: 0,
-  },
-
-  badgeText: {
-    fontFamily: fontFamily.alexandriaMedium,
-    fontSize: fontSize.xs,
-    lineHeight: lineHeight.xs,
-    color: palette.brand[600],
-  },
-
-  instructor: {
-    fontFamily: fontFamily.alexandria,
-    fontSize: fontSize.sm,
-    lineHeight: lineHeight.sm,
-    color: palette.text.secondary,
-    textAlign: 'right',
-  },
-
-  price: {
     fontFamily: fontFamily.alexandriaMedium,
     fontSize: fontSize.sm,
     lineHeight: lineHeight.sm,
-    color: palette.brand[600],
+    color: palette.brand[500],
     textAlign: 'right',
   },
 
-  date: {
+  description: {
     fontFamily: fontFamily.alexandriaLight,
     fontSize: fontSize.xs,
     lineHeight: lineHeight.xs,
@@ -68,20 +69,61 @@ export const courseCardStyles = StyleSheet.create({
     textAlign: 'right',
   },
 
-  detailsBtn: {
-    height: 40,
-    borderRadius: radius.pill,
-    borderWidth: 1,
-    borderColor: palette.brand[500],
+  instructorPill: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: spacing.xs,
+    gap: spacing.xs,
+    backgroundColor: palette.brand[25],
+    borderRadius: radius.sm,
+    padding: spacing.xs,
+  },
+
+  instructorText: {
+    flex: 1,
+    fontFamily: fontFamily.alexandria,
+    fontSize: fontSize.xs,
+    lineHeight: lineHeight.xs,
+    color: palette.brand[500],
+    textAlign: 'right',
+  },
+
+  footerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+
+  detailsBtn: {
+    backgroundColor: palette.brand[500],
+    borderRadius: radius.sm,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
   },
 
   detailsBtnText: {
-    fontFamily: fontFamily.alexandriaMedium,
-    fontSize: fontSize.sm,
-    lineHeight: lineHeight.sm,
+    fontFamily: fontFamily.alexandria,
+    fontSize: fontSize.xs,
+    lineHeight: lineHeight.xs,
+    color: palette.text.onBrand,
+  },
+
+  priceBlock: {
+    alignItems: 'flex-end',
+  },
+
+  price: {
+    fontFamily: fontFamily.alexandriaBold,
+    fontSize: fontSize.lg,
+    lineHeight: lineHeight.lg,
     color: palette.brand[500],
+    textAlign: 'right',
+  },
+
+  priceSuffix: {
+    fontFamily: fontFamily.alexandriaLight,
+    fontSize: fontSize.xs,
+    lineHeight: lineHeight.xs,
+    color: palette.text.tertiary,
+    textAlign: 'right',
   },
 });

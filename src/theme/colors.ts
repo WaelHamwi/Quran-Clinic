@@ -74,6 +74,7 @@ export const palette = {
     disabledSubtle: '#d5d7da',
   },
   gray: {
+    50: '#f8f8f8', // Figma sponsor logo box background (18272:3686)
     100: '#f5f5f5',
     200: '#e9eaeb',
     400: '#a4a7ae',

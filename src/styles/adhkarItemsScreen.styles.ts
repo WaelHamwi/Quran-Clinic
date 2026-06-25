@@ -32,6 +32,11 @@ export const adhkarItemsScreenStyles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingBottom: 20,
   },
+  image: {
+    width: '100%',
+    height: 220,
+    borderRadius: radius.md,
+  },
   arabicText: {
     fontFamily: fontFamily.arabic,
     fontSize: 22,

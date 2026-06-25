@@ -48,24 +48,19 @@ const SETTINGS_STRINGS = {
   ar: {
     darkMode:   'الوضع الداكن',
     fontSize:   'حجم الخط',
-    fontLarge:  'كبير',
-    fontSmall:  'صغير',
     speed:      'سرعة القراءة',
-    speedFast:  'سريعة',
-    speedSlow:  'بطيئة',
     colorLabel: 'لون الخط',
     close:      'إغلاق',
+    // Font-size labels, smallest → largest (must match FONT_STEPS order).
+    fontSizes:  ['صغير جدًا', 'صغير', 'متوسط', 'كبير', 'كبير جدًا'],
   },
   en: {
     darkMode:   'Dark Mode',
     fontSize:   'Font Size',
-    fontLarge:  'Large',
-    fontSmall:  'Small',
     speed:      'Reading Speed',
-    speedFast:  'Fast',
-    speedSlow:  'Slow',
     colorLabel: 'Text Color',
     close:      'Close',
+    fontSizes:  ['XS', 'S', 'M', 'L', 'XL'],
   },
 };
 
@@ -280,7 +275,7 @@ function AudioPlayerBase({
             <View style={s.settingsSectionWrap}>
               <Text style={s.settingsSectionTitle}>{strings.fontSize}</Text>
               <View style={s.fontRow}>
-                {FONT_STEPS.map((size) => {
+                {FONT_STEPS.map((size, idx) => {
                   const active = fontSize === size;
                   return (
                     <TouchableOpacity
@@ -289,9 +284,11 @@ function AudioPlayerBase({
                       onPress={() => setFontSize(size)}
                     >
                       <Text
-                        style={[s.fontChipText, active && s.fontChipTextActive, { fontSize: size }]}
+                        style={[s.fontChipText, active && s.fontChipTextActive]}
+                        numberOfLines={1}
+                        adjustsFontSizeToFit
                       >
-                        {isArabic ? 'أ' : 'A'}
+                        {strings.fontSizes[idx]}
                       </Text>
                     </TouchableOpacity>
                   );

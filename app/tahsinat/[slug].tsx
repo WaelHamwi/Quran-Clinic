@@ -29,6 +29,7 @@ export default function TahsinatItemsScreen() {
 
   const item = items[currentIndex] ?? null;
   const isLast = currentIndex >= items.length - 1;
+  const isFirst = currentIndex <= 0;
   const label = item ? pickText(item.label, isArabic) : null;
   const arabic = item ? pickText(item.text, true) : '';
   const hint = item ? pickText(item.hint, isArabic) : null;
@@ -43,6 +44,12 @@ export default function TahsinatItemsScreen() {
     setCurrentIndex((i) => i + 1);
     setCount(0);
   }, [isLast]);
+
+  const handlePrevious = useCallback(() => {
+    if (isFirst) return;
+    setCurrentIndex((i) => i - 1);
+    setCount(0);
+  }, [isFirst]);
 
   const handleRetry = useCallback(() => refetch(), [refetch]);
 
@@ -111,20 +118,36 @@ export default function TahsinatItemsScreen() {
             </Text>
           </View>
 
-          <Pressable
-            onPress={handleNext}
-            style={[s.nextBtn, isLast && s.nextBtnDisabled]}
-            disabled={isLast}
-          >
-            <Ionicons
-              name={isArabic ? 'arrow-back' : 'arrow-forward'}
-              size={20}
-              color={palette.brand[500]}
-            />
-            <Text style={s.nextBtnText}>
-              {isLast ? t.tahsinat.done : t.tahsinat.next}
-            </Text>
-          </Pressable>
+          {/* Next (left) + Previous (right) — RTL order, mirrors Adhkar */}
+          <View style={s.navRow}>
+            <Pressable
+              onPress={handleNext}
+              style={[s.navBtn, isLast && s.navBtnDisabled]}
+              disabled={isLast}
+            >
+              <Ionicons
+                name={isArabic ? 'arrow-back' : 'arrow-forward'}
+                size={20}
+                color={palette.brand[500]}
+              />
+              <Text style={s.navBtnText}>
+                {isLast ? t.tahsinat.done : t.tahsinat.next}
+              </Text>
+            </Pressable>
+
+            <Pressable
+              onPress={handlePrevious}
+              style={[s.navBtn, isFirst && s.navBtnDisabled]}
+              disabled={isFirst}
+            >
+              <Text style={s.navBtnText}>{t.tahsinat.previous}</Text>
+              <Ionicons
+                name={isArabic ? 'arrow-forward' : 'arrow-back'}
+                size={20}
+                color={palette.brand[500]}
+              />
+            </Pressable>
+          </View>
         </View>
       </View>
     </Screen>

@@ -32,6 +32,8 @@ export interface AdhkarItem {
   category_id: number;
   section_id: number | null;
   text: Translatable;
+  /** Absolute URL to an uploaded image, or null. An item may be text, image, or both. */
+  image?: string | null;
   repetitions: number;
   hint: Translatable;
   daleel: Translatable;

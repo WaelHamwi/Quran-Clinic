@@ -261,9 +261,10 @@ export const audioPlayerStyles = StyleSheet.create({
   },
   fontChip: {
     flex: 1,
-    height: 44,
     alignItems: 'center',
     justifyContent: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 4,
     borderRadius: radius.pill,
     backgroundColor: palette.brand[25],
   },
@@ -272,6 +273,8 @@ export const audioPlayerStyles = StyleSheet.create({
   },
   fontChipText: {
     fontFamily: fontFamily.alexandriaMedium,
+    fontSize: 13,
+    lineHeight: 18,
     color: palette.brand[500],
   },
   fontChipTextActive: {

@@ -144,6 +144,28 @@ const title = 'المصحف';
 - It lives in the Redux store (or a dedicated i18n context) — never derive it from device locale alone without a user preference fallback.
 - Default locale: `'ar'`.
 
+## Testing Convention
+
+Runner: **Jest with the `jest-expo` preset** (`jest.config.js`). Config maps the `@/` alias to
+`src/` and matches `src/**/*.test.{ts,tsx}`.
+
+```bash
+npm test            # run once
+npm run test:watch  # watch mode
+```
+
+- **Co-locate** tests in a `__tests__/` folder next to the code (e.g.
+  `src/utils/__tests__/validators.test.ts`).
+- **Start with pure functions** — `src/utils/*` (validators, formatters, mushafPages, etc.). They
+  need no native mocking and run fast.
+- A module that imports `@/services/api`, `expo-*`, or other native modules must be **mocked**
+  (`jest.mock('@/services/api', () => ({ API_URL: 'http://test/api' }))`). `jest-expo` already
+  mocks most Expo native modules.
+- **Component tests** need `@testing-library/react-native` + `react-test-renderer` (not yet
+  installed — add them when the first component test lands).
+- Never start Expo to run tests; Jest runs standalone.
+- Bilingual/locale logic: when testing a locale selector, assert **both** `ar` and `en` paths.
+
 ## Server / Port Convention
 
 Never start Expo or any dev server. The user runs the terminal themselves.

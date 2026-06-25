@@ -1,5 +1,6 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
+import { Image } from 'expo-image';
 import { useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Screen } from '@/components/layout/Screen';
@@ -31,6 +32,7 @@ export default function AdhkarItemsScreen() {
 
   const item = items[currentIndex] ?? null;
   const isLast = currentIndex >= items.length - 1;
+  const image = item?.image ?? null;
   const arabic = item ? pickText(item.text, true) : '';
   const hint = item ? pickText(item.hint, isArabic) : null;
   const daleel = item ? pickText(item.daleel, isArabic) : null;
@@ -105,6 +107,9 @@ export default function AdhkarItemsScreen() {
           <View style={s.card}>
             {/* Text + hint + optional daleel + circular counter */}
             <View style={s.cardContent}>
+              {image ? (
+                <Image source={{ uri: image }} style={s.image} contentFit="contain" />
+              ) : null}
               {arabic ? <Text style={s.arabicText}>{arabic}</Text> : null}
               {hint ? <Text style={s.hintText}>{hint}</Text> : null}
               {showDaleel && daleel ? (

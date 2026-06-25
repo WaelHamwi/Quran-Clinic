@@ -10,8 +10,10 @@ import {
   View,
 } from 'react-native';
 import { router } from 'expo-router';
+import * as ImagePicker from 'expo-image-picker';
 import { UserAvatar } from '@/components/common/UserAvatar';
 import { Ionicons } from '@expo/vector-icons';
+import { persistAvatar } from '@/services/avatarStorage';
 import { Screen } from '@/components/layout/Screen';
 import { PatternedBackground } from '@/components/layout/PatternedBackground';
 import { Header } from '@/components/layout/Header';
@@ -35,17 +37,41 @@ function resolveCountry(value?: string | null): Country | null {
 }
 
 export default function EditProfileScreen() {
-  const { user, updateProfile } = useAuth();
+  const { profile, isGuest, updateProfile } = useAuth();
   const { t, isArabic, language } = useLanguage();
   const dispatch = useAppDispatch();
 
-  const [fullName, setFullName] = useState<string>(user?.name ?? '');
-  const [email] = useState<string>(user?.email ?? '');
-  const [phone, setPhone] = useState<string>(user?.phone ?? '');
-  const [country, setCountry] = useState<Country | null>(resolveCountry(user?.country));
-  const [gender, setGender] = useState<Gender>(user?.gender === 'female' ? 'female' : 'male');
+  const [fullName, setFullName] = useState<string>(profile?.name ?? '');
+  const [email] = useState<string>(profile?.email ?? '');
+  const [phone, setPhone] = useState<string>(profile?.phone ?? '');
+  const [country, setCountry] = useState<Country | null>(resolveCountry(profile?.country));
+  const [gender, setGender] = useState<Gender>(profile?.gender === 'female' ? 'female' : 'male');
+  const [avatar, setAvatar] = useState<string | null>(profile?.avatar_path ?? null);
   const [countryPickerOpen, setCountryPickerOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  // Guests can set a profile picture from their photo library; the chosen image is copied to
+  // permanent app storage and persisted locally on save. (Signed-in users keep their Google
+  // avatar — there is no backend image-upload endpoint, so editing is gated to guests.)
+  const handlePickAvatar = async () => {
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) {
+      dispatch(showToast({ message: t.editProfile.photoPermission, type: 'error' }));
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.7,
+    });
+    if (result.canceled || !result.assets?.length) return;
+    try {
+      setAvatar(await persistAvatar(result.assets[0].uri));
+    } catch {
+      dispatch(showToast({ message: t.editProfile.errorMessage, type: 'error' }));
+    }
+  };
 
   const countryLabel = country
     ? (language === 'ar' ? country.ar : country.en)
@@ -67,6 +93,8 @@ export default function EditProfileScreen() {
         // Persist the canonical English name so the value is language-agnostic in the DB.
         country: country?.en ?? null,
         gender,
+        // Avatar is a local image — only meaningful for the on-device guest profile.
+        ...(isGuest ? { avatar_path: avatar } : {}),
       });
       dispatch(showToast({ message: t.editProfile.successMessage, type: 'success' }));
       if (router.canGoBack()) router.back();
@@ -96,10 +124,19 @@ export default function EditProfileScreen() {
           keyboardDismissMode="interactive"
         >
 
-          {/* Profile avatar */}
+          {/* Profile avatar — tappable for guests to pick a picture from their library. */}
           <View style={s.avatarSection}>
-            <UserAvatar uri={user?.avatar_path} name={fullName || user?.name} size={80} />
-            <Text style={s.avatarName}>{fullName || user?.name}</Text>
+            {isGuest ? (
+              <Pressable style={s.avatarPressable} onPress={handlePickAvatar}>
+                <UserAvatar uri={avatar} name={fullName || profile?.name} size={80} />
+                <View style={s.avatarEditBadge}>
+                  <Ionicons name="camera" size={15} color={palette.text.onBrand} />
+                </View>
+              </Pressable>
+            ) : (
+              <UserAvatar uri={avatar} name={fullName || profile?.name} size={80} />
+            )}
+            <Text style={s.avatarName}>{fullName || profile?.name}</Text>
           </View>
 
           {/* Full Name */}
@@ -120,23 +157,25 @@ export default function EditProfileScreen() {
             </View>
           </View>
 
-          {/* Email (read-only) */}
-          <View style={s.fieldGroup}>
-            <Text style={[s.label, isArabic && s.labelRtl]}>{t.editProfile.email}</Text>
-            <View style={[s.inputRow, s.inputRowDisabled, isArabic && s.inputRowRtl]}>
-              <View style={s.inputIcon}>
-                <Ionicons name="mail-outline" size={16} color={palette.text.secondary} />
+          {/* Email (read-only) — only signed-in users have one; guests have no account email. */}
+          {!isGuest && (
+            <View style={s.fieldGroup}>
+              <Text style={[s.label, isArabic && s.labelRtl]}>{t.editProfile.email}</Text>
+              <View style={[s.inputRow, s.inputRowDisabled, isArabic && s.inputRowRtl]}>
+                <View style={s.inputIcon}>
+                  <Ionicons name="mail-outline" size={16} color={palette.text.secondary} />
+                </View>
+                <TextInput
+                  style={s.input}
+                  value={email}
+                  editable={false}
+                  textAlign={isArabic ? 'right' : 'left'}
+                  placeholderTextColor={palette.text.placeholder}
+                />
               </View>
-              <TextInput
-                style={s.input}
-                value={email}
-                editable={false}
-                textAlign={isArabic ? 'right' : 'left'}
-                placeholderTextColor={palette.text.placeholder}
-              />
+              <Text style={[s.hint, isArabic && s.hintRtl]}>{t.editProfile.emailReadOnly}</Text>
             </View>
-            <Text style={[s.hint, isArabic && s.hintRtl]}>{t.editProfile.emailReadOnly}</Text>
-          </View>
+          )}
 
           {/* Phone */}
           <View style={s.fieldGroup}>

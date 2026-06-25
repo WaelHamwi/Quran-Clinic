@@ -17,6 +17,7 @@ import { rootReducer, type RootState } from '@/store/rootReducer';
 import type { CompletedDownload } from '@/store/slices/downloadsSlice';
 import { clearAuth } from '@/store/slices/authSlice';
 import { setUnauthorizedHandler } from '@/services/apiClient';
+import { playCountListener } from '@/store/middleware/playCountListener';
 
 type DownloadsSlice = RootState['downloads'];
 type DownloadsPersisted = Pick<DownloadsSlice, 'completed' | 'wifiOnly' | 'tasks'>;
@@ -64,6 +65,7 @@ const onboardingTransform = createTransform<OnboardingSlice, OnboardingPersisted
 );
 
 // v2: reset hasCompletedOnboarding so all existing devices see onboarding on next launch.
+// v3: favorites moved from numeric ids to composite `${kind}:${id}` keys + carry a route.
 const migrations = {
   2: (state: any) => ({
     ...state,
@@ -73,17 +75,35 @@ const migrations = {
       currentStep: 0,
     },
   }),
+  3: (state: any) => {
+    const oldItems = state?.favorites?.items ?? {};
+    const items: Record<string, any> = {};
+    for (const [key, value] of Object.entries<any>(oldItems)) {
+      // Skip entries already migrated (composite string keys).
+      if (key.includes(':')) {
+        items[key] = value;
+        continue;
+      }
+      const id = value?.id ?? Number(key);
+      items[`disease:${id}`] = {
+        ...value,
+        favoriteKind: 'disease',
+        route: `/hospital/disease/${value?.slug ?? ''}`,
+      };
+    }
+    return { ...state, favorites: { ...state?.favorites, items } };
+  },
 };
 
 const persistConfig: PersistConfig<RootState> = {
   key: 'root',
-  version: 2,
+  version: 3,
   storage: AsyncStorage,
   // Batch writes: download progress dispatches many times/sec; cap persistence to ~1 write/s.
   throttle: 1000,
   migrate: createMigrate(migrations as any, { debug: false }),
   // `player` and `ui` are intentionally ephemeral.
-  whitelist: ['auth', 'favorites', 'readings', 'features', 'onboarding', 'notifications', 'downloads', 'offlineQueue'],
+  whitelist: ['auth', 'favorites', 'readings', 'features', 'onboarding', 'notifications', 'notificationInbox', 'downloads', 'offlineQueue'],
   transforms: [downloadsTransform, onboardingTransform],
 };
 
@@ -97,7 +117,7 @@ export const store = configureStore({
       serializableCheck: {
         ignoredActions: [FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER],
       },
-    }),
+    }).prepend(playCountListener.middleware),
 });
 
 export const persistor = persistStore(store);

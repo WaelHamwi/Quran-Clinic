@@ -1,23 +1,19 @@
-import React, { useCallback, useMemo } from 'react';
-import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
+import React, { useCallback } from 'react';
+import { Linking, Pressable, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '@/context/ThemeContext';
 import { useLanguage } from '@/context/LanguageContext';
-import type { Theme } from '@/theme/colors';
-import { spacing, radius } from '@/theme/spacing';
-import { fontSize, fontWeight } from '@/theme/typography';
-import { pickText } from '@/utils/formatters';
+import { palette } from '@/theme/colors';
+import { pickText, resolveMediaUrl } from '@/utils/formatters';
 import type { Sponsor } from '@/types/sponsor';
+import { sponsorCardStyles as s } from './SponsorCard.styles';
 
 interface SponsorCardProps {
   sponsor: Sponsor;
 }
 
 function SponsorCardBase({ sponsor }: SponsorCardProps) {
-  const { theme } = useTheme();
-  const { isArabic } = useLanguage();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const { t, isArabic } = useLanguage();
 
   const openSite = useCallback(() => {
     if (sponsor.website_url) Linking.openURL(sponsor.website_url).catch(() => {});
@@ -27,50 +23,44 @@ function SponsorCardBase({ sponsor }: SponsorCardProps) {
     <Pressable
       onPress={openSite}
       disabled={!sponsor.website_url}
-      style={({ pressed }) => [styles.card, pressed && styles.pressed]}
+      style={({ pressed }) => [s.card, isArabic ? s.cardRtl : s.cardLtr, pressed && s.pressed]}
     >
-      <View style={styles.logoWrap}>
-        {sponsor.logo_url ? (
-          <Image source={sponsor.logo_url} style={styles.logo} contentFit="contain" />
-        ) : (
-          <Ionicons name="business" size={26} color={theme.primary} />
-        )}
+      {/* Open-link arrow — Figma "arrow2-right" rotated to point outward (NW in RTL). */}
+      <View style={s.arrowWrap}>
+        <Ionicons
+          name="arrow-up"
+          size={18}
+          color={palette.text.tertiary}
+          style={isArabic ? s.arrowRtl : s.arrowLtr}
+        />
       </View>
-      <Text style={styles.name} numberOfLines={2}>
-        {pickText(sponsor.name, isArabic)}
-      </Text>
-      {sponsor.website_url ? (
-        <Ionicons name="open-outline" size={16} color={theme.textMuted} />
-      ) : null}
+
+      <View style={[s.group, isArabic ? null : s.groupLtr]}>
+        <View style={[s.texts, isArabic ? s.textsRtl : s.textsLtr]}>
+          <Text style={s.name} numberOfLines={1}>
+            {pickText(sponsor.name, isArabic)}
+          </Text>
+          <Text style={s.tier} numberOfLines={1}>
+            {t.sponsors.partnerLabel}
+          </Text>
+        </View>
+
+        <View style={s.logoBox}>
+          <Image
+            // Falls back to the المشفى القرآني wordmark when a sponsor has no
+            // logo — the exact placeholder used in the Figma card (18272:3686).
+            source={
+              sponsor.logo_url
+                ? resolveMediaUrl(sponsor.logo_url)
+                : require('../../../assets/sponsor-placeholder.png')
+            }
+            style={s.logoImg}
+            contentFit="contain"
+          />
+        </View>
+      </View>
     </Pressable>
   );
-}
-
-function createStyles(theme: Theme) {
-  return StyleSheet.create({
-    card: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: spacing.md,
-      backgroundColor: theme.surface,
-      borderRadius: radius.md,
-      padding: spacing.md,
-      borderWidth: 1,
-      borderColor: theme.border,
-    },
-    pressed: { opacity: 0.85 },
-    logoWrap: {
-      width: 52,
-      height: 52,
-      borderRadius: radius.md,
-      backgroundColor: theme.primaryLight,
-      alignItems: 'center',
-      justifyContent: 'center',
-      overflow: 'hidden',
-    },
-    logo: { width: 52, height: 52 },
-    name: { flex: 1, fontSize: fontSize.md, fontWeight: fontWeight.semibold, color: theme.text },
-  });
 }
 
 export const SponsorCard = React.memo(SponsorCardBase);

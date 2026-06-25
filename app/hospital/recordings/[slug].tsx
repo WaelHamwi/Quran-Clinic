@@ -5,6 +5,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { Screen } from '@/components/layout/Screen';
 import { PatternedBackground } from '@/components/layout/PatternedBackground';
 import { Header } from '@/components/layout/Header';
+import { IconButton } from '@/components/common/IconButton';
+import { ICON_FOREGROUND } from '@/components/layout/Header.styles';
 import { Loader } from '@/components/common/Loader';
 import { EmptyState } from '@/components/common/EmptyState';
 import { AudioPlayer } from '@/components/players/AudioPlayer';
@@ -15,6 +17,7 @@ import { WirdMenuSheet } from '@/components/players/WirdMenuSheet';
 import { LockedWird } from '@/components/players/LockedWird';
 import { useCategory } from '@/hooks/useCategory';
 import { useSubcategory } from '@/hooks/useSubcategory';
+import { useFavorites } from '@/hooks/useFavorites';
 import { usePlayer } from '@/hooks/usePlayer';
 import { useGeneralRuqyah } from '@/hooks/useGeneralRuqyah';
 import { useDownloadManager } from '@/hooks/useDownloadManager';
@@ -189,6 +192,18 @@ export default function CategoryRecordingsScreen() {
 
   const title = node ? pickText(node.name, isArabic) : t.hospital.title;
 
+  // The recordings here hang off a category or subcategory "direct" node — favorite
+  // that node (local-only) so it shows in the Favorites tab and routes back here.
+  const { isFavorited, toggleFavorite } = useFavorites();
+  const favoriteRoute =
+    level === 'subcategory'
+      ? `/hospital/recordings/${slug}?level=subcategory`
+      : `/hospital/recordings/${slug}`;
+  const favorited = !!node && isFavorited(node.id, level);
+  const handleToggleFavorite = useCallback(() => {
+    if (node) toggleFavorite(node, level, favoriteRoute);
+  }, [node, level, favoriteRoute, toggleFavorite]);
+
   if (isLoading) {
     return (
       <Screen edges={['top']}>
@@ -212,7 +227,17 @@ export default function CategoryRecordingsScreen() {
   return (
     <Screen edges={['top']}>
       <PatternedBackground />
-      <Header title={title} showBack />
+      <Header
+        title={title}
+        showBack
+        right={
+          <IconButton
+            icon={favorited ? 'heart' : 'heart-outline'}
+            color={favorited ? palette.brand[500] : ICON_FOREGROUND}
+            onPress={handleToggleFavorite}
+          />
+        }
+      />
 
       <View style={s.content}>
         {/* Session tabs (≤3) or wird pager (>3) — Figma nodes 18032:3101 / 18900:2907 */}

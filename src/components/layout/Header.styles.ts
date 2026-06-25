@@ -4,22 +4,22 @@ import type { Theme } from '@/theme/colors';
 import { fontFamily, fontSize, fontWeight } from '@/theme/typography';
 
 export const ICON_FOREGROUND = palette.text.secondary;
+// Unread/active-reminders dot on the header bell (Figma node 17941:2197).
+export const BELL_DOT_COLOR = palette.system.error[500];
 
 export function createHeaderStyles(theme: Theme) {
   return StyleSheet.create({
     'header--homepage': {
-      // No fixed height: the Screen already adds the status-bar inset, so the bar sizes
-      // to its row (~44, same as the login bar). The old height:88 was the Figma figure
-      // that *includes* the status bar, which double-counted the inset and left ~44px of
-      // empty space above the greeting.
+      // Bar owns the status-bar inset itself (paddingTop applied inline in Header.tsx)
+      // so the patterned background bleeds up behind it and header + body read as one
+      // piece. Figma "Shadows/xl" as a real CSS box-shadow is the only separator — it
+      // renders a soft blurred drop shadow on BOTH iOS and Android (New Architecture).
+      // Android `elevation` is intentionally NOT used: it won't cast a shadow under a
+      // translucent background.
       backgroundColor: palette.bg.overlay,
       borderBottomWidth: 1,
       borderBottomColor: palette.border.tertiary,
-      shadowColor: palette.shadow,
-      shadowOpacity: 0.08,
-      shadowOffset: { width: 0, height: 16 },
-      shadowRadius: 16,
-      elevation: 4,
+      boxShadow: '0px 12px 16px -4px rgba(49,57,64,0.12)',
     },
     header__row: {
       flexDirection: 'row',
@@ -31,6 +31,19 @@ export function createHeaderStyles(theme: Theme) {
     header__icon: {
       width: 20,
       height: 20,
+    },
+    header__bell: {
+      width: 20,
+      height: 20,
+      position: 'relative',
+    },
+    // Dot anchored to the bell's top-right, sized 25% of the 20px icon (Figma insets).
+    header__bellDot: {
+      position: 'absolute',
+      top: 1.5,
+      right: 3,
+      width: 5,
+      height: 5,
     },
     header__greetingGroup: {
       flex: 1,

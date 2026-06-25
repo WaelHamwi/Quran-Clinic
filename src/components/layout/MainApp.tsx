@@ -52,11 +52,16 @@ export function MainApp() {
             name="hospital/disease/subscription"
             options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
           />
+          <Stack.Screen
+            name="course/[id]"
+            options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
+          />
           <Stack.Screen name="edit-profile" />
           <Stack.Screen name="about-us" />
           <Stack.Screen name="contact-us" />
           <Stack.Screen name="report-bug" />
           <Stack.Screen name="notifications" />
+          <Stack.Screen name="notification-inbox" />
         </Stack>
         <DrivingModeOverlay
           visible={isDriving}

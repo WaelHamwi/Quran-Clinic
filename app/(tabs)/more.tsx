@@ -25,7 +25,7 @@ import {
 export default function MoreScreen() {
   const { t, isArabic } = useLanguage();
   const router = useRouter();
-  const { user, signOut, deleteAccount } = useAuth();
+  const { profile, isGuest, signOut, deleteAccount } = useAuth();
   const isVisible = useFeatureVisibility();
   const version = Constants.expoConfig?.version ?? '1.0.0';
 
@@ -57,8 +57,8 @@ export default function MoreScreen() {
     try { await deleteAccount(); } finally { setDeleting(false); setDeleteConfirmOpen(false); }
   }, [deleteAccount]);
 
-  const userName = user?.name ?? user?.email ?? t.more.guest;
-  const userEmail = user?.email ?? '';
+  const userName = profile?.name ?? profile?.email ?? t.more.guest;
+  const userEmail = profile?.email ?? '';
 
   return (
     <Screen edges={['top']}>
@@ -70,7 +70,7 @@ export default function MoreScreen() {
       >
         {/* Profile card */}
         <Pressable style={s.moreScreen__profileCard} onPress={goEditProfile}>
-          <UserAvatar uri={user?.avatar_path} name={userName} size={56} />
+          <UserAvatar uri={profile?.avatar_path} name={userName} size={56} />
           <Text style={s.moreScreen__profileName}>{userName}</Text>
           {userEmail ? <Text style={s.moreScreen__profileEmail}>{userEmail}</Text> : null}
         </Pressable>
@@ -189,21 +189,25 @@ export default function MoreScreen() {
           />
         </View>
 
-        <View style={s.moreScreen__group}>
-          <MenuRow
-            icon="log-out-outline"
-            label={t.more.logout}
-            onPress={signOut}
-            danger
-          />
-          <View style={s.moreScreen__separator} />
-          <MenuRow
-            icon="trash-outline"
-            label={t.more.deleteAccount}
-            onPress={() => setDeleteConfirmOpen(true)}
-            danger
-          />
-        </View>
+        {/* Logout / delete only apply to a real account — a guest has nothing to sign out of
+            or delete. */}
+        {!isGuest && (
+          <View style={s.moreScreen__group}>
+            <MenuRow
+              icon="log-out-outline"
+              label={t.more.logout}
+              onPress={signOut}
+              danger
+            />
+            <View style={s.moreScreen__separator} />
+            <MenuRow
+              icon="trash-outline"
+              label={t.more.deleteAccount}
+              onPress={() => setDeleteConfirmOpen(true)}
+              danger
+            />
+          </View>
+        )}
 
         <View style={s.moreScreen__footer}>
           <Text style={s.moreScreen__appName}>{t.more.appName}</Text>

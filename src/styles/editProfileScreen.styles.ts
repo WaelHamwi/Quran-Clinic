@@ -15,6 +15,22 @@ export const editProfileStyles = StyleSheet.create({
     gap: spacing.sm,
     paddingBottom: spacing.sm,
   },
+  avatarPressable: {
+    position: 'relative',
+  },
+  avatarEditBadge: {
+    position: 'absolute',
+    right: 0,
+    bottom: 0,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: palette.brand[500],
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: palette.white,
+  },
   avatarName: {
     fontFamily: fontFamily.alexandriaSemiBold,
     fontSize: fontSize.md,

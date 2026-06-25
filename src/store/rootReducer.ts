@@ -7,6 +7,7 @@ import readings from '@/store/slices/readingsSlice';
 import features from '@/store/slices/featuresSlice';
 import onboarding from '@/store/slices/onboardingSlice';
 import notifications from '@/store/slices/notificationsSlice';
+import notificationInbox from '@/store/slices/notificationInboxSlice';
 import offlineQueue from '@/store/slices/offlineQueueSlice';
 import ui from '@/store/slices/uiSlice';
 import drivingMode from '@/store/slices/drivingModeSlice';
@@ -20,6 +21,7 @@ export const rootReducer = combineReducers({
   features,
   onboarding,
   notifications,
+  notificationInbox,
   offlineQueue,
   ui,
   drivingMode,

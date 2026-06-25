@@ -58,6 +58,17 @@ apiClient.interceptors.request.use(async (config) => {
   }
   const token = await TokenManager.getToken();
   if (token) config.headers.Authorization = `Bearer ${token}`;
+
+  // FormData uploads must keep the runtime-generated multipart boundary. Drop the
+  // default JSON Content-Type so React Native sets `multipart/form-data; boundary=…`
+  // itself — setting it manually omits the boundary and the server can't parse the body.
+  if (typeof FormData !== 'undefined' && config.data instanceof FormData) {
+    config.headers.delete('Content-Type');
+    // Multipart (image) uploads need far more headroom than the default 20s — and
+    // especially more than the 5s dev/local timeout set above, which would abort
+    // the upload before it finishes. This runs after that block, so it wins.
+    config.timeout = 60000;
+  }
   return config;
 });
 
