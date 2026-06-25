@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\SponsorScreenConfig;
 use App\Repositories\Contracts\SponsorRepositoryInterface;
+use App\Support\ModelCache;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 
@@ -19,12 +20,15 @@ class SponsorService
 
     public function getAll(): Collection
     {
-        return Cache::remember(self::CACHE_ALL, self::CACHE_TTL, fn () => $this->repository->getAll());
+        return ModelCache::rememberMany(self::CACHE_ALL, self::CACHE_TTL, fn () => $this->repository->getAll());
     }
 
     public function screenConfig(): SponsorScreenConfig
     {
-        return Cache::remember(self::CACHE_SCREEN, self::CACHE_TTL, fn () => $this->repository->screenConfig());
+        /** @var SponsorScreenConfig $config */
+        $config = ModelCache::remember(self::CACHE_SCREEN, self::CACHE_TTL, fn () => $this->repository->screenConfig());
+
+        return $config;
     }
 
     /**
