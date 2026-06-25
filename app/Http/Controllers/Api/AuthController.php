@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Resources\AuthUserResource;
 use App\Http\Resources\UserResource;
 use App\Services\AuthService;
 use Illuminate\Http\JsonResponse;
@@ -28,7 +29,7 @@ class AuthController extends Controller
             $result = $this->service->register($data);
 
             return $this->success([
-                'user'  => new UserResource($result['user']),
+                'user'  => new AuthUserResource($result['user']),
                 'token' => $result['token'],
             ], 'Registered successfully', 201);
         } catch (ValidationException $e) {
@@ -53,7 +54,7 @@ class AuthController extends Controller
             }
 
             return $this->success([
-                'user'  => new UserResource($result['user']),
+                'user'  => new AuthUserResource($result['user']),
                 'token' => $result['token'],
             ]);
         } catch (ValidationException $e) {

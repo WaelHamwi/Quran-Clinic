@@ -21,10 +21,14 @@ class CompressAudioJob implements ShouldQueue
         private string $modelClass,
         private int    $modelId,
         private string $relativePath, // path stored in audio_path column, e.g. "recordings/abc.mp3"
-    ) {}
+    ) {
+        Log::info("CompressAudioJob: queued {$relativePath} for {$modelClass}#{$modelId}");
+    }
 
     public function handle(): void
     {
+        Log::info("CompressAudioJob: processing {$this->relativePath} for {$this->modelClass}#{$this->modelId}");
+
         $absInput = storage_path('app/public/' . ltrim($this->relativePath, '/\\'));
 
         if (! file_exists($absInput)) {

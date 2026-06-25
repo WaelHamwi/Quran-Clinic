@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -13,7 +14,7 @@ use App\Models\Concerns\HasTranslations;
 
 class Disease extends Model
 {
-    use HasTranslations, SoftDeletes;
+    use HasFactory, HasTranslations, SoftDeletes;
 
     protected $fillable = [
         'subcategory_id', 'category_id', 'name', 'slug', 'icon',

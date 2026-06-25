@@ -10,7 +10,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
-use Symfony\Component\HttpFoundation\BinaryFileResponse;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class RecitationController extends Controller
@@ -35,7 +35,7 @@ class RecitationController extends Controller
      * - CDN URLs      → proxied through the server with Range header forwarding
      *                   so the mobile never makes a raw CDN request.
      */
-    public function audio(Request $request, int $id): BinaryFileResponse|StreamedResponse|JsonResponse
+    public function audio(Request $request, int $id): Response
     {
         try {
             $recitation = Recitation::find($id);
@@ -46,54 +46,72 @@ class RecitationController extends Controller
 
             $path = (string) $recitation->audio_path;
 
-            // ── Local file ────────────────────────────────────────────────────
-            if (!str_starts_with($path, 'http')) {
-                /** @var \Illuminate\Filesystem\FilesystemAdapter $disk */
-                $disk = Storage::disk('public');
-                if (!$disk->exists($path)) {
-                    return $this->error('Audio file not found', 404);
-                }
-                $absPath = storage_path('app/public/' . ltrim($path, '/'));
-                return response()->file($absPath, ['Content-Type' => 'audio/mpeg']);
+            if (str_starts_with($path, 'http')) {
+                return $this->proxyRemoteAudio($request, $id, $path);
             }
 
-            // ── CDN URL — proxy with Range support ───────────────────────────
-            $clientHeaders = [];
-            if ($rangeHeader = $request->header('Range')) {
-                $clientHeaders['Range'] = $rangeHeader;
+            /** @var \Illuminate\Filesystem\FilesystemAdapter $disk */
+            $disk = Storage::disk('public');
+            if (!$disk->exists($path)) {
+                return $this->error('Audio file not found', 404);
             }
 
-            $cdnResponse = Http::withOptions([
-                'verify'  => false,
-                'stream'  => true,
-                'timeout' => 60,
-            ])->withHeaders($clientHeaders)->get($path);
+            // CLOUD MIGRATION POINT: when config('scalability.audio.driver') === 'cloud',
+            // replace this block with a signed S3/CDN URL redirect. No cloud SDK is bundled yet.
 
-            $status = $cdnResponse->status();
-            if ($status >= 400) {
-                Log::error("RecitationController@audio CDN returned {$status} for recitation {$id}: {$path}");
-                return $this->error('Audio source unavailable', 502);
+            if (config('scalability.audio.use_x_accel')) {
+                $internal = rtrim((string) config('scalability.audio.x_accel_prefix'), '/')
+                    . '/' . ltrim($path, '/');
+
+                return response('', 200, [
+                    'Content-Type'     => 'audio/mpeg',
+                    'Accept-Ranges'    => 'bytes',
+                    'X-Accel-Redirect' => $internal,
+                ]);
             }
 
-            $responseHeaders = ['Content-Type' => 'audio/mpeg', 'Accept-Ranges' => 'bytes'];
-            if ($len   = $cdnResponse->header('Content-Length'))  { $responseHeaders['Content-Length']  = $len; }
-            if ($range = $cdnResponse->header('Content-Range'))   { $responseHeaders['Content-Range']   = $range; }
-
-            $stream = $cdnResponse->toPsrResponse()->getBody();
-
-            return response()->stream(function () use ($stream) {
-                while (!$stream->eof()) {
-                    echo $stream->read(8192);
-                    if (connection_aborted()) {
-                        break;
-                    }
-                }
-            }, $status, $responseHeaders);
+            $absPath = storage_path('app/public/' . ltrim($path, '/'));
+            return response()->file($absPath, ['Content-Type' => 'audio/mpeg']);
 
         } catch (\Throwable $e) {
             Log::error('RecitationController@audio id=' . $id . ': ' . $e->getMessage());
             return $this->error('Server error', 500);
         }
+    }
+
+    private function proxyRemoteAudio(Request $request, int $id, string $path): Response
+    {
+        $clientHeaders = [];
+        if ($rangeHeader = $request->header('Range')) {
+            $clientHeaders['Range'] = $rangeHeader;
+        }
+
+        $cdnResponse = Http::withOptions([
+            'verify'  => true,
+            'stream'  => true,
+            'timeout' => 60,
+        ])->withHeaders($clientHeaders)->get($path);
+
+        $status = $cdnResponse->status();
+        if ($status >= 400) {
+            Log::error("RecitationController@audio CDN returned {$status} for recitation {$id}: {$path}");
+            return $this->error('Audio source unavailable', 502);
+        }
+
+        $responseHeaders = ['Content-Type' => 'audio/mpeg', 'Accept-Ranges' => 'bytes'];
+        if ($len   = $cdnResponse->header('Content-Length'))  { $responseHeaders['Content-Length']  = $len; }
+        if ($range = $cdnResponse->header('Content-Range'))   { $responseHeaders['Content-Range']   = $range; }
+
+        $stream = $cdnResponse->toPsrResponse()->getBody();
+
+        return response()->stream(function () use ($stream) {
+            while (!$stream->eof()) {
+                echo $stream->read(8192);
+                if (connection_aborted()) {
+                    break;
+                }
+            }
+        }, $status, $responseHeaders);
     }
 
     public function download(int $id): StreamedResponse|JsonResponse

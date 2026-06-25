@@ -116,7 +116,7 @@ class LocalizeAudioCommand extends Command
                 }
 
                 $guzzleOptions = [
-                    'verify'          => false,
+                    'verify'          => true,
                     'sink'            => $fileHandle,  // stream directly to disk — no RAM spike
                     'timeout'         => 600,           // 10 min for large files
                     'connect_timeout' => 30,

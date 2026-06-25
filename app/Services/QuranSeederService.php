@@ -11,7 +11,7 @@ class QuranSeederService
 {
     public function fetchFromUrl(string $url): array
     {
-        $response = Http::withOptions(['verify' => false])->timeout(60)->get($url);
+        $response = Http::withOptions(['verify' => true])->timeout(60)->get($url);
 
         if (!$response->successful()) {
             throw new \RuntimeException("Failed to fetch Quran data. Status: {$response->status()}");

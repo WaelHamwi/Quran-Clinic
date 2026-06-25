@@ -18,7 +18,7 @@ class PopulateTranslations extends Command
     {
         $this->info('Fetching English translations from jsdelivr CDN...');
 
-        $response = Http::withOptions(['verify' => false])
+        $response = Http::withOptions(['verify' => true])
             ->timeout(60)
             ->get(self::SOURCE);
 

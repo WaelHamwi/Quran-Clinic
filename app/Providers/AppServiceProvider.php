@@ -7,6 +7,7 @@ use App\Policies\UserPolicy;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 
@@ -15,10 +16,14 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->register(\App\Providers\RepositoryServiceProvider::class);
+
+        $this->applyRedisFallbacks();
     }
 
     public function boot(): void
     {
+        $this->warnOnFileCacheInProduction();
+
         // Authenticated users are keyed by user ID (generous: supports 30 s polling from multiple screens).
         // Unauthenticated requests are keyed by IP with a tighter cap.
         RateLimiter::for('api', function (Request $request) {
@@ -66,5 +71,51 @@ class AppServiceProvider extends ServiceProvider
         }
 
         Gate::policy(\App\Models\User::class, UserPolicy::class);
+    }
+
+    /**
+     * If a redis driver is selected for cache/session/queue but the server is unreachable,
+     * fall back to file/database so the app keeps serving. Runs only when a redis driver is
+     * actually active, so the default database/file setup pays no cost.
+     */
+    private function applyRedisFallbacks(): void
+    {
+        if (! config('scalability.redis.auto_fallback', true)) {
+            return;
+        }
+
+        $usesRedis = in_array('redis', [
+            config('cache.default'),
+            config('session.driver'),
+            config('queue.default'),
+        ], true);
+
+        if (! $usesRedis) {
+            return;
+        }
+
+        try {
+            $this->app->make('redis')->connection()->ping();
+        } catch (\Throwable $e) {
+            if (config('cache.default') === 'redis')  { config(['cache.default' => 'file']); }
+            if (config('session.driver') === 'redis') { config(['session.driver' => 'file']); }
+            if (config('queue.default') === 'redis')  { config(['queue.default' => 'database']); }
+
+            Log::warning('Redis unreachable — fell back to file/database drivers.', [
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /** Rate limiting and shared cache use the default cache store; file cache is per-node and slow. */
+    private function warnOnFileCacheInProduction(): void
+    {
+        if (! config('scalability.cache.warn_file_driver_in_production', true)) {
+            return;
+        }
+
+        if ($this->app->environment('production') && config('cache.default') === 'file') {
+            Log::warning('CACHE_STORE=file in production — prefer redis or database for shared cache and accurate rate limiting.');
+        }
     }
 }
