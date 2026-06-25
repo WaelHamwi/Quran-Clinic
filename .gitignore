@@ -8,3 +8,13 @@ Thumbs.db
 # root-level scratch (sub-projects keep their own ignores in backend/ and mobile/)
 /node_modules
 *.log
+
+# Claude local/permission config — contains machine paths + tokens, never commit
+.claude/settings.json
+.claude/settings.local.json
+
+# generated knowledge artifacts (regenerate via build-claude-knowledge.ps1)
+CLAUDE_PROJECT_KNOWLEDGE.pdf
+
+# docs build deps
+docs/node_modules/

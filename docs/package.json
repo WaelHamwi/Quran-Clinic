@@ -1,0 +1,1 @@
+{ "name": "quran-docs-build", "private": true, "version": "1.0.0", "dependencies": { "marked": "^12.0.0" } }

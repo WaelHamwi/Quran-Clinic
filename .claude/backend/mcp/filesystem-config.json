@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "filesystem": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "C:/Users/wael/Desktop/Quran/backend"],
+      "env": {
+        "ALLOWED_PATHS": "C:/Users/wael/Desktop/Quran/backend/app,C:/Users/wael/Desktop/Quran/backend/database,C:/Users/wael/Desktop/Quran/backend/routes,C:/Users/wael/Desktop/Quran/backend/tests,C:/Users/wael/Desktop/Quran/backend/config,C:/Users/wael/Desktop/Quran/backend/storage/logs"
+      }
+    }
+  }
+}

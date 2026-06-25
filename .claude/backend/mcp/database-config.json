@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "database": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-mysql"],
+      "env": {
+        "MYSQL_HOST": "127.0.0.1",
+        "MYSQL_PORT": "3306",
+        "MYSQL_USER": "homestead",
+        "MYSQL_PASSWORD": "secret",
+        "MYSQL_DATABASE": "quranic_clinic"
+      }
+    }
+  }
+}
