@@ -1,0 +1,10 @@
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+.fleet/
+
+# root-level scratch (sub-projects keep their own ignores in backend/ and mobile/)
+/node_modules
+*.log
