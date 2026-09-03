@@ -1,6 +1,8 @@
 
 # 13. Caching Analysis
 
+> **Update:** the caching layer was subsequently refactored into a unified snapshot/rehydrate architecture (`App\Support\ModelCache`) with trait-based invalidation (`InvalidatesCache`) and a resilient Redis fallback. This section gives the conceptual overview; **§53 reads the new implementation line by line** and is the authoritative reference.
+
 > The brief titles this "Redis Analysis." In production the cache **driver** is Redis; locally it is the file/database driver. The application code never calls Redis directly — it uses the Laravel `Cache` facade, so the strategy below is driver-agnostic and the same code path runs on file or Redis.
 
 ## 13.1 Strategy: read-through with versioned keys + event invalidation

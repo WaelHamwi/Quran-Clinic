@@ -2,17 +2,26 @@
 
 namespace App\Models;
 
+use App\Exceptions\BusinessRuleException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphToMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
 use App\Models\Concerns\HasTranslations;
+use App\Models\Concerns\InvalidatesCache;
+use App\Services\CategoryService;
 
 class Category extends Model
 {
-    use HasFactory, HasTranslations, SoftDeletes;
+    use HasFactory, HasTranslations, InvalidatesCache, SoftDeletes;
+
+    protected function cacheKeysToForget(): array
+    {
+        return CategoryService::CACHE_KEYS;
+    }
 
     protected $fillable = ['name', 'slug', 'icon', 'type', 'display_order', 'is_active'];
 
@@ -26,13 +35,19 @@ class Category extends Model
             if ($r->isDirty('type')) {
                 $new = $r->type;
                 if ($new === 'standard' && $r->directDiseases()->exists()) {
-                    throw new \LogicException('Cannot change to standard: category has direct diseases.');
+                    throw new BusinessRuleException('Cannot change to standard: category has direct diseases.');
                 }
                 if ($new === 'disease_direct' && $r->subcategories()->exists()) {
-                    throw new \LogicException('Cannot change to disease_direct: category has subcategories.');
+                    throw new BusinessRuleException('Cannot change to disease_direct: category has subcategories.');
                 }
                 if ($new === 'direct' && ($r->subcategories()->exists() || $r->directDiseases()->exists())) {
-                    throw new \LogicException('Cannot change to direct: remove subcategories and direct diseases first.');
+                    throw new BusinessRuleException('Cannot change to direct: remove subcategories and direct diseases first.');
+                }
+                // Mirrors Disease::saving()'s "subcategory that already has
+                // direct recordings" guard: only a direct category may hold
+                // recordings, so moving off it would orphan those links.
+                if ($new !== 'direct' && $r->recordings()->exists()) {
+                    throw new BusinessRuleException('Cannot change type: unlink the attached recordings from this category first.');
                 }
             }
         });
@@ -78,9 +93,18 @@ class Category extends Model
         return $this->hasMany(Subcategory::class);
     }
 
-    public function recordings(): HasMany
+    /**
+     * The ordered sequence of ruqyah recordings attached directly to this
+     * category (no subcategories). A recording may appear more than once, so
+     * the pivot id — not the recording id — is what identifies an occurrence.
+     */
+    public function recordings(): MorphToMany
     {
-        return $this->hasMany(Recording::class);
+        return $this->morphToMany(Recording::class, 'attachable', 'recording_attachments')
+            ->using(RecordingAttachment::class)
+            ->withPivot(['id', 'session_number'])
+            ->withTimestamps()
+            ->orderByPivot('session_number');
     }
 
     public function directDiseases(): HasMany

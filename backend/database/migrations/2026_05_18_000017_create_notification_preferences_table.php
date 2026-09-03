@@ -17,6 +17,9 @@ return new class extends Migration
             $table->boolean('adhkar_waking_enabled')->default(true);
             $table->time('waking_start_time')->nullable();
             $table->time('waking_end_time')->nullable();
+            // Grace period between the motion sensor detecting a wake-up and the
+            // waking reminder being delivered. 0 = immediately.
+            $table->unsignedTinyInteger('waking_delay_minutes')->default(0);
             $table->timestamps();
         });
     }

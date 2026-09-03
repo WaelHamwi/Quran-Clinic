@@ -9,7 +9,7 @@ UserResource (Super Admin only)
 CategoryResource (Admin only)
 SubcategoryResource (Admin only)
 DiseaseResource (Admin only) - with is_general checkbox, aliases management
-RecordingResource (Admin only) - session_number, is_free
+RecordingResource (Admin only) - session_number, type (summarized=free / detailed=paid, max one of each per owner)
 FavoriteResource (Admin only, read-only)
 AdhkarCategoryResource (Admin only)
 AdhkarItemResource (Admin only) - morning/evening/sleep/waking flags

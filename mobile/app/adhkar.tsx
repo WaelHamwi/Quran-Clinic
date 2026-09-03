@@ -7,15 +7,18 @@ import { Header } from '@/components/layout/Header';
 import { Loader } from '@/components/common/Loader';
 import { EmptyState } from '@/components/common/EmptyState';
 import { AdhkarCategoryCard } from '@/components/lists/AdhkarCategoryCard';
-import { useAdhkarCategories } from '@/hooks/useAdhkar';
-import { useRefresh } from '@/hooks/useRefresh';
+import { useAdhkarCategories } from '@/hooks/content/useAdhkar';
+import { useRefresh } from '@/hooks/common/useRefresh';
 import { useLanguage } from '@/context/LanguageContext';
-import { palette } from '@/theme/colors';
+import { useTheme } from '@/context/ThemeContext';
+import { useStyles } from '@/hooks/common/useStyles';
 import type { AdhkarCategory } from '@/types/adhkar';
-import { adhkarScreenStyles as s } from '@/styles/adhkarScreen.styles';
+import { createStyles } from '@/styles/adhkarScreen.styles';
 
 export default function AdhkarScreen() {
   const { t } = useLanguage();
+  const { theme } = useTheme();
+  const s = useStyles(createStyles);
   const router = useRouter();
   const { categories, isLoading, error, refetch } = useAdhkarCategories();
 
@@ -61,8 +64,8 @@ export default function AdhkarScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor={palette.brand[500]}
-            colors={[palette.brand[500]]}
+            tintColor={theme.primary}
+            colors={[theme.primary]}
           />
         }
       />

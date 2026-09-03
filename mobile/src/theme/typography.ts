@@ -1,6 +1,9 @@
 /** Typography tokens. Theme-independent.
  *  Figma uses Alexandria for UI text and MadaniArabic for displays.
- *  Amiri is kept for Mushaf verse rendering (purpose-built Quranic font). */
+ *  Amiri is kept for Mushaf verse rendering (purpose-built Quranic font).
+ *  surahNameIcon/quranCommon are QUL/Tarteel ligature icon fonts — rendering
+ *  a surah/juz name means passing the ligature code string (e.g. "surah001"),
+ *  not the literal Arabic name; see src/utils/quranGlyphs.ts. */
 
 export const fontSize = {
   '2xs': 10,
@@ -47,4 +50,6 @@ export const fontFamily = {
   madani: 'Alexandria_600SemiBold',
   arabic: 'Amiri_400Regular',
   arabicBold: 'Amiri_700Bold',
+  surahNameIcon: 'SurahNameV4',
+  quranCommon: 'QuranCommon',
 } as const;

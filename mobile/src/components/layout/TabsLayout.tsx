@@ -2,7 +2,7 @@ import React from 'react';
 import { Tabs } from 'expo-router';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { useLanguage } from '@/context/LanguageContext';
-import { useFeatureVisibility } from '@/hooks/useFeatures';
+import { useFeatureVisibility } from '@/hooks/common/useFeatures';
 import { FEATURE_KEYS } from '@/constants/features';
 import { TabBar } from '@/components/layout/TabBar';
 
@@ -15,6 +15,7 @@ export function TabsLayout() {
 
   return (
     <Tabs
+      initialRouteName="index"
       tabBar={(props: BottomTabBarProps) => <TabBar {...props} />}
       screenOptions={{ headerShown: false }}
     >

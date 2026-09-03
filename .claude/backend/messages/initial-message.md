@@ -17,7 +17,7 @@ CRITICAL RULES:
 - No inline comments, Debug-first, Read before modifying
 - Never delete without user approval
 - Recordings belong to deepest level (Disease > Subcategory > Category)
-- session_number=1 free, session_number>=2 requires subscription/trial, trial max 2
+- Recording types: summarized (مختصرة) free, detailed (مطولة) requires subscription/trial, max one of each per owner, trial max 2 (see ../../shared-context.md → RECORDING TYPES)
 - Favorites store disease_id, General ruqyah flag
 
 Then user will say "Execute Phase 1. Create migration 1" and respond "✓ Next" after each file.

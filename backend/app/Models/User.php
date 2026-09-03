@@ -21,15 +21,24 @@ use Laravel\Sanctum\HasApiTokens;
 use Spatie\Permission\Traits\HasRoles;
 
 #[Fillable([
-    'name', 'email', 'phone', 'country', 'gender', 'google_id',
-    'password', 'avatar_path', 'is_subscribed', 'subscription_expires_at',
-    'trial_used_count', 'last_active_at', 'expo_push_token',
+    'name', 'email', 'phone', 'country', 'gender',
+    'password', 'avatar_path', 'last_active_at', 'expo_push_token',
 ])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable implements FilamentUser, HasAvatar, HasName
 {
     /** @use HasFactory<UserFactory> */
     use HasApiTokens, HasFactory, HasRoles, Notifiable, SoftDeletes;
+
+    /**
+     * Privileged columns deliberately excluded from Fillable so no API
+     * payload can ever mass-assign them (overposting guard). The admin
+     * panel and OAuth flow set them explicitly via forceFill().
+     */
+    public const PRIVILEGED_FIELDS = [
+        'is_subscribed', 'subscription_expires_at', 'trial_used_count',
+        'is_suspended', 'suspended_at', 'google_id',
+    ];
 
     public function canAccessPanel(Panel $panel): bool
     {
@@ -46,6 +55,24 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, HasName
     public function getFilamentName(): string
     {
         return $this->name;
+    }
+
+    public function issueApiToken(string $name): string
+    {
+        // Sanctum only *rejects* expired tokens; the rows survive until the
+        // scheduled prune. Capping live sessions at 5 keeps frequent re-logins
+        // from stacking a fresh 30-day token each time.
+        $stale = $this->tokens()
+            ->orderByDesc('id')
+            ->skip(4)
+            ->take(PHP_INT_MAX)
+            ->pluck('id');
+
+        if ($stale->isNotEmpty()) {
+            $this->tokens()->whereIn('id', $stale)->delete();
+        }
+
+        return $this->createToken($name)->plainTextToken;
     }
 
     public function oauthProviders(): HasMany
@@ -133,6 +160,8 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, HasName
             'subscription_expires_at' => 'datetime',
             'trial_used_count'        => 'integer',
             'last_active_at'          => 'datetime',
+            'is_suspended'            => 'boolean',
+            'suspended_at'            => 'datetime',
         ];
     }
 }

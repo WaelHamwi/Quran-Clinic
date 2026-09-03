@@ -1,10 +1,11 @@
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 import { useTheme } from '@/context/ThemeContext';
 import { useLanguage } from '@/context/LanguageContext';
-import { spacing } from '@/theme/spacing';
-import { fontSize, fontWeight } from '@/theme/typography';
+import { useStyles } from '@/hooks/common/useStyles';
 import { Button } from '@/components/common/Button';
+import { reportError } from '@/services/common/errorReporting';
+import { createStyles } from './ErrorBoundary.styles';
 
 interface ErrorBoundaryProps {
   children: React.ReactNode;
@@ -18,6 +19,7 @@ interface ErrorBoundaryState {
 function ErrorFallback({ onRetry }: { onRetry: () => void }) {
   const { theme } = useTheme();
   const { t } = useLanguage();
+  const styles = useStyles(createStyles);
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       <Text style={[styles.title, { color: theme.text }]}>{t.common.error}</Text>
@@ -34,8 +36,9 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
     return { hasError: true };
   }
 
-  componentDidCatch(error: Error) {
+  componentDidCatch(error: Error, info: React.ErrorInfo) {
     if (__DEV__) console.warn('[ErrorBoundary]', error.message);
+    reportError(error, { componentStack: info.componentStack });
   }
 
   handleRetry = () => this.setState({ hasError: false });
@@ -47,14 +50,3 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
     return this.props.children;
   }
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: spacing.xxl,
-    gap: spacing.lg,
-  },
-  title: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, textAlign: 'center' },
-});

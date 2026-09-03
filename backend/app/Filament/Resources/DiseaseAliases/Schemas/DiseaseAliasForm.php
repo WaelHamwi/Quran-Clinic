@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\DiseaseAliases\Schemas;
 
+use App\Filament\Support\TranslatedName;
 use App\Models\Disease;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
@@ -13,7 +14,7 @@ class DiseaseAliasForm
         return [
             Select::make('disease_id')
                 ->label('Disease')
-                ->options(fn () => Disease::ordered()->get()->pluck('name', 'id'))
+                ->options(fn () => TranslatedName::options(Disease::ordered()->get()))
                 ->searchable()
                 ->required(),
             TextInput::make('alias.ar')->label('Alias (Arabic)')->required()->maxLength(255),

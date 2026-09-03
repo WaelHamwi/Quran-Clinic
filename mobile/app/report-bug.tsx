@@ -8,13 +8,16 @@ import { PatternedBackground } from '@/components/layout/PatternedBackground';
 import { Header } from '@/components/layout/Header';
 import { useLanguage } from '@/context/LanguageContext';
 import { useAuth } from '@/context/AuthContext';
-import { reportService } from '@/services/reportService';
+import { reportService } from '@/services/content/reportService';
 import type { ReportType } from '@/types/report';
-import { palette } from '@/theme/colors';
-import { reportBugScreenStyles as s } from '@/styles/reportBugScreen.styles';
+import { useTheme } from '@/context/ThemeContext';
+import { useStyles } from '@/hooks/common/useStyles';
+import { createStyles } from '@/styles/reportBugScreen.styles';
 
 export default function ReportBugScreen() {
   const { t, isArabic } = useLanguage();
+  const { theme } = useTheme();
+  const s = useStyles(createStyles);
   const { isGuest } = useAuth();
   const [type, setType] = useState<ReportType>('bug');
   const [name, setName] = useState('');
@@ -65,7 +68,7 @@ export default function ReportBugScreen() {
         <Header title={t.reportBug.title} />
         <View style={s.successWrap}>
           <View style={s.successIcon}>
-            <Ionicons name="checkmark-circle" size={36} color={palette.brand[500]} />
+            <Ionicons name="checkmark-circle" size={36} color={theme.primary} />
           </View>
           <Text style={s.successTitle}>{t.reportBug.successTitle}</Text>
           <Text style={s.successMessage}>{t.reportBug.successMessage}</Text>
@@ -103,7 +106,7 @@ export default function ReportBugScreen() {
               value={name}
               onChangeText={setName}
               placeholder={t.reportBug.namePlaceholder}
-              placeholderTextColor={palette.text.placeholder}
+              placeholderTextColor={theme.textPlaceholder}
               textAlign={isArabic ? 'right' : 'left'}
             />
           </View>
@@ -124,7 +127,7 @@ export default function ReportBugScreen() {
                   <Ionicons
                     name={active ? 'radio-button-on' : 'radio-button-off'}
                     size={24}
-                    color={active ? palette.brand[500] : palette.text.tertiary}
+                    color={active ? theme.primary : theme.textMuted}
                   />
                   <Text style={[s.typeLabel, active && s['typeLabel--active']]}>
                     {option === 'bug' ? t.reportBug.typeBug : t.reportBug.typeSuggestion}
@@ -142,13 +145,13 @@ export default function ReportBugScreen() {
             <View style={s.imagePreviewWrap}>
               <Image source={{ uri: imageUri }} style={s.imagePreview} resizeMode="cover" />
               <Pressable style={s.imageRemoveBtn} onPress={() => setImageUri(null)} hitSlop={8}>
-                <Ionicons name="close" size={16} color={palette.white} />
+                <Ionicons name="close" size={16} color={theme.textOnBrand} />
               </Pressable>
             </View>
           ) : (
             <Pressable style={s.imageBox} onPress={pickImage}>
               <Text style={s.imageBoxText}>{t.reportBug.attachImage}</Text>
-              <Ionicons name="add" size={16} color={palette.text.primary} />
+              <Ionicons name="add" size={16} color={theme.text} />
             </Pressable>
           )}
         </View>
@@ -161,7 +164,7 @@ export default function ReportBugScreen() {
             value={message}
             onChangeText={setMessage}
             placeholder={t.reportBug.descPlaceholder}
-            placeholderTextColor={palette.text.placeholder}
+            placeholderTextColor={theme.textPlaceholder}
             multiline
             textAlignVertical="top"
             textAlign={isArabic ? 'right' : 'left'}
@@ -175,7 +178,7 @@ export default function ReportBugScreen() {
           disabled={!canSubmit}
         >
           {submitting ? (
-            <ActivityIndicator color={palette.text.onBrand} />
+            <ActivityIndicator color={theme.textOnBrand} />
           ) : (
             <Text style={s.submitBtnText}>{t.reportBug.submit}</Text>
           )}

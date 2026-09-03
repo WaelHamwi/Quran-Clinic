@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -9,10 +9,11 @@ import HomeBell from '@/assets/figma/home-bell.svg';
 import HomeBellDot from '@/assets/figma/home-bell-dot.svg';
 import { useTheme } from '@/context/ThemeContext';
 import { useLanguage } from '@/context/LanguageContext';
+import { useStyles } from '@/hooks/common/useStyles';
 import { useAppSelector } from '@/store/hooks';
 import { selectInboxUnreadCount } from '@/store/slices/notificationInboxSlice';
 import { IconButton } from '@/components/common/IconButton';
-import { createHeaderStyles, ICON_FOREGROUND, BELL_DOT_COLOR } from './Header.styles';
+import { createStyles } from './Header.styles';
 
 interface HeaderProps {
   title?: string;
@@ -39,7 +40,7 @@ function HeaderBase({
   const { isArabic, t } = useLanguage();
   const router = useRouter();
   const { top } = useSafeAreaInsets();
-  const s = useMemo(() => createHeaderStyles(theme), [theme]);
+  const s = useStyles(createStyles);
   const unreadCount = useAppSelector(selectInboxUnreadCount);
 
   const handleBack = useCallback(() => {
@@ -65,7 +66,7 @@ function HeaderBase({
             accessibilityLabel="search"
             style={s.header__icon}
           >
-            <HomeSearch width="100%" height="100%" color={ICON_FOREGROUND} />
+            <HomeSearch width="100%" height="100%" color={theme.textSecondary} />
           </Pressable>
           <Pressable
             onPress={goNotifications}
@@ -74,10 +75,10 @@ function HeaderBase({
             accessibilityLabel={t.notifications.inboxTitle}
             style={s.header__bell}
           >
-            <HomeBell width="100%" height="100%" color={ICON_FOREGROUND} />
+            <HomeBell width="100%" height="100%" color={theme.textSecondary} />
             {unreadCount > 0 ? (
               <View style={s.header__bellDot} pointerEvents="none">
-                <HomeBellDot width="100%" height="100%" color={BELL_DOT_COLOR} />
+                <HomeBellDot width="100%" height="100%" color={theme.error} />
               </View>
             ) : null}
           </Pressable>
@@ -86,9 +87,9 @@ function HeaderBase({
               {t.home.greeting(userName ?? null)}
             </Text>
             <View style={s.header__userIcon}>
-              <HomeUserWrap width="100%" height="100%" />
+              <HomeUserWrap width="100%" height="100%" color={theme.brandSubtle} />
               <View style={s.header__userIconInner}>
-                <HomeUser width="100%" height="100%" />
+                <HomeUser width="100%" height="100%" color={theme.onBrandMuted} />
               </View>
             </View>
           </View>
@@ -104,7 +105,7 @@ function HeaderBase({
           <IconButton
             icon={isArabic ? 'chevron-forward' : 'chevron-back'}
             onPress={handleBack}
-            color={ICON_FOREGROUND}
+            color={theme.textSecondary}
           />
         ) : null}
       </View>

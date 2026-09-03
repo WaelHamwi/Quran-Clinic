@@ -4,15 +4,11 @@ import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { RemoteSvg } from '@/components/common/RemoteSvg';
 import { useLanguage } from '@/context/LanguageContext';
+import { useTheme } from '@/context/ThemeContext';
+import { useStyles } from '@/hooks/common/useStyles';
 import { pickText } from '@/utils/formatters';
 import type { AdhkarCategory } from '@/types/adhkar';
-import {
-  adhkarCategoryCardStyles as s,
-  SLUG_META,
-  ARROW_COLOR,
-  ICON_ON_TILE,
-  TILE_DEFAULT,
-} from './AdhkarCategoryCard.styles';
+import { createStyles, SLUG_META } from './AdhkarCategoryCard.styles';
 
 interface AdhkarCategoryCardProps {
   category: AdhkarCategory;
@@ -21,6 +17,8 @@ interface AdhkarCategoryCardProps {
 
 function AdhkarCategoryCardBase({ category, onPress }: AdhkarCategoryCardProps) {
   const { isArabic, t } = useLanguage();
+  const { theme } = useTheme();
+  const s = useStyles(createStyles);
   const handlePress = useCallback(() => onPress(category.slug), [onPress, category.slug]);
   const meta = SLUG_META[category.slug];
   const subtitle = meta ? t.adhkar[meta.subtitleKey] : '';
@@ -36,7 +34,7 @@ function AdhkarCategoryCardBase({ category, onPress }: AdhkarCategoryCardProps) 
       <Ionicons
         name={isArabic ? 'chevron-back' : 'chevron-forward'}
         size={12}
-        color={ARROW_COLOR}
+        color={theme.textMuted}
       />
       <View style={s.right}>
         <View style={s.texts}>
@@ -44,10 +42,12 @@ function AdhkarCategoryCardBase({ category, onPress }: AdhkarCategoryCardProps) 
           {subtitle ? <Text style={s.subtitle}>{subtitle}</Text> : null}
         </View>
         {showTile ? (
-          <View style={[s.iconTile, { backgroundColor: meta?.tileColor ?? TILE_DEFAULT }]}>
-            {iconIsSvg ? (
-              <RemoteSvg uri={category.icon as string} width={32} height={32} color={ICON_ON_TILE} />
-            ) : iconIsUrl ? (
+          <View style={[s.iconTile, { backgroundColor: meta?.tileColor ?? theme.primary }]}>
+            {meta ? (
+              <Ionicons name={meta.icon as any} size={32} color={theme.textOnBrand} />
+            ) : iconIsSvg ? (
+              <RemoteSvg uri={category.icon as string} width={32} height={32} color={theme.textOnBrand} />
+            ) : (
               <Image
                 source={{
                   uri: category.icon as string,
@@ -55,10 +55,8 @@ function AdhkarCategoryCardBase({ category, onPress }: AdhkarCategoryCardProps) 
                 }}
                 style={s.iconImage}
                 contentFit="contain"
-                tintColor={ICON_ON_TILE}
+                tintColor={theme.textOnBrand}
               />
-            ) : (
-              <Ionicons name={meta!.icon as any} size={32} color={ICON_ON_TILE} />
             )}
           </View>
         ) : null}

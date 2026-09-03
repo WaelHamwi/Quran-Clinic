@@ -3,12 +3,19 @@
 namespace App\Models;
 
 use App\Models\Concerns\HasTranslations;
+use App\Models\Concerns\InvalidatesCache;
+use App\Services\CourseService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
 class Course extends Model
 {
-    use HasTranslations;
+    use HasTranslations, InvalidatesCache;
+
+    protected function cacheKeysToForget(): array
+    {
+        return CourseService::CACHE_KEYS;
+    }
 
     protected $fillable = [
         'title', 'description', 'target_audience', 'course_topics', 'registration_info',

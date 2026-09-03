@@ -1,8 +1,7 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import {
   ActivityIndicator,
   Pressable,
-  StyleSheet,
   Text,
   View,
   type StyleProp,
@@ -10,9 +9,8 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/context/ThemeContext';
-import type { Theme } from '@/theme/colors';
-import { spacing, radius } from '@/theme/spacing';
-import { fontSize, fontFamily, lineHeight } from '@/theme/typography';
+import { useStyles } from '@/hooks/common/useStyles';
+import { createStyles } from './Button.styles';
 
 export type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'ghost';
 
@@ -38,15 +36,11 @@ function ButtonBase({
   style,
 }: ButtonProps) {
   const { theme } = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const styles = useStyles(createStyles);
 
   const isDisabled = disabled || loading;
   const textColor =
-    variant === 'primary'
-      ? '#fff'
-      : variant === 'secondary'
-        ? '#fff'
-        : theme.primary;
+    variant === 'primary' || variant === 'secondary' ? theme.textOnBrand : theme.primary;
 
   return (
     <Pressable
@@ -71,31 +65,6 @@ function ButtonBase({
       )}
     </Pressable>
   );
-}
-
-function createStyles(theme: Theme) {
-  return StyleSheet.create({
-    base: {
-      minHeight: 44,
-      paddingHorizontal: spacing.lg,
-      borderRadius: radius.pill,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    content: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-    primary: { backgroundColor: theme.primary },
-    secondary: { backgroundColor: theme.accent },
-    outline: { backgroundColor: 'transparent', borderWidth: 1.5, borderColor: theme.primary },
-    ghost: { backgroundColor: 'transparent' },
-    fullWidth: { alignSelf: 'stretch' },
-    disabled: { opacity: 0.5 },
-    pressed: { opacity: 0.85 },
-    label: {
-      fontSize: fontSize.md,
-      lineHeight: lineHeight.md,
-      fontFamily: fontFamily.alexandriaBold,
-    },
-  });
 }
 
 export const Button = React.memo(ButtonBase);

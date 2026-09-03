@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use App\Models\Concerns\HasTranslations;
+use App\Models\Concerns\InvalidatesCache;
+use App\Services\AdhkarService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -10,7 +12,12 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class AdhkarSection extends Model
 {
-    use HasTranslations;
+    use HasTranslations, InvalidatesCache;
+
+    protected function cacheKeysToForget(): array
+    {
+        return AdhkarService::CACHE_KEYS;
+    }
 
     protected $fillable = ['adhkar_category_id', 'name', 'order_randomly', 'display_order'];
 

@@ -9,13 +9,16 @@ import { PatternedBackground } from '@/components/layout/PatternedBackground';
 import { FigmaTopBar } from '@/components/layout/FigmaTopBar';
 import { useAuth } from '@/context/AuthContext';
 import { useLanguage } from '@/context/LanguageContext';
-import { palette } from '@/theme/colors';
-import { loginStyles as s } from '@/styles/login.styles';
+import { useTheme } from '@/context/ThemeContext';
+import { useStyles } from '@/hooks/common/useStyles';
+import { createStyles } from '@/styles/login.styles';
 
 export default function LoginScreen() {
   // ─── Logic preserved verbatim ────────────────────────────────────────────────
   const { signIn, loading } = useAuth();
   const { t } = useLanguage();
+  const { theme } = useTheme();
+  const s = useStyles(createStyles);
 
   const handleGoogleSignIn = async () => {
     try {
@@ -65,7 +68,7 @@ export default function LoginScreen() {
                 ]}
               >
                 {loading ? (
-                  <ActivityIndicator color={palette.text.onBrand} />
+                  <ActivityIndicator color={theme.textOnBrand} />
                 ) : (
                   <>
                     <Text style={s.googleBtnText}>{t.login.googleSignIn}</Text>

@@ -1,0 +1,29 @@
+# Laravel queue worker for the Quranic Clinic backend (CompressAudioJob etc.).
+# Installed automatically by deploy.sh to /etc/systemd/system/mashfa-queue.service.
+# Manual install:
+#   cp deploy/mashfa-queue.service /etc/systemd/system/mashfa-queue.service
+#   systemctl daemon-reload && systemctl enable --now mashfa-queue
+#
+# --timeout must stay >= the largest job $timeout (CompressAudioJob: 600 s), and
+# DB_QUEUE_RETRY_AFTER in .env must exceed it (630) or a long job gets re-delivered
+# mid-run. --max-time=3600 recycles the process hourly; Restart=always brings it
+# back, which also picks up newly deployed code.
+
+[Unit]
+Description=Mashfa Quranic Clinic Laravel queue worker
+After=network.target mysql.service
+
+[Service]
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/mashfa/app
+ExecStart=/usr/bin/php /var/www/mashfa/app/artisan queue:work database --sleep=3 --tries=3 --max-time=3600 --timeout=600
+Restart=always
+RestartSec=5
+# Give a running ffmpeg job time to finish on stop/restart (matches --timeout).
+TimeoutStopSec=620
+StandardOutput=append:/var/www/mashfa/app/storage/logs/worker.log
+StandardError=append:/var/www/mashfa/app/storage/logs/worker.log
+
+[Install]
+WantedBy=multi-user.target

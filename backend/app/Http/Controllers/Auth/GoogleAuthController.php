@@ -49,10 +49,10 @@ class GoogleAuthController extends Controller
         ]);
 
         try {
-            ['access_token' => $accessToken, 'profile' => $googleUser] = $this->service
+            $googleUser = $this->service
                 ->exchangeCodeForProfile($request->input('code'), $request->input('code_verifier'));
 
-            $result = $this->service->resolveMobileProfile($googleUser, $accessToken);
+            $result = $this->service->resolveMobileProfile($googleUser);
 
             if ($result['outcome'] === 'success') {
                 return response()->json([

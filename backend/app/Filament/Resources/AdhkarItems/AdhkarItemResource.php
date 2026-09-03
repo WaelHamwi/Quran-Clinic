@@ -32,6 +32,7 @@ class AdhkarItemResource extends Resource
         return $table
             ->columns(AdhkarItemsTable::getColumns())
             ->filters(AdhkarItemsTable::getFilters())
+            ->deferFilters(false)
             ->actions(AdhkarItemsTable::getActions())
             ->bulkActions(AdhkarItemsTable::getBulkActions())
             ->defaultSort('display_order');

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { en, type Translations } from '@/i18n/en';
 import { ar } from '@/i18n/ar';
@@ -32,32 +32,33 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
-  const toggleLanguage = () => {
+  const toggleLanguage = useCallback(() => {
     setLanguage((prev) => {
       const next: Language = prev === 'en' ? 'ar' : 'en';
       AsyncStorage.setItem(STORAGE_KEY, next);
       return next;
     });
-  };
+  }, []);
 
-  const selectLanguage = (lang: Language) => {
+  const selectLanguage = useCallback((lang: Language) => {
     setLanguage(lang);
     AsyncStorage.setItem(STORAGE_KEY, lang);
-  };
+  }, []);
 
-  return (
-    <LanguageContext.Provider
-      value={{
-        language,
-        isArabic: language === 'ar',
-        t: language === 'ar' ? ar : en,
-        toggleLanguage,
-        selectLanguage,
-      }}
-    >
-      {children}
-    </LanguageContext.Provider>
+  // Memoized so a parent provider re-render doesn't hand every useLanguage
+  // consumer a fresh object and cascade re-renders app-wide.
+  const value = useMemo<LanguageContextValue>(
+    () => ({
+      language,
+      isArabic: language === 'ar',
+      t: language === 'ar' ? ar : en,
+      toggleLanguage,
+      selectLanguage,
+    }),
+    [language, toggleLanguage, selectLanguage],
   );
+
+  return <LanguageContext.Provider value={value}>{children}</LanguageContext.Provider>;
 }
 
 export function useLanguage(): LanguageContextValue {

@@ -25,6 +25,14 @@ class VerseResource extends Resource
         return false;
     }
 
+    // Hidden from the CMS sidebar for now — Verses are read-only reference data
+    // that CMS users do not need to browse. The resource still works if reached
+    // directly by URL; delete this override to bring the nav item back.
+    public static function shouldRegisterNavigation(): bool
+    {
+        return false;
+    }
+
     public static function table(Table $table): Table
     {
         return $table

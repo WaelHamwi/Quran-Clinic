@@ -1,15 +1,22 @@
 import React from 'react';
 import { Image, StyleSheet, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useTheme } from '@/context/ThemeContext';
+import { useStyles } from '@/hooks/common/useStyles';
+import { createStyles } from './PatternedBackground.styles';
 
-/** Figma-shared background — vertical gradient #f9fdf8(50%) → #eff9d5(50%) + tiled
- *  pattern PNG at 3% opacity. Used by Login, Onboarding, and any other "branded"
- *  surface that needs the Quranic-Clinic patterned canvas. */
+/** Figma-shared background — a vertical brand gradient + a tiled pattern PNG at 3%
+ *  opacity. Used by Login, Onboarding, and any "branded" surface that needs the
+ *  Quranic-Clinic patterned canvas. The gradient stops are theme-driven
+ *  (`theme.backgroundGradient`): a soft mint→cream wash in light mode, a deep
+ *  teal→ink gradient in dark mode so screens have depth instead of a flat wash. */
 export function PatternedBackground() {
+  const { theme } = useTheme();
+  const styles = useStyles(createStyles);
   return (
     <>
       <LinearGradient
-        colors={['rgba(249,253,248,0.5)', 'rgba(239,249,213,0.5)']}
+        colors={theme.backgroundGradient}
         style={StyleSheet.absoluteFill}
         pointerEvents="none"
       />
@@ -23,7 +30,3 @@ export function PatternedBackground() {
     </>
   );
 }
-
-const styles = StyleSheet.create({
-  pattern: { width: '100%', height: '100%', opacity: 0.03 },
-});

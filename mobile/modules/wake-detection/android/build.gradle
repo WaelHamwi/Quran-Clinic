@@ -1,0 +1,24 @@
+plugins {
+  id 'com.android.library'
+  id 'expo-module-gradle-plugin'
+}
+
+group = 'com.quranicclinic.wakedetection'
+version = '1.0.0'
+
+android {
+  namespace "expo.modules.wakedetection"
+  defaultConfig {
+    versionCode 1
+    versionName '1.0.0'
+  }
+}
+
+dependencies {
+  // NotificationCompat — the service builds its own notifications, and nothing
+  // guarantees androidx.core arrives transitively.
+  implementation 'androidx.core:core-ktx:1.13.1'
+  // expo-notifications is reached by reflection, not a project dependency:
+  // declaring one makes Gradle evaluate that autolinked project out of order
+  // and configuration fails. See cancelTodaysBackstop.
+}

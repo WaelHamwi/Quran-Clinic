@@ -1,98 +1,101 @@
 import { StyleSheet } from 'react-native';
-import { palette } from '@/theme/colors';
-import { fontFamily } from '@/theme/typography';
+import type { Theme } from '@/theme/colors';
+import { spacing } from '@/theme/spacing';
+import { fontFamily, fontSize, lineHeight } from '@/theme/typography';
 
-export const otpGateStyles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: palette.white },
-  flex: { flex: 1 },
+export const createStyles = (theme: Theme) =>
+  StyleSheet.create({
+    root: { flex: 1, backgroundColor: theme.background },
+    flex: { flex: 1 },
 
-  body: {
-    flex: 1,
-    paddingTop: 80,
-    paddingHorizontal: 24,
-    paddingBottom: 32,
-    alignItems: 'center',
-  },
+    body: {
+      flex: 1,
+      paddingTop: 80,
+      paddingHorizontal: spacing.xl,
+      paddingBottom: spacing.xxl,
+      alignItems: 'center',
+    },
 
-  heading: {
-    fontFamily: fontFamily.alexandria,
-    fontSize: 20,
-    lineHeight: 30,
-    color: palette.text.primary,
-    textAlign: 'center',
-    marginBottom: 12,
-  },
+    heading: {
+      fontFamily: fontFamily.alexandria,
+      fontSize: fontSize.xl,
+      lineHeight: lineHeight.xl,
+      color: theme.text,
+      textAlign: 'center',
+      marginBottom: spacing.md,
+    },
 
-  emailHint: {
-    fontFamily: fontFamily.alexandriaLight,
-    fontSize: 14,
-    lineHeight: 22,
-    color: palette.text.secondary,
-    textAlign: 'center',
-    marginBottom: 36,
-  },
+    emailHint: {
+      fontFamily: fontFamily.alexandriaLight,
+      fontSize: fontSize.sm,
+      lineHeight: 22,
+      color: theme.textSecondary,
+      textAlign: 'center',
+      marginBottom: 36,
+    },
 
-  emailBold: {
-    fontFamily: fontFamily.alexandriaMedium,
-    color: palette.text.primary,
-  },
+    emailBold: {
+      fontFamily: fontFamily.alexandriaMedium,
+      color: theme.text,
+    },
 
-  boxRow: {
-    flexDirection: 'row',
-    gap: 10,
-    marginBottom: 16,
-  },
+    boxRow: {
+      flexDirection: 'row',
+      gap: 10,
+      marginBottom: spacing.lg,
+    },
 
-  box: {
-    width: 46,
-    height: 56,
-    borderRadius: 10,
-    borderWidth: 1.5,
-    borderColor: palette.border.primary,
-    textAlign: 'center',
-    fontSize: 22,
-    fontFamily: fontFamily.alexandria,
-    color: palette.text.primary,
-    backgroundColor: palette.white,
-  },
+    box: {
+      width: 46,
+      height: 56,
+      borderRadius: 10,
+      borderWidth: 1.5,
+      borderColor: theme.border,
+      textAlign: 'center',
+      fontSize: 22,
+      fontFamily: fontFamily.alexandria,
+      color: theme.text,
+      backgroundColor: theme.card,
+    },
 
-  boxFilled: {
-    borderColor: palette.brand[500],
-    backgroundColor: palette.brand[25],
-  },
+    boxFilled: {
+      borderColor: theme.primary,
+      backgroundColor: theme.brandSubtle,
+    },
 
-  boxError: {
-    borderColor: palette.system.error[500],
-    backgroundColor: '#fff5f5',
-  },
+    boxError: {
+      borderColor: theme.error,
+      // Subtle error fill — component-local tint (no exact theme/palette token).
+      backgroundColor: '#fff5f5',
+    },
 
-  errorText: {
-    fontFamily: fontFamily.alexandriaLight,
-    fontSize: 13,
-    color: palette.system.error[500],
-    textAlign: 'center',
-    marginBottom: 8,
-  },
+    errorText: {
+      fontFamily: fontFamily.alexandriaLight,
+      fontSize: 13,
+      color: theme.error,
+      textAlign: 'center',
+      marginBottom: spacing.sm,
+    },
 
-  spinner: {
-    marginVertical: 12,
-  },
+    spinner: {
+      marginVertical: spacing.md,
+    },
 
-  resendBtn: {
-    marginTop: 24,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-  },
+    resendBtn: {
+      marginTop: spacing.xl,
+      paddingVertical: spacing.sm,
+      paddingHorizontal: spacing.lg,
+    },
 
-  resendDisabled: {
-    opacity: 0.45,
-  },
+    resendDisabled: {
+      opacity: 0.45,
+    },
 
-  resendText: {
-    fontFamily: fontFamily.alexandriaMedium,
-    fontSize: 14,
-    color: palette.brand[600],
-    textDecorationLine: 'underline',
-    textAlign: 'center',
-  },
-});
+    resendText: {
+      fontFamily: fontFamily.alexandriaMedium,
+      fontSize: fontSize.sm,
+      color: theme.primaryMid,
+      textDecorationLine: 'underline',
+      textAlign: 'center',
+    },
+  });

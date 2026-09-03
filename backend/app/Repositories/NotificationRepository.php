@@ -10,7 +10,17 @@ class NotificationRepository implements NotificationRepositoryInterface
 {
     public function preferencesFor(User $user): NotificationPreference
     {
-        return NotificationPreference::firstOrCreate(['user_id' => $user->id]);
+        $preference = NotificationPreference::firstOrCreate(['user_id' => $user->id]);
+
+        // firstOrCreate returns the model as it was built in memory, where every
+        // column the insert did not name is still unset — so a user's very first
+        // request would report the toggles as null instead of the defaults the
+        // database actually stored. Re-read the row so the defaults come back.
+        if ($preference->wasRecentlyCreated) {
+            $preference->refresh();
+        }
+
+        return $preference;
     }
 
     public function updatePreferences(User $user, array $data): NotificationPreference

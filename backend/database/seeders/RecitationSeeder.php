@@ -55,16 +55,23 @@ class RecitationSeeder extends Seeder
             'cdn_path' => 'abu_bakr_al-shatri',
             'bio'      => 'Saudi reciter known for his beautiful voice and clear tajweed.',
         ],
+        // NOTE for the re-pathed reciters below: each cdn_path/cdn_url is copied
+        // VERBATIM from the audio_url Quran.com's chapter_recitations API returns
+        // for that reciter (trailing slash → the '//' the CDN actually serves).
+        // Keeping the strings identical lets the mobile app treat the seeded file
+        // and the verse-timing file as the same source. Verified 114/114 per
+        // reciter on 2026-07-14. Do not "clean up" the double slashes.
         'ghamdi' => [
             'name_en'  => 'Saoud Al-Ghamdi',
             'name_ar'  => 'سعود الغامدي',
-            'cdn_path' => 'saud_alghamdi',
+            'cdn_path' => 'sa3d_al-ghaamidi/complete/',
             'bio'      => 'Saudi reciter, former imam at Masjid Al-Haram. Known for his calm and steady recitation.',
         ],
         'dosari' => [
             'name_en'  => 'Yasser Al-Dosari',
             'name_ar'  => 'ياسر الدوسري',
-            'cdn_path' => 'yasser_aldosari',
+            // qdc catalog: different base and UNPADDED surah numbers.
+            'cdn_url'  => 'https://download.quranicaudio.com/qdc/yasser_ad-dussary/mp3/{surah}.mp3',
             'bio'      => 'Saudi reciter and current imam of Masjid Al-Haram. Known for his strong and emotional voice.',
         ],
         'sudais' => [
@@ -76,15 +83,18 @@ class RecitationSeeder extends Seeder
         'maher' => [
             'name_en'  => 'Maher Al-Muaiqly',
             'name_ar'  => 'ماهر المعيقلي',
-            'cdn_path' => 'maher_al_mueaqly',
+            'cdn_path' => 'maher_almu3aiqly/year1440/',
             'bio'      => 'Saudi reciter and imam at Masjid Al-Haram. Known for his melodious and clear recitation.',
         ],
         'mohamed_ayyoub' => [
             'name_en'  => 'Mohamed Ayyoub',
             'name_ar'  => 'محمد أيوب',
-            'cdn_path' => 'mohammad_ayyoub',
+            'cdn_path' => 'muhammad_ayyoob/',
             'bio'      => 'Saudi reciter and former imam of Masjid Al-Nabawi in Madinah.',
         ],
+        // No working audio source found for Salem Al-Shareef on quranicaudio,
+        // Quran.com, or mp3quran (checked 2026-07-14) — the seeded slug 404s and
+        // the reciter stays auto-hidden in the app until a source is found.
         'salem_shareef' => [
             'name_en'  => 'Salem Al-Shareef',
             'name_ar'  => 'سالم الشريف',
@@ -94,13 +104,13 @@ class RecitationSeeder extends Seeder
         'abdul_wadood' => [
             'name_en'  => 'Abdul Wadood Haneef',
             'name_ar'  => 'عبد الودود حنيف',
-            'cdn_path' => 'abdul_wadood_haneef',
+            'cdn_path' => 'abdulwadood_haneef/',
             'bio'      => 'Prominent reciter from India, known for his clear voice and precise tajweed.',
         ],
         'salah_budair' => [
             'name_en'  => 'Salah Al-Budair',
             'name_ar'  => 'صلاح البدير',
-            'cdn_path' => 'salah_al_budair',
+            'cdn_path' => 'salahbudair/',
             'bio'      => 'Saudi reciter and imam at Masjid Al-Nabawi in Madinah. Known for his powerful voice.',
         ],
     ];
@@ -127,7 +137,10 @@ class RecitationSeeder extends Seeder
                 $reciter = Reciter::create([
                     'name'      => ['en' => $data['name_en'], 'ar' => $data['name_ar']],
                     'bio'       => ['en' => $data['bio']],
-                    'is_active' => true,
+                    // Salem Al-Shareef has no working audio source anywhere (see comment
+                    // above) — keep inactive so the app never offers a reciter with 114
+                    // dead links. Flip to true once a real source is found.
+                    'is_active' => $key !== 'salem_shareef',
                 ]);
             }
 
@@ -151,7 +164,9 @@ class RecitationSeeder extends Seeder
 
             for ($surahId = 1; $surahId <= 114; $surahId++) {
                 $localPath = "audio/reciter_{$reciter->id}/surah_{$surahId}.mp3";
-                $cdnUrl    = self::CDN_BASE . '/' . $data['cdn_path'] . '/' . str_pad($surahId, 3, '0', STR_PAD_LEFT) . '.mp3';
+                $cdnUrl    = isset($data['cdn_url'])
+                    ? str_replace('{surah}', (string) $surahId, $data['cdn_url'])
+                    : self::CDN_BASE . '/' . $data['cdn_path'] . '/' . str_pad($surahId, 3, '0', STR_PAD_LEFT) . '.mp3';
 
                 $rows[] = [
                     'reciter_id'       => $reciter->id,

@@ -11,7 +11,7 @@ Disease: belongsTo(Subcategory::class), hasMany(Recording::class), belongsToMany
 Recording: belongsTo(Disease::class), belongsTo(User::class, 'created_by')
 
 BUSINESS RULE IMPLEMENTATION:
-if ($recording->session_number == 1) { return true; }
+if ($recording->type === 'summarized') { return true; }
 if ($user && ($user->is_subscribed || $user->hasActiveTrial())) { return true; }
 if ($user && $user->trial_used_count < 2 && !$user->is_subscribed) { return $user->grantTrial(); }
 return false;

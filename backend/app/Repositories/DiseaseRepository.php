@@ -28,7 +28,7 @@ class DiseaseRepository implements DiseaseRepositoryInterface
             ->with([
                 'subcategory.category',
                 'aliases',
-                'recordings' => fn ($q) => $q->orderBy('session_number'),
+                'recordings',
             ])
             ->first();
     }

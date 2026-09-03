@@ -32,6 +32,7 @@ class AdhkarSectionResource extends Resource
         return $table
             ->columns(AdhkarSectionsTable::getColumns())
             ->filters(AdhkarSectionsTable::getFilters())
+            ->deferFilters(false)
             ->actions(AdhkarSectionsTable::getActions())
             ->bulkActions(AdhkarSectionsTable::getBulkActions())
             ->defaultSort('display_order');

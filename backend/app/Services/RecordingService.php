@@ -31,6 +31,16 @@ class RecordingService
         return $this->repository->generalRuqyah();
     }
 
+    /**
+     * Visibility gate for the direct-ID endpoints: hidden content (owner node
+     * inactive or removed) stays a 404 for everyone except admins, who need to
+     * preview unpublished sessions.
+     */
+    public function canView(Recording $recording, ?User $user): bool
+    {
+        return $recording->isPubliclyVisible() || ($user !== null && $user->isAdmin());
+    }
+
     public function canAccess(Recording $recording, ?User $user): bool
     {
         if ($recording->isFreeSession()) {
@@ -39,6 +49,11 @@ class RecordingService
 
         if ($user === null) {
             return false;
+        }
+
+        // Admins manage the content and must be able to preview any session.
+        if ($user->isAdmin()) {
+            return true;
         }
 
         if ($user->isSubscribed() || $user->hasActiveTrial()) {

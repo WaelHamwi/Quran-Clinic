@@ -3,7 +3,7 @@
 VALIDATION CHECKLIST:
 - No raw SQL, No N+1 queries, Repository pattern, Service pattern
 - Transactions, Try-catch, Cache TTL <= 300s
-- session_number=1 always free, session_number>=2 requires subscription/trial, trial max 2
+- type=summarized always free, type=detailed requires subscription/trial, trial max 2, max one recording per type per owner
 - Recordings polymorphic, Hierarchy: Disease > Subcategory > Category
 - No inline comments, ../mobile/ untouched
 - Favorites store disease_id, is_general flag, search aliases work

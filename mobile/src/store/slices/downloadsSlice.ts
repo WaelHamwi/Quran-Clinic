@@ -18,7 +18,11 @@ export interface DownloadTask {
   // next app launch without the original `Recording` object in hand.
   downloadUrl: string;
   diseaseId: number;
+  /** The wird's own name, as shown on the screen it was downloaded from. */
   title: string;
+  /** Which of the wird's two ruqyahs this is (مختصرة / مطوّلة) — the title
+   *  alone can't tell them apart, since both belong to the same wird. */
+  subtitle: string | null;
   sessionNumber: number;
   localPath: string;
   // Platform resume token captured from `DownloadResumable.savable()`. Populated only when
@@ -30,8 +34,21 @@ export interface CompletedDownload {
   recordingId: number;
   diseaseId: number;
   title: string;
+  /** Absent on entries saved before wird names were recorded. */
+  subtitle?: string | null;
   sessionNumber: number;
   localPath: string;
+  size: number;
+  downloadedAt: number;
+}
+
+export type OtherDownloadType = 'mushaf' | 'qcf4';
+
+export interface OtherDownload {
+  id: string;
+  type: OtherDownloadType;
+  title: string;
+  subtitle?: string;
   size: number;
   downloadedAt: number;
 }
@@ -39,6 +56,7 @@ export interface CompletedDownload {
 interface DownloadsState {
   tasks: Record<number, DownloadTask>;
   completed: Record<number, CompletedDownload>;
+  otherDownloads: Record<string, OtherDownload>;
   storageUsed: number;
   wifiOnly: boolean;
 }
@@ -46,6 +64,7 @@ interface DownloadsState {
 const initialState: DownloadsState = {
   tasks: {},
   completed: {},
+  otherDownloads: {},
   storageUsed: 0,
   wifiOnly: true,
 };
@@ -62,6 +81,7 @@ const downloadsSlice = createSlice({
         downloadUrl: string;
         diseaseId: number;
         title: string;
+        subtitle: string | null;
         sessionNumber: number;
         localPath: string;
       }>,
@@ -126,7 +146,30 @@ const downloadsSlice = createSlice({
     clearAll(state) {
       state.tasks = {};
       state.completed = {};
+      state.otherDownloads = {};
       state.storageUsed = 0;
+    },
+    addOtherDownload(state, action: PayloadAction<OtherDownload>) {
+      const { id } = action.payload;
+      state.otherDownloads[id] = action.payload;
+      state.storageUsed += action.payload.size;
+    },
+    removeOtherDownload(state, action: PayloadAction<string>) {
+      const entry = state.otherDownloads[action.payload];
+      if (entry) {
+        state.storageUsed = Math.max(0, state.storageUsed - entry.size);
+        delete state.otherDownloads[action.payload];
+      }
+    },
+    // Keeps an aggregate entry (e.g. the QCF4 font pack, which grows page by
+    // page as the user reads) sized to what's actually on disk, adjusting
+    // storageUsed by the delta so the storage bar stays accurate.
+    setOtherDownloadSize(state, action: PayloadAction<{ id: string; size: number }>) {
+      const entry = state.otherDownloads[action.payload.id];
+      if (entry) {
+        state.storageUsed = Math.max(0, state.storageUsed - entry.size + action.payload.size);
+        entry.size = action.payload.size;
+      }
     },
   },
 });
@@ -142,11 +185,16 @@ export const {
   setWifiOnly,
   setStorageUsed,
   clearAll,
+  addOtherDownload,
+  removeOtherDownload,
+  setOtherDownloadSize,
 } = downloadsSlice.actions;
 export default downloadsSlice.reducer;
 
 export const selectCompletedDownloads = (s: RootState): Record<number, CompletedDownload> =>
   s.downloads.completed;
+export const selectOtherDownloads = (s: RootState): Record<string, OtherDownload> =>
+  s.downloads.otherDownloads;
 /** Tasks interrupted mid-flight (pending/downloading) that should auto-resume on launch. */
 export const selectResumableTasks = (s: RootState): DownloadTask[] =>
   Object.values(s.downloads.tasks).filter(

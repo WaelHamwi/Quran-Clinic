@@ -23,7 +23,7 @@ See .claude/backend/agents/api-engineer.md
 
 RULES: No comments, ../mobile/ never referenced
 FavoriteController: toggle() method must use firstOrCreate pattern
-RecordingController: stream() method must implement business rules (session_number=1 free, session_number>=2 requires subscription/trial)
+RecordingController: stream() method must implement business rules (type=summarized free, type=detailed requires subscription/trial — see ../../shared-context.md → RECORDING TYPES)
 
 AFTER: php artisan test --filter=Feature
 

@@ -8,17 +8,20 @@ import { Header } from '@/components/layout/Header';
 import { Loader } from '@/components/common/Loader';
 import { EmptyState } from '@/components/common/EmptyState';
 import { AdhkarCounter } from '@/components/lists/AdhkarCounter';
-import { useTahsinatItems } from '@/hooks/useTahsinat';
+import { useTahsinatItems } from '@/hooks/content/useTahsinat';
 import { useLanguage } from '@/context/LanguageContext';
 import { pickText } from '@/utils/formatters';
 import { flattenSectioned } from '@/utils/sections';
-import { palette } from '@/theme/colors';
-import { tahsinatItemsScreenStyles as s } from '@/styles/tahsinatItemsScreen.styles';
+import { useTheme } from '@/context/ThemeContext';
+import { useStyles } from '@/hooks/common/useStyles';
+import { createStyles } from '@/styles/tahsinatItemsScreen.styles';
 
 export default function TahsinatItemsScreen() {
   const params = useLocalSearchParams();
   const slug = typeof params.slug === 'string' ? params.slug : '';
   const { t, isArabic } = useLanguage();
+  const { theme } = useTheme();
+  const s = useStyles(createStyles);
   const { category, isLoading, error, refetch } = useTahsinatItems(slug ?? '');
 
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -128,7 +131,7 @@ export default function TahsinatItemsScreen() {
               <Ionicons
                 name={isArabic ? 'arrow-back' : 'arrow-forward'}
                 size={20}
-                color={palette.brand[500]}
+                color={theme.primary}
               />
               <Text style={s.navBtnText}>
                 {isLast ? t.tahsinat.done : t.tahsinat.next}
@@ -144,7 +147,7 @@ export default function TahsinatItemsScreen() {
               <Ionicons
                 name={isArabic ? 'arrow-forward' : 'arrow-back'}
                 size={20}
-                color={palette.brand[500]}
+                color={theme.primary}
               />
             </Pressable>
           </View>

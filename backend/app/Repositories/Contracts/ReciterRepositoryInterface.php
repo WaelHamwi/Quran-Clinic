@@ -3,10 +3,10 @@
 namespace App\Repositories\Contracts;
 
 use App\Models\Reciter;
-use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Database\Eloquent\Collection;
 
 interface ReciterRepositoryInterface
 {
-    public function getAllActive(int $perPage): LengthAwarePaginator;
+    public function allActive(): Collection;
     public function findById(int $id): ?Reciter;
 }

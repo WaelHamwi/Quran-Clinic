@@ -17,4 +17,6 @@ export const FONTS = {
   Alexandria_500Medium,
   Alexandria_600SemiBold,
   Alexandria_700Bold,
+  SurahNameV4: require('../../assets/fonts/surah-name-v4.ttf'),
+  QuranCommon: require('../../assets/fonts/quran-common.ttf'),
 } as const;

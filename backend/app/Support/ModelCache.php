@@ -5,6 +5,7 @@ namespace App\Support;
 use Closure;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection as SupportCollection;
 use Illuminate\Support\Facades\Cache;
 
@@ -48,6 +49,38 @@ final class ModelCache
         });
 
         return $snapshot === null ? null : self::rehydrate($snapshot);
+    }
+
+    /**
+     * Cache a paginated query (`->paginate()`) and return a rebuilt
+     * LengthAwarePaginator whose items are rehydrated models. Only the page
+     * items + pagination meta are stored — never the live paginator object.
+     */
+    public static function rememberPaginated(string $key, int $ttl, Closure $resolver): LengthAwarePaginator
+    {
+        $payload = Cache::remember($key, $ttl, static function () use ($resolver): array {
+            /** @var LengthAwarePaginator $paginator */
+            $paginator = $resolver();
+
+            return [
+                'items'       => array_map(static fn (Model $m): array => self::snapshot($m), $paginator->items()),
+                'total'       => $paginator->total(),
+                'perPage'     => $paginator->perPage(),
+                'currentPage' => $paginator->currentPage(),
+                'path'        => $paginator->path(),
+                'pageName'    => $paginator->getPageName(),
+            ];
+        });
+
+        $items = array_map(static fn (array $snap): Model => self::rehydrate($snap), $payload['items']);
+
+        return new LengthAwarePaginator(
+            $items,
+            $payload['total'],
+            $payload['perPage'],
+            $payload['currentPage'],
+            ['path' => $payload['path'], 'pageName' => $payload['pageName']],
+        );
     }
 
     /**

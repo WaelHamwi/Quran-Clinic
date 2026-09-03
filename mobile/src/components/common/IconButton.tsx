@@ -1,9 +1,10 @@
-import React, { useMemo } from 'react';
-import { Pressable, StyleSheet } from 'react-native';
+import React from 'react';
+import { Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/context/ThemeContext';
-import type { Theme } from '@/theme/colors';
-import { radius, hitSlop } from '@/theme/spacing';
+import { useStyles } from '@/hooks/common/useStyles';
+import { hitSlop } from '@/theme/spacing';
+import { createStyles } from './IconButton.styles';
 
 interface IconButtonProps {
   icon: keyof typeof Ionicons.glyphMap;
@@ -23,7 +24,7 @@ function IconButtonBase({
   disabled = false,
 }: IconButtonProps) {
   const { theme } = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const styles = useStyles(createStyles);
   const tint = color ?? theme.text;
 
   return (
@@ -41,21 +42,6 @@ function IconButtonBase({
       <Ionicons name={icon} size={size} color={tint} />
     </Pressable>
   );
-}
-
-function createStyles(theme: Theme) {
-  return StyleSheet.create({
-    button: {
-      width: 40,
-      height: 40,
-      borderRadius: radius.pill,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    filled: { backgroundColor: theme.surface },
-    pressed: { opacity: 0.6 },
-    disabled: { opacity: 0.4 },
-  });
 }
 
 export const IconButton = React.memo(IconButtonBase);

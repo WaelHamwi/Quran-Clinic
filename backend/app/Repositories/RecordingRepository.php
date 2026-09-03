@@ -2,6 +2,7 @@
 
 namespace App\Repositories;
 
+use App\Models\Disease;
 use App\Models\Recording;
 use App\Repositories\Contracts\RecordingRepositoryInterface;
 use Illuminate\Support\Collection;
@@ -10,14 +11,16 @@ class RecordingRepository implements RecordingRepositoryInterface
 {
     public function byDisease(int $diseaseId): Collection
     {
-        return Recording::where('disease_id', $diseaseId)
-            ->orderBy('session_number')
-            ->get();
+        // Only recordings of active diseases: keeps direct-ID listing in line with
+        // the active()-scoped browse tree so hidden content can't be enumerated.
+        $disease = Disease::where('id', $diseaseId)->where('is_active', true)->first();
+
+        return $disease?->recordings ?? collect();
     }
 
     public function findById(int $id): ?Recording
     {
-        return Recording::with('disease')->find($id);
+        return Recording::with('attachments.attachable')->find($id);
     }
 
     public function incrementPlays(Recording $recording): void
@@ -28,9 +31,9 @@ class RecordingRepository implements RecordingRepositoryInterface
     public function generalRuqyah(): Collection
     {
         return Recording::general()
-            ->with('disease')
-            ->orderBy('disease_id')
-            ->orderBy('session_number')
+            ->with('attachments.attachable')
+            ->orderBy('created_at')
+            ->orderBy('id')
             ->get();
     }
 }

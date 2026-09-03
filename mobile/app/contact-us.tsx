@@ -6,12 +6,15 @@ import { PatternedBackground } from '@/components/layout/PatternedBackground';
 import { Header } from '@/components/layout/Header';
 import { useAuth } from '@/context/AuthContext';
 import { useLanguage } from '@/context/LanguageContext';
-import { palette } from '@/theme/colors';
-import { contactUsScreenStyles as s } from '@/styles/contactUsScreen.styles';
+import { useTheme } from '@/context/ThemeContext';
+import { useStyles } from '@/hooks/common/useStyles';
+import { createStyles } from '@/styles/contactUsScreen.styles';
 
 export default function ContactUsScreen() {
   const { user } = useAuth();
   const { t, isArabic } = useLanguage();
+  const { theme } = useTheme();
+  const s = useStyles(createStyles);
 
   const [name, setName] = useState<string>(user?.name ?? '');
   const [email, setEmail] = useState<string>(user?.email ?? '');
@@ -33,7 +36,7 @@ export default function ContactUsScreen() {
           <Text style={[s.label, isArabic && s.labelRtl]}>{t.contactUs.nameLabel}</Text>
           <View style={[s.inputRow, isArabic && s.inputRowRtl]}>
             <View style={s.inputIcon}>
-              <Ionicons name="person-outline" size={16} color={palette.text.secondary} />
+              <Ionicons name="person-outline" size={16} color={theme.textSecondary} />
             </View>
             <TextInput
               style={s.input}
@@ -41,7 +44,7 @@ export default function ContactUsScreen() {
               onChangeText={setName}
               textAlign={isArabic ? 'right' : 'left'}
               placeholder={t.contactUs.nameLabel}
-              placeholderTextColor={palette.text.placeholder}
+              placeholderTextColor={theme.textPlaceholder}
             />
           </View>
         </View>
@@ -51,7 +54,7 @@ export default function ContactUsScreen() {
           <Text style={[s.label, isArabic && s.labelRtl]}>{t.contactUs.emailLabel}</Text>
           <View style={[s.inputRow, isArabic && s.inputRowRtl]}>
             <View style={s.inputIcon}>
-              <Ionicons name="mail-outline" size={16} color={palette.text.secondary} />
+              <Ionicons name="mail-outline" size={16} color={theme.textSecondary} />
             </View>
             <TextInput
               style={s.input}
@@ -61,7 +64,7 @@ export default function ContactUsScreen() {
               autoCapitalize="none"
               textAlign={isArabic ? 'right' : 'left'}
               placeholder={t.contactUs.emailLabel}
-              placeholderTextColor={palette.text.placeholder}
+              placeholderTextColor={theme.textPlaceholder}
             />
           </View>
         </View>
@@ -77,7 +80,7 @@ export default function ContactUsScreen() {
               multiline
               textAlign={isArabic ? 'right' : 'left'}
               placeholder={t.contactUs.messagePlaceholder}
-              placeholderTextColor={palette.text.placeholder}
+              placeholderTextColor={theme.textPlaceholder}
             />
           </View>
         </View>

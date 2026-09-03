@@ -43,6 +43,17 @@ php artisan view:cache
 echo "==> Fixing storage permissions…"
 chown -R www-data:www-data storage bootstrap/cache
 
+echo "==> Installing queue worker service + scheduler cron…"
+cp "$APP_DIR/deploy/mashfa-queue.service" /etc/systemd/system/mashfa-queue.service
+cp "$APP_DIR/deploy/mashfa-cron" /etc/cron.d/mashfa
+chmod 644 /etc/cron.d/mashfa
+systemctl daemon-reload
+systemctl enable --now mashfa-queue
+
+echo "==> Restarting queue worker (picks up the new code)…"
+# queue:restart signals the worker to exit after its current job; systemd restarts it.
+php artisan queue:restart
+
 echo "==> Reloading $FPM…"
 systemctl reload "$FPM"
 

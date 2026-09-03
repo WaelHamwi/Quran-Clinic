@@ -1,0 +1,4 @@
+# Laravel scheduler for the Quranic Clinic backend.
+# Installed automatically by deploy.sh to /etc/cron.d/mashfa (must be owned by root, mode 644).
+# /etc/cron.d files require the user field (www-data) between the schedule and the command.
+* * * * * www-data cd /var/www/mashfa/app && /usr/bin/php artisan schedule:run >> /dev/null 2>&1

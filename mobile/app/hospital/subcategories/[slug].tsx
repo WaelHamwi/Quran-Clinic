@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { RefreshControl, StyleSheet, View } from 'react-native';
+import { RefreshControl, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Screen } from '@/components/layout/Screen';
 import { Header } from '@/components/layout/Header';
@@ -7,18 +7,21 @@ import { Loader } from '@/components/common/Loader';
 import { EmptyState } from '@/components/common/EmptyState';
 import { SubcategoryList } from '@/components/lists/SubcategoryList';
 import { SearchBar } from '@/components/forms/SearchBar';
-import { useCategory } from '@/hooks/useCategory';
-import { useRefresh } from '@/hooks/useRefresh';
+import { useCategory } from '@/hooks/hospital/useCategory';
+import { useRefresh } from '@/hooks/common/useRefresh';
 import { useLanguage } from '@/context/LanguageContext';
-import { palette } from '@/theme/colors';
+import { useTheme } from '@/context/ThemeContext';
+import { useStyles } from '@/hooks/common/useStyles';
 import { pickText } from '@/utils/formatters';
 import { categoryIsDirect, categoryIsDiseaseDirect, subcategoryRoute } from '@/utils/hospital';
-import { spacing } from '@/theme/spacing';
+import { createStyles } from '@/styles/subcategoriesScreen.styles';
 
 export default function SubcategoriesScreen() {
   const params = useLocalSearchParams();
   const slug = typeof params.slug === 'string' ? params.slug : '';
   const { t, isArabic } = useLanguage();
+  const { theme } = useTheme();
+  const s = useStyles(createStyles);
   const router = useRouter();
   const { category, subcategories, isLoading, error, refetch } = useCategory(slug);
   const { refreshing, onRefresh } = useRefresh(refetch);
@@ -67,7 +70,7 @@ export default function SubcategoriesScreen() {
         />
       ) : (
         <>
-          <View style={styles.searchBar}>
+          <View style={s.searchBar}>
             <SearchBar
               value={query}
               onChangeText={setQuery}
@@ -84,8 +87,8 @@ export default function SubcategoriesScreen() {
               <RefreshControl
                 refreshing={refreshing}
                 onRefresh={onRefresh}
-                tintColor={palette.brand[500]}
-                colors={[palette.brand[500]]}
+                tintColor={theme.primary}
+                colors={[theme.primary]}
               />
             }
           />
@@ -94,10 +97,3 @@ export default function SubcategoriesScreen() {
     </Screen>
   );
 }
-
-const styles = StyleSheet.create({
-  searchBar: {
-    paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.md,
-  },
-});

@@ -10,11 +10,12 @@ import { useLanguage } from '@/context/LanguageContext';
 import { useAuth } from '@/context/AuthContext';
 import { useAppDispatch } from '@/store/hooks';
 import { markSponsorShown } from '@/store/slices/onboardingSlice';
-import { sponsorService } from '@/services/sponsorService';
-import { cachedFetch } from '@/services/contentCache';
+import { sponsorService } from '@/services/content/sponsorService';
+import { cachedFetch } from '@/services/common/contentCache';
 import { cacheKeys } from '@/utils/cacheKeys';
 import { pickText, resolveMediaUrl } from '@/utils/formatters';
-import { sponsorScreenStyles as s } from './SponsorScreen.styles';
+import { useStyles } from '@/hooks/common/useStyles';
+import { createStyles } from './SponsorScreen.styles';
 
 const MIN_DURATION_MS = 1500;
 
@@ -27,6 +28,7 @@ export function SponsorScreen({ children }: { children: React.ReactNode }) {
   const { t, isArabic } = useLanguage();
   const { user } = useAuth();
   const dispatch = useAppDispatch();
+  const s = useStyles(createStyles);
   const [overlayVisible, setOverlayVisible] = useState(true);
 
   const { data, isLoading, isError } = useQuery({
@@ -54,6 +56,7 @@ export function SponsorScreen({ children }: { children: React.ReactNode }) {
     const shouldShow = !isError && !!data?.is_enabled && !!sponsor && matchesCountry;
     if (!shouldShow) {
       dispatch(markSponsorShown());
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: hide the overlay once we know the sponsor shouldn't show
       setOverlayVisible(false);
       return;
     }

@@ -12,9 +12,10 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useLanguage } from '@/context/LanguageContext';
+import { useTheme } from '@/context/ThemeContext';
+import { useStyles } from '@/hooks/common/useStyles';
 import { COUNTRIES, type Country } from '@/data/countries';
-import { palette } from '@/theme/colors';
-import { countryPickerStyles as s } from './CountryPickerModal.styles';
+import { createStyles } from './CountryPickerModal.styles';
 
 const LABELS = {
   ar: { title: 'اختر الدولة', search: 'ابحث عن دولة...', empty: 'لا توجد نتائج' },
@@ -40,12 +41,15 @@ function normalizeAr(value: string): string {
 
 export function CountryPickerModal({ visible, selected, onSelect, onClose }: Props) {
   const { language, isArabic } = useLanguage();
+  const { theme } = useTheme();
+  const s = useStyles(createStyles);
   const labels = LABELS[language];
   const [query, setQuery] = useState('');
 
   // Clear the search whenever the sheet is dismissed so it reopens fresh — otherwise a
   // stale filter from the previous visit hides most of the list.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: reset search when the sheet closes
     if (!visible) setQuery('');
   }, [visible]);
 
@@ -80,14 +84,14 @@ export function CountryPickerModal({ visible, selected, onSelect, onClose }: Pro
             <Ionicons
               name="checkmark"
               size={18}
-              color={palette.brand[500]}
+              color={theme.primary}
               style={s.checkIcon}
             />
           )}
         </Pressable>
       );
     },
-    [selected, language, isArabic, onSelect, onClose],
+    [selected, language, isArabic, onSelect, onClose, theme, s],
   );
 
   return (
@@ -104,7 +108,7 @@ export function CountryPickerModal({ visible, selected, onSelect, onClose }: Pro
             {isArabic ? (
               <>
                 <Pressable style={s.closeBtn} onPress={onClose}>
-                  <Ionicons name="close" size={18} color={palette.text.secondary} />
+                  <Ionicons name="close" size={18} color={theme.textSecondary} />
                 </Pressable>
                 <Text style={s.headerTitle}>{labels.title}</Text>
               </>
@@ -112,7 +116,7 @@ export function CountryPickerModal({ visible, selected, onSelect, onClose }: Pro
               <>
                 <Text style={s.headerTitle}>{labels.title}</Text>
                 <Pressable style={s.closeBtn} onPress={onClose}>
-                  <Ionicons name="close" size={18} color={palette.text.secondary} />
+                  <Ionicons name="close" size={18} color={theme.textSecondary} />
                 </Pressable>
               </>
             )}
@@ -120,19 +124,19 @@ export function CountryPickerModal({ visible, selected, onSelect, onClose }: Pro
 
           {/* Search */}
           <View style={s.searchRow}>
-            <Ionicons name="search-outline" size={16} color={palette.text.placeholder} />
+            <Ionicons name="search-outline" size={16} color={theme.textPlaceholder} />
             <TextInput
               style={[s.searchInput, isArabic && { textAlign: 'right' }]}
               value={query}
               onChangeText={setQuery}
               placeholder={labels.search}
-              placeholderTextColor={palette.text.placeholder}
+              placeholderTextColor={theme.textPlaceholder}
               autoCorrect={false}
               autoCapitalize="none"
             />
             {query.length > 0 && (
               <Pressable onPress={() => setQuery('')}>
-                <Ionicons name="close-circle" size={16} color={palette.text.placeholder} />
+                <Ionicons name="close-circle" size={16} color={theme.textPlaceholder} />
               </Pressable>
             )}
           </View>

@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\AdhkarSections\Tables;
 
 use App\Models\AdhkarCategory;
+use App\Models\AdhkarSection;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
@@ -10,6 +11,7 @@ use Filament\Actions\EditAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\ToggleColumn;
 use Filament\Tables\Filters\SelectFilter;
+use Livewire\Component;
 
 class AdhkarSectionsTable
 {
@@ -31,6 +33,15 @@ class AdhkarSectionsTable
             SelectFilter::make('adhkar_category_id')
                 ->label('Category')
                 ->options(fn () => AdhkarCategory::ordered()->get()->pluck('name', 'id')),
+            SelectFilter::make('id')
+                ->label('Section')
+                ->searchable()
+                ->options(fn (Component $livewire) => AdhkarSection::query()
+                    ->when(
+                        $livewire->getTableFilterFormState('adhkar_category_id')['value'] ?? null,
+                        fn ($query, $categoryId) => $query->where('adhkar_category_id', $categoryId),
+                    )
+                    ->ordered()->get()->pluck('name', 'id')),
         ];
     }
 

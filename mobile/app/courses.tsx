@@ -1,18 +1,20 @@
 import React, { useCallback } from 'react';
-import { FlatList, StyleSheet, View, type ListRenderItem } from 'react-native';
+import { FlatList, View, type ListRenderItem } from 'react-native';
 import { Screen } from '@/components/layout/Screen';
 import { PatternedBackground } from '@/components/layout/PatternedBackground';
 import { Header } from '@/components/layout/Header';
 import { Loader } from '@/components/common/Loader';
 import { EmptyState } from '@/components/common/EmptyState';
 import { CourseCard } from '@/components/lists/CourseCard';
-import { useCourses } from '@/hooks/useCourses';
+import { useCourses } from '@/hooks/content/useCourses';
 import { useLanguage } from '@/context/LanguageContext';
-import { spacing } from '@/theme/spacing';
+import { useStyles } from '@/hooks/common/useStyles';
+import { createStyles } from '@/styles/coursesScreen.styles';
 import type { Course } from '@/types/course';
 
 export default function CoursesScreen() {
   const { t } = useLanguage();
+  const s = useStyles(createStyles);
   const { courses, isLoading } = useCourses();
 
   const renderItem = useCallback<ListRenderItem<Course>>(
@@ -31,16 +33,11 @@ export default function CoursesScreen() {
           data={courses}
           renderItem={renderItem}
           keyExtractor={(item) => String(item.id)}
-          contentContainerStyle={styles.content}
-          ItemSeparatorComponent={() => <View style={styles.separator} />}
+          contentContainerStyle={s.content}
+          ItemSeparatorComponent={() => <View style={s.separator} />}
           ListEmptyComponent={<EmptyState icon="school-outline" title={t.courses.empty} />}
         />
       )}
     </Screen>
   );
 }
-
-const styles = StyleSheet.create({
-  content: { padding: spacing.lg, flexGrow: 1 },
-  separator: { height: spacing.md },
-});

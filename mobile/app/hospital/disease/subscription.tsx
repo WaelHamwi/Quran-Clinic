@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useLanguage } from '@/context/LanguageContext';
-import { palette } from '@/theme/colors';
-import { subscriptionScreenStyles as s } from '@/styles/subscriptionScreen.styles';
+import { useTheme } from '@/context/ThemeContext';
+import { useStyles } from '@/hooks/common/useStyles';
+import { createStyles } from '@/styles/subscriptionScreen.styles';
 
 type Plan = 'yearly' | 'monthly';
 
@@ -16,7 +17,18 @@ const FEATURE_ICONS: [keyof typeof Ionicons.glyphMap, string, string][] = [
 
 export default function SubscriptionScreen() {
   const { t } = useLanguage();
+  const { theme } = useTheme();
+  const s = useStyles(createStyles);
   const [selected, setSelected] = useState<Plan>('yearly');
+  const params = useLocalSearchParams();
+
+  // Reached by picking the detailed (paid) ruqyah from the intro sheet: the wird
+  // screen behind it has no intro and nothing playing, so closing goes home
+  // rather than back to that dead end.
+  const handleClose = useCallback(() => {
+    if (params.from === 'intro') router.replace('/');
+    else router.back();
+  }, [params.from]);
 
   return (
     <View style={s.screen}>
@@ -24,7 +36,7 @@ export default function SubscriptionScreen() {
         {/* ── Hero ──────────────────────────────────────────── */}
         <View style={s.hero}>
           <View style={s.lockCircle}>
-            <Ionicons name="lock-closed" size={36} color={palette.text.onBrand} />
+            <Ionicons name="lock-closed" size={36} color={theme.textOnBrand} />
           </View>
           <Text style={s.heroTitle}>{t.subscription.title}</Text>
           <Text style={s.heroSubtitle}>{t.subscription.subtitle}</Text>
@@ -35,7 +47,7 @@ export default function SubscriptionScreen() {
           {FEATURE_ICONS.map(([icon, titleKey, descKey]) => (
             <View key={titleKey} style={s.featureRow}>
               <View style={s.featureIcon}>
-                <Ionicons name={icon} size={20} color={palette.brand[500]} />
+                <Ionicons name={icon} size={20} color={theme.primary} />
               </View>
               <View style={s.featureText}>
                 <Text style={s.featureTitle}>
@@ -103,8 +115,8 @@ export default function SubscriptionScreen() {
       </ScrollView>
 
       {/* Close button — overlaid on hero */}
-      <Pressable style={s.closeBtn} onPress={() => router.back()} hitSlop={8}>
-        <Ionicons name="close" size={18} color={palette.text.onBrand} />
+      <Pressable style={s.closeBtn} onPress={handleClose} hitSlop={8}>
+        <Ionicons name="close" size={18} color={theme.textOnBrand} />
       </Pressable>
     </View>
   );

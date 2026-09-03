@@ -2,7 +2,7 @@ import { createListenerMiddleware } from '@reduxjs/toolkit';
 import { setRecording } from '@/store/slices/playerSlice';
 import { enqueue } from '@/store/slices/offlineQueueSlice';
 import { selectNetworkOnline } from '@/store/slices/uiSlice';
-import { ruqyahService } from '@/services/ruqyahService';
+import { ruqyahService } from '@/services/content/ruqyahService';
 import type { RootState } from '@/store/rootReducer';
 
 /**

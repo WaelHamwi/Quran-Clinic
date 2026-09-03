@@ -1,5 +1,5 @@
 import type { Translatable } from '@/types/translatable';
-import { API_URL } from '@/services/api';
+import { API_URL } from '@/services/common/api';
 
 /**
  * Normalize a media URL coming from the API.

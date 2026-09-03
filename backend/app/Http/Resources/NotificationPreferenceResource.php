@@ -15,6 +15,7 @@ class NotificationPreferenceResource extends JsonResource
             'adhkar_waking_enabled'  => $this->adhkar_waking_enabled,
             'waking_start_time'      => $this->waking_start_time,
             'waking_end_time'        => $this->waking_end_time,
+            'waking_delay_minutes'   => (int) ($this->waking_delay_minutes ?? 0),
         ];
     }
 }

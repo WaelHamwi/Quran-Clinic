@@ -2,8 +2,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useContext, useEffect, useState } from 'react';
 
 interface MushafContextValue {
-  selectedSurahId: number | null;
-  setSelectedSurahId: (id: number | null) => void;
   selectedReciterId: number | null;
   setSelectedReciterId: (id: number | null) => void;
   isContextReady: boolean;
@@ -12,7 +10,6 @@ interface MushafContextValue {
 const MushafContext = createContext<MushafContextValue | null>(null);
 
 export function MushafProvider({ children }: { children: React.ReactNode }) {
-  const [selectedSurahId, setSelectedSurahId] = useState<number | null>(null);
   const [selectedReciterId, setSelectedReciterId] = useState<number | null>(null);
   const [isContextReady, setIsContextReady] = useState(false);
 
@@ -36,8 +33,6 @@ export function MushafProvider({ children }: { children: React.ReactNode }) {
   return (
     <MushafContext.Provider
       value={{
-        selectedSurahId,
-        setSelectedSurahId,
         selectedReciterId,
         setSelectedReciterId: handleSetReciterId,
         isContextReady,

@@ -3,11 +3,11 @@
 namespace App\Repositories\Contracts;
 
 use App\Models\Surah;
-use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Database\Eloquent\Collection;
 
 interface SurahRepositoryInterface
 {
-    public function getAllSurahs(int $perPage, int $page = 1): LengthAwarePaginator;
+    public function all(): Collection;
     public function getSurahWithVerses(int $id): ?Surah;
     public function getSurahById(int $id): ?Surah;
 }

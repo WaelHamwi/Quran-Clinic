@@ -3,10 +3,11 @@ import { Linking, Pressable, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useLanguage } from '@/context/LanguageContext';
-import { palette } from '@/theme/colors';
+import { useTheme } from '@/context/ThemeContext';
+import { useStyles } from '@/hooks/common/useStyles';
 import { pickText, resolveMediaUrl } from '@/utils/formatters';
 import type { Sponsor } from '@/types/sponsor';
-import { sponsorCardStyles as s } from './SponsorCard.styles';
+import { createStyles } from './SponsorCard.styles';
 
 interface SponsorCardProps {
   sponsor: Sponsor;
@@ -14,6 +15,8 @@ interface SponsorCardProps {
 
 function SponsorCardBase({ sponsor }: SponsorCardProps) {
   const { t, isArabic } = useLanguage();
+  const { theme } = useTheme();
+  const s = useStyles(createStyles);
 
   const openSite = useCallback(() => {
     if (sponsor.website_url) Linking.openURL(sponsor.website_url).catch(() => {});
@@ -30,7 +33,7 @@ function SponsorCardBase({ sponsor }: SponsorCardProps) {
         <Ionicons
           name="arrow-up"
           size={18}
-          color={palette.text.tertiary}
+          color={theme.textMuted}
           style={isArabic ? s.arrowRtl : s.arrowLtr}
         />
       </View>

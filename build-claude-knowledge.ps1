@@ -7,6 +7,23 @@ $outMd     = Join-Path $root 'CLAUDE_PROJECT_KNOWLEDGE.md'
 $outHtml   = Join-Path $root 'CLAUDE_PROJECT_KNOWLEDGE.html'
 $outPdf    = Join-Path $root 'CLAUDE_PROJECT_KNOWLEDGE.pdf'
 
+# ---- Secret redaction ------------------------------------------------------
+# Every embedded file passes through this filter so the knowledge pack can
+# never leak a live credential (Expo tokens, OAuth secrets, API keys, keys).
+function Redact-Secrets([string]$text) {
+    $rules = @(
+        @{ p = 'GOCSPX-[A-Za-z0-9_\-]+';                                          r = 'GOCSPX-<REDACTED>' },
+        @{ p = '(EXPO_TOKEN\\?[''"]?\s*[=:]\s*[\\''"]*)[A-Za-z0-9_\-]{16,}';      r = '$1<REDACTED>' },
+        @{ p = 'AIza[0-9A-Za-z_\-]{30,}';                                         r = '<REDACTED-GOOGLE-API-KEY>' },
+        @{ p = 'gh[pousr]_[A-Za-z0-9]{20,}';                                      r = '<REDACTED-GITHUB-TOKEN>' },
+        @{ p = 'sk-(ant-)?[A-Za-z0-9\-_]{20,}';                                   r = '<REDACTED-API-KEY>' },
+        @{ p = '(?s)-----BEGIN [A-Z ]*PRIVATE KEY-----.*?-----END [A-Z ]*PRIVATE KEY-----'; r = '<REDACTED-PRIVATE-KEY>' },
+        @{ p = '((PASSWORD|SECRET|API_KEY|ACCESS_TOKEN)\s*=\s*)[^\s<][^\s]{7,}';  r = '$1<REDACTED>' }
+    )
+    foreach ($rule in $rules) { $text = [regex]::Replace($text, $rule.p, $rule.r) }
+    return $text
+}
+
 # ---- Build the ordered list of source files -------------------------------
 $files = New-Object System.Collections.Generic.List[object]
 
@@ -89,7 +106,7 @@ $sb = New-Object System.Text.StringBuilder
 [void]$sb.AppendLine($intro)
 
 foreach ($f in $files) {
-    $content = Get-Content -Path $f.Path -Raw -Encoding UTF8
+    $content = Redact-Secrets (Get-Content -Path $f.Path -Raw -Encoding UTF8)
     [void]$sb.AppendLine("")
     [void]$sb.AppendLine("---")
     [void]$sb.AppendLine("")
@@ -134,7 +151,7 @@ foreach ($f in $files) { [void]$h.AppendLine("<li>$(HtmlEnc $f.Label)</li>") }
 [void]$h.AppendLine('</ul></div>')
 
 foreach ($f in $files) {
-    $content = Get-Content -Path $f.Path -Raw -Encoding UTF8
+    $content = Redact-Secrets (Get-Content -Path $f.Path -Raw -Encoding UTF8)
     $title = HtmlEnc $f.Label
     $body  = HtmlEnc ($content.TrimEnd())
     [void]$h.AppendLine("<h2 class=`"file`">FILE: $title</h2>")

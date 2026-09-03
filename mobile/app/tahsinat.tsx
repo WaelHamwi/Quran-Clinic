@@ -7,15 +7,18 @@ import { Header } from '@/components/layout/Header';
 import { Loader } from '@/components/common/Loader';
 import { EmptyState } from '@/components/common/EmptyState';
 import { TahsinatCategoryCard } from '@/components/lists/TahsinatCategoryCard';
-import { useTahsinatCategories } from '@/hooks/useTahsinat';
-import { useRefresh } from '@/hooks/useRefresh';
+import { useTahsinatCategories } from '@/hooks/content/useTahsinat';
+import { useRefresh } from '@/hooks/common/useRefresh';
 import { useLanguage } from '@/context/LanguageContext';
-import { palette } from '@/theme/colors';
+import { useTheme } from '@/context/ThemeContext';
+import { useStyles } from '@/hooks/common/useStyles';
 import type { TahsinatCategory } from '@/types/tahsinat';
-import { tahsinatScreenStyles as s } from '@/styles/tahsinatScreen.styles';
+import { createStyles } from '@/styles/tahsinatScreen.styles';
 
 export default function TahsinatScreen() {
   const { t } = useLanguage();
+  const { theme } = useTheme();
+  const s = useStyles(createStyles);
   const router = useRouter();
   const { categories, isLoading, error, refetch } = useTahsinatCategories();
 
@@ -61,8 +64,8 @@ export default function TahsinatScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor={palette.brand[500]}
-            colors={[palette.brand[500]]}
+            tintColor={theme.primary}
+            colors={[theme.primary]}
           />
         }
       />

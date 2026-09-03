@@ -4,14 +4,11 @@ import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { RemoteSvg } from '@/components/common/RemoteSvg';
 import { useLanguage } from '@/context/LanguageContext';
+import { useTheme } from '@/context/ThemeContext';
+import { useStyles } from '@/hooks/common/useStyles';
 import { pickText } from '@/utils/formatters';
 import type { FavoriteItem } from '@/store/slices/favoritesSlice';
-import {
-  favoriteRowStyles as s,
-  ICON_COLOR,
-  HANDLE_COLOR,
-  CHEVRON_COLOR,
-} from './FavoriteRow.styles';
+import { createStyles, ICON_BOX } from './FavoriteRow.styles';
 
 interface FavoriteRowProps {
   favorite: FavoriteItem;
@@ -25,6 +22,8 @@ interface FavoriteRowProps {
 
 function FavoriteRowBase({ favorite, onPress, dragHandleProps, isActive }: FavoriteRowProps) {
   const { isArabic, t } = useLanguage();
+  const { theme } = useTheme();
+  const s = useStyles(createStyles);
   const handlePress = useCallback(() => onPress(favorite.route), [onPress, favorite.route]);
 
   const iconIsUrl = !!favorite.icon && /^https?:\/\//.test(favorite.icon);
@@ -36,20 +35,37 @@ function FavoriteRowBase({ favorite, onPress, dragHandleProps, isActive }: Favor
   const count = favorite.recordings_count ?? favorite.recordings?.length ?? 0;
   const subtitle = sectionName ? pickText(sectionName, isArabic) : t.hospital.recordingCount(count);
 
-  const iconBubble = (
+  // Keyed by the icon url so a row that ends up rendering a different favorite
+  // (reorder, sync, add/remove) mounts a fresh image view instead of inheriting
+  // the previous disease's bitmap; `recyclingKey` does the same for expo-image's
+  // own view recycling, which otherwise keeps showing the old image.
+  const iconKey = favorite.icon ?? 'no-icon';
+
+  // Uploaded icons render bare at the bubble's footprint (32 + sm padding both
+  // sides), never inside it — many of them are full-colour tiles that already
+  // carry their own background, which stacked a green/orange square inside the
+  // mint bubble. Same rule as DiseaseCard and CategoryCard; the bubble is only
+  // the backdrop for the built-in fallback glyph.
+  const icon = iconIsSvg ? (
+    <RemoteSvg
+      key={iconKey}
+      uri={favorite.icon as string}
+      width={ICON_BOX}
+      height={ICON_BOX}
+      color={theme.primary}
+    />
+  ) : iconIsUrl ? (
+    <Image
+      key={iconKey}
+      recyclingKey={iconKey}
+      source={{ uri: favorite.icon as string, headers: { 'ngrok-skip-browser-warning': 'true' } }}
+      style={s.row__iconImage}
+      contentFit="contain"
+      tintColor={theme.primary}
+    />
+  ) : (
     <View style={s.row__iconBubble}>
-      {iconIsSvg ? (
-        <RemoteSvg uri={favorite.icon as string} width={32} height={32} color={ICON_COLOR} />
-      ) : iconIsUrl ? (
-        <Image
-          source={{ uri: favorite.icon as string, headers: { 'ngrok-skip-browser-warning': 'true' } }}
-          style={s.row__iconImage}
-          contentFit="contain"
-          tintColor={ICON_COLOR}
-        />
-      ) : (
-        <Ionicons name="pulse-outline" size={32} color={ICON_COLOR} />
-      )}
+      <Ionicons name="pulse-outline" size={32} color={theme.primary} />
     </View>
   );
 
@@ -66,29 +82,29 @@ function FavoriteRowBase({ favorite, onPress, dragHandleProps, isActive }: Favor
 
   const handle = (
     <View {...dragHandleProps} hitSlop={10} style={s.row__handle}>
-      <Ionicons name="reorder-three" size={24} color={HANDLE_COLOR} />
+      <Ionicons name="reorder-three" size={24} color={theme.border} />
     </View>
   );
   const chevron = (
     <Ionicons
       name={isArabic ? 'chevron-back' : 'chevron-forward'}
       size={16}
-      color={CHEVRON_COLOR}
+      color={theme.textMuted}
     />
   );
 
-  // Figma 18284:3426 (RTL, right→left): handle · icon bubble · text … chevron.
+  // Figma 18284:3426 (RTL, right→left): handle · icon · text … chevron.
   // The handle sits at the leading edge; the chevron alone at the trailing edge.
   const inner = (
     <View style={[s.row__inner, { flexDirection: 'row' }]}>
       {isArabic ? (
         <>
           {texts}
-          {iconBubble}
+          {icon}
         </>
       ) : (
         <>
-          {iconBubble}
+          {icon}
           {texts}
         </>
       )}

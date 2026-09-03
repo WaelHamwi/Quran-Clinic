@@ -7,7 +7,7 @@ RULE_4: SERVICE_PATTERN
 RULE_5: TRANSACTIONS
 RULE_6: TRY_CATCH
 RULE_7: SHORT_CACHE - Max TTL 300 seconds
-RULE_8: RUQYAH_SESSION - session_number=1 free, >=2 requires subscription/trial, trial max 2
+RULE_8: RECORDING_TYPES - max two recordings per owner: type=summarized (مختصرة) free, type=detailed (مطولة) requires subscription/trial (trial max 2). See "RECORDING TYPES" in ../shared-context.md (single source of truth).
 RULE_9: FLEXIBLE_HIERARCHY - Recordings may be attached at any level (Category, Subcategory, or Disease) via the polymorphic relation. Whichever level holds recordings directly becomes a TERMINAL node and cannot have children. Rules enforced by the Filament CMS as hard validation errors:
   • Category with direct recordings → CANNOT have subcategories
   • Subcategory with direct recordings → CANNOT have diseases

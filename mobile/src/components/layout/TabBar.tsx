@@ -8,8 +8,11 @@ import TabLearn from '@/assets/figma/tab-learn.svg';
 import TabAsk from '@/assets/figma/tab-ask.svg';
 import TabFav from '@/assets/figma/tab-fav.svg';
 import TabMore from '@/assets/figma/tab-more.svg';
+import { useTheme } from '@/context/ThemeContext';
+import { useStyles } from '@/hooks/common/useStyles';
 import { MiniPlayer } from '@/components/players/MiniPlayer';
-import { tabBarStyles as s, ICON_ACTIVE, ICON_INACTIVE } from './TabBar.styles';
+import { MushafMiniPlayer } from '@/components/players/MushafMiniPlayer';
+import { createStyles } from './TabBar.styles';
 
 const ICONS: Record<string, React.FC<SvgProps>> = {
   index: TabHospital,
@@ -21,9 +24,12 @@ const ICONS: Record<string, React.FC<SvgProps>> = {
 
 export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
+  const { theme } = useTheme();
+  const s = useStyles(createStyles);
 
   return (
     <View style={s.tabBar}>
+      <MushafMiniPlayer />
       <MiniPlayer />
       <View style={[s.tabBar__bar, { paddingBottom: 12 + insets.bottom }]}>
         {state.routes.map((route, index) => {
@@ -43,7 +49,7 @@ export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
             }
           };
 
-          const tint = focused ? ICON_ACTIVE : ICON_INACTIVE;
+          const tint = focused ? theme.textOnBrand : theme.onBrandMuted;
 
           return (
             <Pressable

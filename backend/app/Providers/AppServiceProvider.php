@@ -16,12 +16,18 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->register(\App\Providers\RepositoryServiceProvider::class);
-
-        $this->applyRedisFallbacks();
     }
 
     public function boot(): void
     {
+        // MUST run in boot(), not register(): resolving app('redis') in register()
+        // is too early (the Redis manager / Log facade aren't ready), so the ping
+        // throws. Skip it in console so `config:cache` can never bake a stale
+        // fallback into the compiled config — the web request path applies it live.
+        if (! $this->app->runningInConsole()) {
+            $this->applyRedisFallbacks();
+        }
+
         $this->warnOnFileCacheInProduction();
 
         // Authenticated users are keyed by user ID (generous: supports 30 s polling from multiple screens).
@@ -32,9 +38,26 @@ class AppServiceProvider extends ServiceProvider
                 : Limit::perMinute(30)->by($request->ip());
         });
 
-        // Strict per-IP limit for login / register to prevent brute-force.
+        // Strict per-IP limit for login / register to prevent brute-force, plus a
+        // per-account limit so a distributed attack (many IPs) still can't hammer one
+        // email. The email limit only applies when the request carries an email —
+        // keying on an absent field would pool unrelated requests (e.g. session
+        // exchange) into a single shared bucket.
         RateLimiter::for('auth', function (Request $request) {
-            return Limit::perMinute(5)->by($request->ip());
+            $limits = [Limit::perMinute(5)->by('ip:' . $request->ip())];
+
+            $email = strtolower(trim((string) $request->input('email')));
+            if ($email !== '') {
+                $limits[] = Limit::perMinute(10)->by('email:' . $email);
+            }
+
+            return $limits;
+        });
+
+        // Browser-side Google OAuth redirect + callback (web.php). The callback costs a
+        // token exchange with Google per hit, so it must not be open to unlimited abuse.
+        RateLimiter::for('web-oauth', function (Request $request) {
+            return Limit::perMinute(10)->by($request->ip());
         });
 
         // OTP verify / resend — 10 per minute per IP.
@@ -77,6 +100,10 @@ class AppServiceProvider extends ServiceProvider
      * If a redis driver is selected for cache/session/queue but the server is unreachable,
      * fall back to file/database so the app keeps serving. Runs only when a redis driver is
      * actually active, so the default database/file setup pays no cost.
+     *
+     * Call ONLY from boot() and ONLY for non-console requests (see boot()): in register()
+     * the redis manager isn't ready and the ping throws, and during `config:cache` that
+     * thrown fallback would be compiled into the cached config, permanently masking Redis.
      */
     private function applyRedisFallbacks(): void
     {

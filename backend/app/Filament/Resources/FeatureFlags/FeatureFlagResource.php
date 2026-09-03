@@ -8,6 +8,7 @@ use App\Filament\Resources\FeatureFlags\Tables\FeatureFlagsTable;
 use App\Models\FeatureFlag;
 use BackedEnum;
 use Filament\Resources\Resource;
+use Illuminate\Database\Eloquent\Model;
 use Filament\Schemas\Schema;
 use Filament\Tables\Table;
 use UnitEnum;
@@ -39,5 +40,27 @@ class FeatureFlagResource extends Resource
     public static function getPages(): array
     {
         return ['index' => ManageFeatureFlags::route('/')];
+    }
+
+    // Flags are seeded, not authored. Guarding here (not just hiding the buttons)
+    // blocks creation/deletion through any other path as well.
+    public static function canCreate(): bool
+    {
+        return false;
+    }
+
+    public static function canEdit(Model $record): bool
+    {
+        return false;
+    }
+
+    public static function canDelete(Model $record): bool
+    {
+        return false;
+    }
+
+    public static function canDeleteAny(): bool
+    {
+        return false;
     }
 }

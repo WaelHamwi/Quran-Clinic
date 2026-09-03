@@ -17,8 +17,12 @@ return [
         // Default false so `php artisan serve` / non-Nginx dev keeps using response()->file().
         'use_x_accel' => env('AUDIO_X_ACCEL', false),
 
-        // Internal Nginx location prefix that maps to storage/app/public.
+        // Internal Nginx location prefix that maps to storage/app/public (public recitations).
         'x_accel_prefix' => env('AUDIO_X_ACCEL_PREFIX', '/__audio_internal'),
+
+        // Internal Nginx location prefix that maps to storage/app/private (gated premium
+        // recordings — never publicly reachable, served only after a canAccess check).
+        'protected_x_accel_prefix' => env('AUDIO_PROTECTED_X_ACCEL_PREFIX', '/__protected_audio'),
 
         // CLOUD MIGRATION POINT: base URL for the future CDN/object store.
         'cloud_base_url' => env('AUDIO_CLOUD_BASE_URL'),

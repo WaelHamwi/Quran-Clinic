@@ -1,13 +1,11 @@
-import React, { useMemo, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, { useState } from 'react';
+import { Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import SubClose from '@/assets/figma/sub-close.svg';
 import SubCrown from '@/assets/figma/sub-crown.svg';
 import SubTick from '@/assets/figma/sub-tick.svg';
 import { useLanguage } from '@/context/LanguageContext';
-import { palette, type Theme } from '@/theme/colors';
-import { useTheme } from '@/context/ThemeContext';
-import { radius } from '@/theme/spacing';
-import { fontSize, lineHeight, fontFamily } from '@/theme/typography';
+import { useStyles } from '@/hooks/common/useStyles';
+import { createStyles } from './SubscriptionSheet.styles';
 
 interface SubscriptionSheetProps {
   visible: boolean;
@@ -27,9 +25,8 @@ export function SubscriptionSheet({
   onClose,
   onSubscribe,
 }: SubscriptionSheetProps) {
-  const { theme } = useTheme();
   const { t } = useLanguage();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const styles = useStyles(createStyles);
   const [plan, setPlan] = useState<'yearly' | 'monthly'>('yearly');
 
   return (
@@ -127,167 +124,4 @@ export function SubscriptionSheet({
       </Pressable>
     </Modal>
   );
-}
-
-function createStyles(_theme: Theme) {
-  return StyleSheet.create({
-    overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
-    sheet: {
-      backgroundColor: palette.bg.primary,
-      borderTopWidth: 1,
-      borderTopColor: palette.border.secondary,
-      borderTopLeftRadius: 24,
-      borderTopRightRadius: 24,
-      maxHeight: '92%',
-    },
-    header: { padding: 16, alignItems: 'center' },
-    handle: { width: 60, height: 4, borderRadius: 24, backgroundColor: palette.gray[200] },
-
-    body: { paddingHorizontal: 20, alignItems: 'stretch', gap: 20 },
-    // Close button — gray-100 p-12 rounded-60
-    closeBtn: {
-      alignSelf: 'flex-end',
-      backgroundColor: palette.gray[100],
-      padding: 12,
-      borderRadius: 60,
-      width: 40,
-      height: 40,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    intro: { alignItems: 'center', gap: 20 },
-    crown: { width: 72.213, height: 76.782 },
-    introTexts: { width: '100%', gap: 14, alignItems: 'flex-end' },
-    title: {
-      fontFamily: fontFamily.alexandriaSemiBold,
-      fontSize: 24,
-      lineHeight: lineHeight.xl,
-      color: palette.brand[500],
-      textAlign: 'right',
-      width: '100%',
-    },
-    subtitle: {
-      fontFamily: fontFamily.alexandriaLight,
-      fontSize: fontSize.sm,
-      lineHeight: lineHeight.sm,
-      color: palette.text.tertiary,
-      textAlign: 'right',
-      width: '100%',
-    },
-
-    // Features — pt-30 px-20, gap 12
-    features: { paddingTop: 30, paddingHorizontal: 20, gap: 12 },
-    featureRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-    featureTextWrap: { flex: 1, gap: 4, alignItems: 'flex-end' },
-    featureTitle: {
-      fontFamily: fontFamily.alexandria,
-      fontSize: fontSize.sm,
-      lineHeight: lineHeight.sm,
-      color: palette.brand[500],
-      textAlign: 'right',
-    },
-    featureDesc: {
-      fontFamily: fontFamily.alexandriaLight,
-      fontSize: fontSize.xs,
-      lineHeight: lineHeight.xs,
-      color: palette.text.tertiary,
-      textAlign: 'right',
-    },
-    featureTick: { paddingLeft: 8, paddingVertical: 8 },
-
-    // Plans
-    plans: { paddingHorizontal: 16, paddingVertical: 30, gap: 12 },
-    planCard: {
-      borderRadius: radius.md,
-      padding: 16,
-      borderWidth: 1,
-    },
-    planYearlyActive: {
-      backgroundColor: palette.brand[25],
-      borderColor: palette.border.brand,
-    },
-    planMonthly: {
-      backgroundColor: palette.bg.primary,
-      borderColor: palette.border.primary,
-    },
-    planMonthlyActive: { borderColor: palette.brand[500] },
-    planRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' },
-    savePill: {
-      backgroundColor: '#fb364a',
-      paddingHorizontal: 10,
-      paddingVertical: 4,
-      borderRadius: 60,
-    },
-    savePillText: {
-      fontFamily: fontFamily.alexandriaSemiBold,
-      fontSize: fontSize.xs,
-      color: palette.fg.white,
-    },
-    planTexts: { gap: 10, alignItems: 'flex-end' },
-    planTitle: {
-      fontFamily: fontFamily.alexandriaSemiBold,
-      fontSize: fontSize.md,
-      lineHeight: lineHeight.md,
-      color: palette.brand[500],
-      textAlign: 'right',
-    },
-    planTitleMono: {
-      fontFamily: fontFamily.alexandriaSemiBold,
-      fontSize: fontSize.md,
-      lineHeight: lineHeight.md,
-      color: palette.text.secondary,
-      textAlign: 'right',
-    },
-    planPriceRow: { flexDirection: 'row', alignItems: 'center', gap: 4, justifyContent: 'flex-end' },
-    planPer: {
-      fontFamily: fontFamily.alexandriaSemiBold,
-      fontSize: fontSize.xs,
-      lineHeight: lineHeight.sm,
-      color: palette.brand[500],
-    },
-    planPrice: {
-      fontFamily: fontFamily.alexandriaSemiBold,
-      fontSize: 24,
-      lineHeight: lineHeight.sm,
-      color: palette.brand[500],
-    },
-    planPerMono: {
-      fontFamily: fontFamily.alexandriaSemiBold,
-      fontSize: fontSize.xs,
-      lineHeight: lineHeight.sm,
-      color: palette.text.secondary,
-    },
-    planPriceMono: {
-      fontFamily: fontFamily.alexandriaSemiBold,
-      fontSize: 24,
-      lineHeight: lineHeight.sm,
-      color: palette.text.secondary,
-    },
-
-    // Footer
-    footer: { paddingHorizontal: 16, paddingTop: 10, paddingBottom: 30, gap: 12 },
-    // CTA — RTL Button: brand-500, radius md (16, not pill here!), py-12 px-12
-    cta: {
-      backgroundColor: palette.brand[500],
-      borderRadius: radius.md,
-      paddingHorizontal: 12,
-      paddingVertical: 12,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    pressed: { opacity: 0.85 },
-    ctaText: {
-      fontFamily: fontFamily.alexandria,
-      fontSize: fontSize.sm,
-      lineHeight: lineHeight.sm,
-      color: palette.fg.white,
-    },
-    trial: {
-      fontFamily: fontFamily.alexandriaLight,
-      fontSize: fontSize.xs,
-      lineHeight: lineHeight.xs,
-      color: palette.text.tertiary,
-      textAlign: 'center',
-    },
-  });
 }

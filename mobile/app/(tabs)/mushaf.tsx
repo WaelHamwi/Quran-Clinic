@@ -8,24 +8,37 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView , useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { palette } from '@/theme/colors';
 import { PatternedBackground } from '@/components/layout/PatternedBackground';
 import { SurahItem } from '@/components/lists/SurahItem';
 import { ReciterPickerModal } from '@/components/mushaf/ReciterPickerModal';
-import { OptionPickerSheet } from '@/components/mushaf/OptionPickerSheet';
-import type { PickerOption } from '@/components/mushaf/OptionPickerSheet';
 import { useTheme } from '@/context/ThemeContext';
 import { useLanguage } from '@/context/LanguageContext';
-import { useMushafScreen } from '@/hooks/useMushafScreen';
-import type { SurahTypeFilter, DisplayMode } from '@/hooks/useMushafScreen';
-import { useReadings } from '@/hooks/useReadings';
-import { getAllPageBookmarks, type PageBookmark } from '@/services/bookmarks';
+import { useMushafScreen } from '@/hooks/mushaf/useMushafScreen';
+import { useMushafListSearch } from '@/hooks/mushaf/useMushafListSearch';
+import {
+  getAllMadaniPageBookmarks,
+  removeMadaniPageBookmark,
+  type MadaniPageBookmark,
+} from '@/services/mushaf/bookmarks';
+import { getMadaniLastPage } from '@/services/mushaf/lastRead';
+import {
+  getAllReadSurahs,
+  markSurahRead,
+  unmarkSurahRead,
+  type ReadSurah,
+} from '@/services/mushaf/readSurahs';
 import { createMushafStyles } from '@/styles/mushaf.styles';
+import { splitByMatch } from '@/utils/verseHighlight';
+import { surahForPage, surahPageRange } from '@/utils/qcf4Verse';
 import type { Surah } from '@/types/surah';
+import type { Verse } from '@/types/verse';
+
+type ReadingRow =
+  | { kind: 'page'; bookmark: MadaniPageBookmark }
+  | { kind: 'read'; read: ReadSurah };
 
 export default function MushafScreen() {
   const { theme } = useTheme();
@@ -36,32 +49,52 @@ export default function MushafScreen() {
 
   const {
     showReciterPicker, setShowReciterPicker,
-    showSurahFilter, setShowSurahFilter,
-    showDisplayMode, setShowDisplayMode,
     searchQuery, setSearchQuery,
     reciterSearch, setReciterSearch,
-    surahTypeFilter, setSurahTypeFilter,
-    displayMode, setDisplayMode,
     surahs, filteredSurahs, filteredReciters,
     selectedReciterId, selectedReciter,
     surahsLoading, surahsError,
     isFetchingNextPage, isSurahsRefetching,
     isSearching,
     handleRefresh, closeReciterPicker, handleReciterSelect,
-    handleEndReached, handleSurahPress, fetchNextPage,
+    handleEndReached, handleSurahPress, warmReaderForPage, fetchNextPage,
   } = useMushafScreen();
 
-  const { isRead, toggleRead } = useReadings();
+  const verseSearch = useMushafListSearch();
+
   const router = useRouter();
 
-  // "My Reads" aggregates every bookmarked page across ALL surahs (the in-reader
-  // sheet is scoped to a single surah). Reload each time the tab regains focus so
-  // marks added inside the reader appear here immediately.
-  const [pageBookmarks, setPageBookmarks] = useState<PageBookmark[]>([]);
+  // "My Readings" merges two independent concepts: real per-page bookmarks (added
+  // from the in-reader bookmark FAB, one store) and whole-surah "read" marks (added
+  // from the surah-list icon, a separate store) — they used to share one store via
+  // a fake page-0 bookmark, which meant un-marking a surah as read deleted every
+  // real page bookmark in it. Reload both each time the tab regains focus so marks
+  // added inside the reader appear here immediately.
+  const [pageBookmarks, setPageBookmarks] = useState<MadaniPageBookmark[]>([]);
+  const [readSurahs, setReadSurahs] = useState<ReadSurah[]>([]);
+  const [lastReadPage, setLastReadPage] = useState<number | null>(null);
   useFocusEffect(
     useCallback(() => {
-      getAllPageBookmarks().then(setPageBookmarks).catch(() => {});
+      getAllMadaniPageBookmarks().then(setPageBookmarks).catch(() => {});
+      getAllReadSurahs().then(setReadSurahs).catch(() => {});
+      getMadaniLastPage().then(setLastReadPage).catch(() => {});
     }, [])
+  );
+
+  // The surah-list icon only toggles the "read" mark — it never touches real page
+  // bookmarks, so it can't delete them.
+  const isSurahRead = useCallback(
+    (surahId: number) => readSurahs.some((r) => r.surahId === surahId),
+    [readSurahs]
+  );
+  const toggleSurahRead = useCallback(
+    async (surah: Surah) => {
+      const next = readSurahs.some((r) => r.surahId === surah.id)
+        ? await unmarkSurahRead(surah.id)
+        : await markSurahRead(surah.id);
+      setReadSurahs(next);
+    },
+    [readSurahs]
   );
 
   const surahMap = useMemo(() => new Map(surahs.map((s) => [s.id, s])), [surahs]);
@@ -79,57 +112,113 @@ export default function MushafScreen() {
       <SurahItem
         item={item}
         onPress={handleSurahPress}
-        isRead={isRead(item.id)}
-        onToggleRead={toggleRead}
+        isRead={isSurahRead(item.id)}
+        onToggleRead={toggleSurahRead}
       />
     ),
-    [handleSurahPress, isRead, toggleRead]
+    [handleSurahPress, isSurahRead, toggleSurahRead]
   );
 
-  const renderBookmark = useCallback(
-    ({ item }: { item: PageBookmark }) => (
+  const handleRemoveBookmark = useCallback(async (item: MadaniPageBookmark) => {
+    const next = await removeMadaniPageBookmark(item.page);
+    setPageBookmarks(next);
+  }, []);
+
+  const handleUnmarkRead = useCallback(async (surahId: number) => {
+    const next = await unmarkSurahRead(surahId);
+    setReadSurahs(next);
+  }, []);
+
+  // Unifies the two stores into one newest-first list for display, without
+  // conflating them — each row still knows (and acts on) its own concept.
+  const readingRows = useMemo<ReadingRow[]>(() => {
+    const rows: ReadingRow[] = [
+      ...pageBookmarks.map((bookmark) => ({ kind: 'page' as const, bookmark })),
+      ...readSurahs.map((read) => ({ kind: 'read' as const, read })),
+    ];
+    rows.sort((a, b) => {
+      const at = a.kind === 'page' ? a.bookmark.createdAt : a.read.markedAt;
+      const bt = b.kind === 'page' ? b.bookmark.createdAt : b.read.markedAt;
+      return bt.localeCompare(at);
+    });
+    return rows;
+  }, [pageBookmarks, readSurahs]);
+
+  // The Madani reader saves its position as an absolute 1-604 print page; the
+  // surah owning it is resolved for the label and the surah-scoped route param.
+  const lastReadSurahId = useMemo(
+    () => (lastReadPage != null ? surahForPage(lastReadPage) : null),
+    [lastReadPage]
+  );
+
+  const renderReadingRow = useCallback(
+    ({ item }: { item: ReadingRow }) => {
+      const surahId = item.kind === 'page' ? item.bookmark.surahId : item.read.surahId;
+      const metaText = item.kind === 'page'
+        ? `${t.madani.page} ${item.bookmark.page}`
+        : t.mushaf.markedAsRead;
+      const onRemove = () =>
+        item.kind === 'page' ? handleRemoveBookmark(item.bookmark) : handleUnmarkRead(surahId);
+      const warmPage = item.kind === 'page' ? item.bookmark.page : surahPageRange(surahId).firstPage;
+      const href = item.kind === 'page'
+        ? `/mushaf/${surahId}?page=${item.bookmark.page}`
+        : `/mushaf/${surahId}`;
+
+      return (
+        <TouchableOpacity
+          style={[styles.readRow, isArabic && { flexDirection: 'row-reverse' }]}
+          onPress={() => { warmReaderForPage(warmPage); router.push(href as never); }}
+          activeOpacity={0.7}
+        >
+          <TouchableOpacity
+            onPress={(e) => { e.stopPropagation(); onRemove(); }}
+            hitSlop={8}
+          >
+            <Ionicons name="bookmark" size={18} color={theme.primary} />
+          </TouchableOpacity>
+          <View style={styles.readRowTexts}>
+            <Text style={styles.readRowTitle} numberOfLines={1}>{surahLabel(surahId)}</Text>
+            <Text style={styles.readRowMeta}>{metaText}</Text>
+          </View>
+          <Ionicons
+            name={isArabic ? 'chevron-back' : 'chevron-forward'}
+            size={16}
+            color={theme.textMuted}
+          />
+        </TouchableOpacity>
+      );
+    },
+    [styles, isArabic, router, surahLabel, t, theme, handleRemoveBookmark, handleUnmarkRead, warmReaderForPage]
+  );
+
+  const renderVerseResult = useCallback(
+    ({ item }: { item: Verse }) => (
       <TouchableOpacity
         style={[styles.readRow, isArabic && { flexDirection: 'row-reverse' }]}
-        onPress={() => router.push(`/mushaf/${item.surahId}` as never)}
+        onPress={() => verseSearch.handleResultPress(item)}
         activeOpacity={0.7}
       >
-        <Ionicons name="bookmark" size={18} color={palette.brand[500]} />
         <View style={styles.readRowTexts}>
-          <Text style={styles.readRowTitle} numberOfLines={1}>{surahLabel(item.surahId)}</Text>
-          <Text style={styles.readRowMeta}>{t.reader.page} {item.pageIndex + 1}</Text>
+          <Text style={styles.readRowTitle} numberOfLines={2}>
+            {splitByMatch(item.text.ar, verseSearch.verseQuery).map((seg, i) =>
+              seg.match ? (
+                <Text key={i} style={styles.readRowTitleMatch}>{seg.text}</Text>
+              ) : (
+                seg.text
+              )
+            )}
+          </Text>
+          <Text style={styles.readRowMeta}>{t.reader.verseRef(item.surah_id, item.verse_number)}</Text>
         </View>
         <Ionicons
           name={isArabic ? 'chevron-back' : 'chevron-forward'}
           size={16}
-          color={palette.text.tertiary}
+          color={theme.textMuted}
         />
       </TouchableOpacity>
     ),
-    [styles, isArabic, router, surahLabel, t]
+    [styles, isArabic, verseSearch, t, theme]
   );
-
-  // Surah filter options
-  const surahFilterOptions: PickerOption<SurahTypeFilter>[] = useMemo(() => [
-    { value: 'all',     label: t.mushaf.filterAll },
-    { value: 'meccan',  label: t.mushaf.filterMeccan },
-    { value: 'medinan', label: t.mushaf.filterMedinan },
-  ], [t]);
-
-  // Display / sort options
-  const displayOptions: PickerOption<DisplayMode>[] = useMemo(() => [
-    { value: 'order', label: t.mushaf.displayByOrder },
-    { value: 'alpha', label: t.mushaf.displayAlpha },
-  ], [t]);
-
-  // Dynamic label for filter button (shows active selection)
-  const surahFilterLabel =
-    surahTypeFilter === 'meccan' ? t.mushaf.meccan :
-    surahTypeFilter === 'medinan' ? t.mushaf.medinan :
-    t.mushaf.surahs;
-
-  // Dynamic label for display button
-  const displayLabel =
-    displayMode === 'alpha' ? t.mushaf.displayAlpha : t.mushaf.displayMode;
 
   if (surahsLoading) {
     return (
@@ -149,6 +238,9 @@ export default function MushafScreen() {
         <PatternedBackground />
         <View style={[styles.body, styles.centered]}>
           <Text style={styles.errorText}>{t.mushaf.error}</Text>
+          <TouchableOpacity style={styles.retryRow} onPress={handleRefresh}>
+            <Text style={styles.retryText}>{t.common.retry}</Text>
+          </TouchableOpacity>
         </View>
       </View>
     );
@@ -198,60 +290,51 @@ export default function MushafScreen() {
       <SafeAreaView style={styles.body} edges={['bottom']}>
 
         {activeTab === 'myReadings' ? (
-          /* ── My Readings — every bookmarked page across all surahs ─────── */
-          pageBookmarks.length === 0 ? (
+          /* ── My Readings — real page bookmarks + whole-surah read marks ── */
+          readingRows.length === 0 ? (
             <View style={styles.myReadingsWrap}>
-              <Ionicons name="bookmark-outline" size={48} color={palette.border.primary} />
+              <Ionicons name="bookmark-outline" size={48} color={theme.border} />
               <Text style={styles.myReadingsEmptyText}>{t.mushaf.myReadingsEmpty}</Text>
               <Text style={styles.myReadingsHint}>{t.mushaf.myReadingsEmptyHint}</Text>
             </View>
           ) : (
             <FlatList
-              data={pageBookmarks}
-              keyExtractor={(item) => `${item.surahId}-${item.pageIndex}`}
-              renderItem={renderBookmark}
+              data={readingRows}
+              keyExtractor={(item) =>
+                item.kind === 'page'
+                  ? `page-${item.bookmark.page}`
+                  : `read-${item.read.surahId}`
+              }
+              renderItem={renderReadingRow}
               contentContainerStyle={styles.list}
             />
           )
         ) : (
           <>
-            {/* ── Filter row: "السور" | "طريقة العرض" ──────────────────── */}
-            <View style={styles.filterRow}>
+            {/* ── Continue reading — jump back to the last saved position ── */}
+            {lastReadPage != null && lastReadSurahId != null && (
               <TouchableOpacity
-                style={styles.filterLeft}
-                onPress={() => setShowSurahFilter(true)}
+                style={[styles.continueCard, isArabic && { flexDirection: 'row-reverse' }]}
+                onPress={() => {
+                  warmReaderForPage(lastReadPage);
+                  router.push(`/mushaf/${lastReadSurahId}?page=${lastReadPage}` as never);
+                }}
                 activeOpacity={0.75}
               >
+                <Ionicons name="book" size={18} color={theme.primary} />
+                <View style={styles.continueCardTexts}>
+                  <Text style={styles.continueCardHint}>{t.mushaf.continueReading}</Text>
+                  <Text style={styles.continueCardTitle} numberOfLines={1}>
+                    {surahLabel(lastReadSurahId)} — {t.madani.page} {lastReadPage}
+                  </Text>
+                </View>
                 <Ionicons
-                  name="chevron-down"
+                  name={isArabic ? 'chevron-back' : 'chevron-forward'}
                   size={16}
-                  color={surahTypeFilter !== 'all' ? palette.brand[500] : palette.text.tertiary}
+                  color={theme.primary}
                 />
-                <Text style={[
-                  styles.filterLabel,
-                  surahTypeFilter !== 'all' && styles.filterLabelActive,
-                ]}>
-                  {surahFilterLabel}
-                </Text>
               </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.filterRight}
-                onPress={() => setShowDisplayMode(true)}
-                activeOpacity={0.75}
-              >
-                <Ionicons
-                  name="swap-vertical-outline"
-                  size={14}
-                  color={displayMode !== 'order' ? palette.brand[500] : palette.text.tertiary}
-                />
-                <Text style={[
-                  styles.filterLabel,
-                  displayMode !== 'order' && styles.filterLabelActive,
-                ]}>
-                  {displayLabel}
-                </Text>
-              </TouchableOpacity>
-            </View>
+            )}
 
             {/* ── Reciter chip ───────────────────────────────────────────── */}
             <TouchableOpacity
@@ -259,7 +342,7 @@ export default function MushafScreen() {
               onPress={() => setShowReciterPicker(true)}
               activeOpacity={0.75}
             >
-              <Ionicons name="mic-outline" size={16} color={selectedReciter ? palette.brand[500] : palette.text.tertiary} />
+              <Ionicons name="mic-outline" size={16} color={selectedReciter ? theme.primary : theme.textMuted} />
               <View style={styles.reciterLabelWrap}>
                 <Text style={styles.reciterHint}>{t.mushaf.reciter}</Text>
                 <Text
@@ -271,7 +354,7 @@ export default function MushafScreen() {
                     : t.mushaf.selectReciter}
                 </Text>
               </View>
-              <Ionicons name={isArabic ? 'chevron-back' : 'chevron-forward'} size={16} color={palette.text.tertiary} />
+              <Ionicons name={isArabic ? 'chevron-back' : 'chevron-forward'} size={16} color={theme.textMuted} />
             </TouchableOpacity>
 
             <ReciterPickerModal
@@ -284,80 +367,117 @@ export default function MushafScreen() {
               onSearchChange={setReciterSearch}
             />
 
-            {/* ── Surah type filter sheet ─────────────────────────────────── */}
-            <OptionPickerSheet<SurahTypeFilter>
-              visible={showSurahFilter}
-              onClose={() => setShowSurahFilter(false)}
-              title={t.mushaf.surahFilterTitle}
-              options={surahFilterOptions}
-              selected={surahTypeFilter}
-              onSelect={setSurahTypeFilter}
-            />
-
-            {/* ── Display / sort sheet ────────────────────────────────────── */}
-            <OptionPickerSheet<DisplayMode>
-              visible={showDisplayMode}
-              onClose={() => setShowDisplayMode(false)}
-              title={t.mushaf.displayTitle}
-              options={displayOptions}
-              selected={displayMode}
-              onSelect={setDisplayMode}
-            />
-
-            {/* ── Surah search ───────────────────────────────────────────── */}
+            {/* ── Surah-name search — filters the surah list only ──────────── */}
             <View style={styles.searchRow}>
-              <Ionicons name="search-outline" size={16} color={palette.text.placeholder} />
+              <Ionicons name="book-outline" size={16} color={theme.textPlaceholder} />
               <TextInput
                 style={styles.searchInput}
                 placeholder={t.mushaf.searchPlaceholder}
-                placeholderTextColor={palette.text.placeholder}
+                placeholderTextColor={theme.textPlaceholder}
                 value={searchQuery}
                 onChangeText={setSearchQuery}
                 textAlign={isArabic ? 'right' : 'left'}
                 returnKeyType="search"
                 autoCorrect={false}
+                accessibilityLabel={t.mushaf.searchSurahLabel}
               />
               {searchQuery.length > 0 && (
                 <TouchableOpacity onPress={() => setSearchQuery('')} hitSlop={8}>
-                  <Ionicons name="close-circle" size={16} color={palette.text.placeholder} />
+                  <Ionicons name="close-circle" size={16} color={theme.textPlaceholder} />
                 </TouchableOpacity>
               )}
             </View>
 
-            {/* ── Surah list ─────────────────────────────────────────────── */}
-            <FlatList
-              data={filteredSurahs}
-              keyExtractor={(item) => String(item.id)}
-              renderItem={renderSurah}
-              contentContainerStyle={styles.list}
-              onEndReached={isSearching ? undefined : handleEndReached}
-              onEndReachedThreshold={0.3}
-              refreshControl={
-                <RefreshControl
-                  refreshing={isSurahsRefetching}
-                  onRefresh={handleRefresh}
-                  tintColor={theme.primary}
-                  colors={[theme.primary]}
-                  progressBackgroundColor={theme.surface}
+            {/* ── Word/verse search — independent full-text search ─────────── */}
+            <View style={styles.searchRow}>
+              <Ionicons
+                name="text-outline"
+                size={16}
+                color={verseSearch.isVerseSearchActive ? theme.primary : theme.textPlaceholder}
+              />
+              <TextInput
+                style={styles.searchInput}
+                placeholder={t.reader.searchPlaceholder}
+                placeholderTextColor={theme.textPlaceholder}
+                value={verseSearch.verseQuery}
+                onChangeText={verseSearch.handleVerseQueryChange}
+                onSubmitEditing={verseSearch.handleVerseSubmit}
+                textAlign={isArabic ? 'right' : 'left'}
+                returnKeyType="search"
+                autoCorrect={false}
+                accessibilityLabel={t.mushaf.searchWordLabel}
+              />
+              {verseSearch.verseQuery.length > 0 && (
+                <TouchableOpacity onPress={() => verseSearch.handleVerseQueryChange('')} hitSlop={8}>
+                  <Ionicons name="close-circle" size={16} color={theme.textPlaceholder} />
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {verseSearch.isVerseSearchActive ? (
+              /* ── Verse/word search results ─────────────────────────────── */
+              verseSearch.isSearchingVerses ? (
+                <ActivityIndicator size="small" color={theme.primary} style={styles.footer} />
+              ) : verseSearch.verseResults !== null && verseSearch.verseResults.length === 0 ? (
+                <View style={styles.centered}>
+                  <Text style={styles.emptyText}>{t.reader.searchEmpty}</Text>
+                </View>
+              ) : verseSearch.isVerseQueryTooShort ? (
+                <View style={styles.centered}>
+                  <Text style={styles.emptyText}>{t.reader.searchTooShort}</Text>
+                </View>
+              ) : (
+                <FlatList
+                  data={verseSearch.verseResults ?? []}
+                  keyExtractor={(item) => String(item.id)}
+                  renderItem={renderVerseResult}
+                  contentContainerStyle={styles.list}
+                  keyboardShouldPersistTaps="handled"
+                  onEndReached={verseSearch.loadMoreVerses}
+                  onEndReachedThreshold={0.4}
+                  ListFooterComponent={
+                    verseSearch.isLoadingMoreVerses ? (
+                      <ActivityIndicator size="small" color={theme.primary} style={styles.footer} />
+                    ) : null
+                  }
                 />
-              }
-              ListEmptyComponent={
-                isSearching ? (
-                  <View style={styles.centered}>
-                    <Text style={styles.emptyText}>{t.mushaf.noResults(searchQuery)}</Text>
-                  </View>
-                ) : null
-              }
-              ListFooterComponent={
-                isFetchingNextPage && !isSearching ? (
-                  <ActivityIndicator size="small" color={theme.primary} style={styles.footer} />
-                ) : surahsError && surahs.length > 0 && !isSearching ? (
-                  <TouchableOpacity style={styles.retryRow} onPress={() => fetchNextPage()}>
-                    <Text style={styles.retryText}>{t.mushaf.retryLoad}</Text>
-                  </TouchableOpacity>
-                ) : null
-              }
-            />
+              )
+            ) : (
+              /* ── Surah list ───────────────────────────────────────────── */
+              <FlatList
+                data={filteredSurahs}
+                keyExtractor={(item) => String(item.id)}
+                renderItem={renderSurah}
+                contentContainerStyle={styles.list}
+                onEndReached={isSearching ? undefined : handleEndReached}
+                onEndReachedThreshold={0.3}
+                refreshControl={
+                  <RefreshControl
+                    refreshing={isSurahsRefetching}
+                    onRefresh={handleRefresh}
+                    tintColor={theme.primary}
+                    colors={[theme.primary]}
+                    progressBackgroundColor={theme.surface}
+                  />
+                }
+                ListEmptyComponent={
+                  isSearching ? (
+                    <View style={styles.centered}>
+                      <Text style={styles.emptyText}>{t.mushaf.noResults(searchQuery)}</Text>
+                    </View>
+                  ) : null
+                }
+                ListFooterComponent={
+                  isFetchingNextPage && !isSearching ? (
+                    <ActivityIndicator size="small" color={theme.primary} style={styles.footer} />
+                  ) : surahsError && surahs.length > 0 && !isSearching ? (
+                    <TouchableOpacity style={styles.retryRow} onPress={() => fetchNextPage()}>
+                      <Text style={styles.retryText}>{t.mushaf.retryLoad}</Text>
+                    </TouchableOpacity>
+                  ) : null
+                }
+              />
+            )}
           </>
         )}
 

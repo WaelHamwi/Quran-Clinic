@@ -9,16 +9,19 @@ import { Header } from '@/components/layout/Header';
 import { Loader } from '@/components/common/Loader';
 import { EmptyState } from '@/components/common/EmptyState';
 import { AdhkarCounter } from '@/components/lists/AdhkarCounter';
-import { useAdhkarItems } from '@/hooks/useAdhkar';
+import { useAdhkarItems } from '@/hooks/content/useAdhkar';
 import { useLanguage } from '@/context/LanguageContext';
 import { pickText } from '@/utils/formatters';
 import { flattenAdhkar } from '@/utils/adhkar';
-import { palette } from '@/theme/colors';
-import { adhkarItemsScreenStyles as s } from '@/styles/adhkarItemsScreen.styles';
+import { useTheme } from '@/context/ThemeContext';
+import { useStyles } from '@/hooks/common/useStyles';
+import { createStyles } from '@/styles/adhkarItemsScreen.styles';
 
 export default function AdhkarItemsScreen() {
   const { slug } = useLocalSearchParams() as { slug: string };
   const { t, isArabic } = useLanguage();
+  const { theme } = useTheme();
+  const s = useStyles(createStyles);
   const { category, isLoading, error, refetch } = useAdhkarItems(slug ?? '');
 
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -125,7 +128,7 @@ export default function AdhkarItemsScreen() {
             {/* Daleel toggle button — pinned to card bottom */}
             {daleel ? (
               <Pressable onPress={toggleDaleel} style={s.daleelBtn}>
-                <Ionicons name={isArabic ? 'chevron-back' : 'chevron-forward'} size={14} color={palette.brand[500]} />
+                <Ionicons name={isArabic ? 'chevron-back' : 'chevron-forward'} size={14} color={theme.primary} />
                 <Text style={s.daleelBtnLabel}>{t.adhkar.daleel}</Text>
               </Pressable>
             ) : null}
@@ -151,7 +154,7 @@ export default function AdhkarItemsScreen() {
               <Ionicons
                 name={isArabic ? 'arrow-back' : 'arrow-forward'}
                 size={20}
-                color={palette.brand[500]}
+                color={theme.primary}
               />
               <Text style={s.navBtnText}>
                 {isLast ? t.adhkar.done : t.adhkar.next}
@@ -167,7 +170,7 @@ export default function AdhkarItemsScreen() {
               <Ionicons
                 name={isArabic ? 'arrow-forward' : 'arrow-back'}
                 size={20}
-                color={palette.brand[500]}
+                color={theme.primary}
               />
             </Pressable>
           </View>

@@ -3,7 +3,6 @@
 namespace App\Repositories;
 
 use App\Models\Category;
-use App\Models\Subcategory;
 use App\Repositories\Contracts\CategoryRepositoryInterface;
 use Illuminate\Support\Collection;
 
@@ -27,19 +26,7 @@ class CategoryRepository implements CategoryRepositoryInterface
             ->with([
                 'subcategories'  => fn ($q) => $q->active()->ordered()->withCount(['diseases', 'recordings']),
                 'directDiseases' => fn ($q) => $q->active()->ordered()->withCount('recordings'),
-                'recordings'     => fn ($q) => $q->orderBy('session_number'),
-            ])
-            ->first();
-    }
-
-    public function findSubcategoryBySlug(string $slug): ?Subcategory
-    {
-        return Subcategory::active()
-            ->where('slug', $slug)
-            ->with([
-                'category',
-                'diseases'   => fn ($q) => $q->active()->ordered(),
-                'recordings' => fn ($q) => $q->orderBy('session_number'),
+                'recordings',
             ])
             ->first();
     }

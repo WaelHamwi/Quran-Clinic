@@ -14,8 +14,8 @@ POST-FILAMENT:
 
 POST-API:
 - GET /api/categories works, GET /api/diseases/search works, GET /api/general-ruqyah works
-- POST /api/favorites/toggle stores disease_id, session_number=1 free
-- session_number>=2 requires subscription/trial, trial max 2, no comments
+- POST /api/favorites/toggle stores disease_id, type=summarized free
+- type=detailed requires subscription/trial, trial max 2, no comments
 
 POST-SECURITY:
 - Policies enforce roles, middleware registered, ../mobile/ untouched

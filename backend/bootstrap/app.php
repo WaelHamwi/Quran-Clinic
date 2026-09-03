@@ -27,6 +27,7 @@ return Application::configure(basePath: dirname(__DIR__))
             \App\Http\Middleware\SetLocale::class,
         ]);
         $middleware->api(append: [
+            \App\Http\Middleware\EnsureAccountIsActive::class,
             \App\Http\Middleware\LogUserActivity::class,
         ]);
         $middleware->alias([
@@ -35,7 +36,9 @@ return Application::configure(basePath: dirname(__DIR__))
     })
 
     ->withExceptions(function (Exceptions $exceptions): void {
-        $exceptions->renderable(function (\LogicException $e, \Illuminate\Http\Request $request) {
+        // Only BusinessRuleException messages are safe to show to clients;
+        // framework LogicExceptions fall through to the generic 500 handler.
+        $exceptions->renderable(function (\App\Exceptions\BusinessRuleException $e, \Illuminate\Http\Request $request) {
             if ($request->hasHeader('X-Livewire')) {
                 return response()->json([
                     'message' => $e->getMessage(),

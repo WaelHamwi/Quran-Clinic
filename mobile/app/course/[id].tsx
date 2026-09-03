@@ -16,11 +16,12 @@ import { PatternedBackground } from '@/components/layout/PatternedBackground';
 import { Header } from '@/components/layout/Header';
 import { Loader } from '@/components/common/Loader';
 import { EmptyState } from '@/components/common/EmptyState';
-import { useCourses } from '@/hooks/useCourses';
+import { useCourses } from '@/hooks/content/useCourses';
 import { useLanguage } from '@/context/LanguageContext';
 import { pickText, formatDate, resolveMediaUrl } from '@/utils/formatters';
-import { palette } from '@/theme/colors';
-import { courseDetailStyles as s } from '@/styles/courseDetailScreen.styles';
+import { useTheme } from '@/context/ThemeContext';
+import { useStyles } from '@/hooks/common/useStyles';
+import { createStyles } from '@/styles/courseDetailScreen.styles';
 import courseCover from '@/assets/figma/course-cover.jpg';
 import courseCoverSoon from '@/assets/figma/course-cover-soon.jpg';
 
@@ -28,6 +29,8 @@ export default function CourseDetailScreen() {
   const { id } = useLocalSearchParams() as { id: string };
   const { courses, isLoading } = useCourses();
   const { t, isArabic, language } = useLanguage();
+  const { theme } = useTheme();
+  const s = useStyles(createStyles);
   const router = useRouter();
   const { top } = useSafeAreaInsets();
 
@@ -42,9 +45,10 @@ export default function CourseDetailScreen() {
     if (router.canGoBack()) router.back();
   }, [router]);
 
+  const whatsappLink = course?.whatsapp_link;
   const openWhatsapp = useCallback(() => {
-    if (course?.whatsapp_link) Linking.openURL(course.whatsapp_link).catch(() => {});
-  }, [course?.whatsapp_link]);
+    if (whatsappLink) Linking.openURL(whatsappLink).catch(() => {});
+  }, [whatsappLink]);
 
   const onShare = useCallback(() => {
     if (!course) return;
@@ -110,10 +114,10 @@ export default function CourseDetailScreen() {
           >
             <View style={s.topRow}>
               <Pressable style={s.circleBtn} onPress={onShare} hitSlop={8}>
-                <Ionicons name="share-outline" size={18} color={palette.text.primary} />
+                <Ionicons name="share-outline" size={18} color={theme.text} />
               </Pressable>
               <Pressable style={s.circleBtn} onPress={goBack} hitSlop={8}>
-                <Ionicons name="close" size={20} color={palette.text.primary} />
+                <Ionicons name="close" size={20} color={theme.text} />
               </Pressable>
             </View>
 
@@ -121,7 +125,7 @@ export default function CourseDetailScreen() {
               <View style={s.dateRow}>
                 <View style={s.datePill}>
                   <Text style={s.datePillText}>{pillLabel}</Text>
-                  <Ionicons name="calendar-outline" size={16} color={palette.text.primary} />
+                  <Ionicons name="calendar-outline" size={16} color={theme.text} />
                 </View>
               </View>
             ) : null}
@@ -137,7 +141,7 @@ export default function CourseDetailScreen() {
                 <Text style={s.instructorText} numberOfLines={1}>
                   {t.courses.instructor(course.instructor_name)}
                 </Text>
-                <Ionicons name="person-outline" size={24} color={palette.brand[500]} />
+                <Ionicons name="person-outline" size={24} color={theme.primary} />
               </View>
             ) : null}
 
@@ -181,7 +185,7 @@ export default function CourseDetailScreen() {
               onPress={openWhatsapp}
             >
               <Text style={s.bookBtnText}>{t.courses.book}</Text>
-              <Ionicons name="logo-whatsapp" size={18} color={palette.text.onBrand} />
+              <Ionicons name="logo-whatsapp" size={18} color={theme.textOnBrand} />
             </Pressable>
           ) : (
             <View />

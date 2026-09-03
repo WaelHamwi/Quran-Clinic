@@ -1,12 +1,11 @@
-import React, { useEffect, useMemo } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import React, { useEffect } from 'react';
+import { Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/context/ThemeContext';
+import { useStyles } from '@/hooks/common/useStyles';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { selectActiveToast, dismissToast } from '@/store/slices/uiSlice';
-import type { Theme } from '@/theme/colors';
-import { spacing, radius } from '@/theme/spacing';
-import { fontSize } from '@/theme/typography';
+import { createStyles } from './Toast.styles';
 
 const TOAST_DURATION_MS = 2600;
 
@@ -16,7 +15,7 @@ export function Toast() {
   const insets = useSafeAreaInsets();
   const dispatch = useAppDispatch();
   const toast = useAppSelector(selectActiveToast);
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const styles = useStyles(createStyles);
 
   useEffect(() => {
     if (!toast) return;
@@ -40,17 +39,4 @@ export function Toast() {
       </View>
     </View>
   );
-}
-
-function createStyles(_theme: Theme) {
-  return StyleSheet.create({
-    wrap: { position: 'absolute', left: 0, right: 0, alignItems: 'center' },
-    toast: {
-      maxWidth: '88%',
-      paddingHorizontal: spacing.lg,
-      paddingVertical: spacing.md,
-      borderRadius: radius.pill,
-    },
-    text: { color: '#fff', fontSize: fontSize.sm, textAlign: 'center' },
-  });
 }

@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { Linking, Modal, Pressable, ScrollView, Share, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Linking, Modal, Pressable, ScrollView, Share, Switch, Text, View } from 'react-native';
 import { UserAvatar } from '@/components/common/UserAvatar';
 import { useRouter } from 'expo-router';
 import Constants from 'expo-constants';
@@ -13,17 +13,18 @@ import { LanguagePickerSheet } from '@/components/common/LanguagePickerSheet';
 import { SubscriptionSheet } from '@/components/common/SubscriptionSheet';
 import { useLanguage } from '@/context/LanguageContext';
 import { useAuth } from '@/context/AuthContext';
-import { useFeatureVisibility } from '@/hooks/useFeatures';
+import { accountService } from '@/services/auth/accountService';
+import { formatBytes } from '@/utils/formatters';
+import { useFeatureVisibility } from '@/hooks/common/useFeatures';
 import { FEATURE_KEYS } from '@/constants/features';
-import { palette } from '@/theme/colors';
-import {
-  moreScreenStyles as s,
-  BANNER_CLOSE_COLOR,
-  BANNER_ICON_COLOR,
-} from '@/styles/moreScreen.styles';
+import { useTheme } from '@/context/ThemeContext';
+import { useStyles } from '@/hooks/common/useStyles';
+import { createStyles } from '@/styles/moreScreen.styles';
 
 export default function MoreScreen() {
   const { t, isArabic } = useLanguage();
+  const { theme, isDark, toggleTheme } = useTheme();
+  const s = useStyles(createStyles);
   const router = useRouter();
   const { profile, isGuest, signOut, deleteAccount } = useAuth();
   const isVisible = useFeatureVisibility();
@@ -57,6 +58,30 @@ export default function MoreScreen() {
     try { await deleteAccount(); } finally { setDeleting(false); setDeleteConfirmOpen(false); }
   }, [deleteAccount]);
 
+  // A real session loses its downloads on sign-out (gated audio must not
+  // outlive the entitled account), so warn before proceeding when any exist.
+  const onLogout = useCallback(() => {
+    const { count, size } = accountService.getDownloadStats();
+    if (isGuest || count === 0) {
+      void signOut();
+      return;
+    }
+    Alert.alert(
+      t.more.logoutConfirmTitle,
+      t.more.logoutConfirmBody(count, formatBytes(size)),
+      [
+        { text: t.more.logoutKeepDownloads, style: 'cancel' },
+        { text: t.more.logoutConfirm, style: 'destructive', onPress: () => void signOut() },
+      ],
+    );
+  }, [isGuest, signOut, t]);
+
+  const [deleteStats, setDeleteStats] = useState<{ count: number; size: number }>({ count: 0, size: 0 });
+  const openDeleteConfirm = useCallback(() => {
+    setDeleteStats(accountService.getDownloadStats());
+    setDeleteConfirmOpen(true);
+  }, []);
+
   const userName = profile?.name ?? profile?.email ?? t.more.guest;
   const userEmail = profile?.email ?? '';
 
@@ -79,11 +104,11 @@ export default function MoreScreen() {
           <Pressable style={s.moreScreen__banner} onPress={openSubSheet}>
             <View style={[s.moreScreen__bannerHeader, isArabic && s.moreScreen__bannerHeaderRtl]}>
               <Pressable style={s.moreScreen__bannerCloseBtn} onPress={dismissBanner} hitSlop={10}>
-                <Ionicons name="close" size={14} color={BANNER_CLOSE_COLOR} />
+                <Ionicons name="close" size={14} color={theme.textOnBrand} />
               </Pressable>
               <View style={[s.moreScreen__bannerRow, isArabic && s.moreScreen__bannerRowRtl]}>
                 <View style={s.moreScreen__bannerIconWrap}>
-                  <Ionicons name="school-outline" size={30} color={BANNER_ICON_COLOR} />
+                  <Ionicons name="school-outline" size={30} color={theme.textOnBrand} />
                 </View>
                 <View style={s.moreScreen__bannerTexts}>
                   <Text style={s.moreScreen__bannerTitle}>{t.more.upgradeBannerTitle}</Text>
@@ -123,6 +148,20 @@ export default function MoreScreen() {
             label={t.more.appLanguage}
             onPress={openLangSheet}
             showChevron
+          />
+          <View style={s.moreScreen__separator} />
+          <MenuRow
+            icon={isDark ? 'moon' : 'moon-outline'}
+            label={t.more.darkMode}
+            onPress={toggleTheme}
+            right={
+              <Switch
+                value={isDark}
+                onValueChange={toggleTheme}
+                trackColor={{ false: theme.border, true: theme.primaryMid }}
+                thumbColor={isDark ? theme.primary : theme.surface}
+              />
+            }
           />
           <View style={s.moreScreen__separator} />
           <MenuRow
@@ -189,25 +228,27 @@ export default function MoreScreen() {
           />
         </View>
 
-        {/* Logout / delete only apply to a real account — a guest has nothing to sign out of
-            or delete. */}
-        {!isGuest && (
-          <View style={s.moreScreen__group}>
-            <MenuRow
-              icon="log-out-outline"
-              label={t.more.logout}
-              onPress={signOut}
-              danger
-            />
-            <View style={s.moreScreen__separator} />
-            <MenuRow
-              icon="trash-outline"
-              label={t.more.deleteAccount}
-              onPress={() => setDeleteConfirmOpen(true)}
-              danger
-            />
-          </View>
-        )}
+        {/* Logout shows for everyone — for a guest it exits guest mode back to the login
+            gate. Delete only applies to a real account. */}
+        <View style={s.moreScreen__group}>
+          <MenuRow
+            icon="log-out-outline"
+            label={t.more.logout}
+            onPress={onLogout}
+            danger
+          />
+          {!isGuest && (
+            <>
+              <View style={s.moreScreen__separator} />
+              <MenuRow
+                icon="trash-outline"
+                label={t.more.deleteAccount}
+                onPress={openDeleteConfirm}
+                danger
+              />
+            </>
+          )}
+        </View>
 
         <View style={s.moreScreen__footer}>
           <Text style={s.moreScreen__appName}>{t.more.appName}</Text>
@@ -224,18 +265,27 @@ export default function MoreScreen() {
         <View style={s.moreScreen__modalOverlay}>
           <View style={s.moreScreen__modalCard}>
             <View style={s.moreScreen__modalIconWrap}>
-              <Ionicons name="trash-outline" size={28} color={palette.system.error[500]} />
+              <Ionicons name="trash-outline" size={28} color={theme.error} />
             </View>
             <Text style={s.moreScreen__modalTitle}>{t.more.deleteAccountConfirmTitle}</Text>
-            <Text style={s.moreScreen__modalBody}>{t.more.deleteAccountConfirmBody}</Text>
+            <Text style={s.moreScreen__modalBody}>
+              {t.more.deleteAccountConfirmBody}
+              {deleteStats.count > 0
+                ? ` ${t.more.deleteAccountDownloadsNote(deleteStats.count, formatBytes(deleteStats.size))}`
+                : ''}
+            </Text>
             <Pressable
               style={[s.moreScreen__modalBtnDanger, deleting && s.moreScreen__modalBtnDisabled]}
               onPress={onConfirmDelete}
               disabled={deleting}
             >
-              <Text style={s.moreScreen__modalBtnDangerText}>
-                {deleting ? '...' : t.more.deleteAccountConfirm}
-              </Text>
+              {deleting ? (
+                <ActivityIndicator size="small" color={theme.textOnBrand} />
+              ) : (
+                <Text style={s.moreScreen__modalBtnDangerText}>
+                  {t.more.deleteAccountConfirm}
+                </Text>
+              )}
             </Pressable>
             <Pressable style={s.moreScreen__modalBtnCancel} onPress={() => setDeleteConfirmOpen(false)} disabled={deleting}>
               <Text style={s.moreScreen__modalBtnCancelText}>{t.more.deleteAccountCancel}</Text>

@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -11,6 +11,7 @@ import {
   View,
   type ListRenderItem,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
@@ -18,9 +19,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLanguage } from '@/context/LanguageContext';
 import { useAppSelector } from '@/store/hooks';
 import { selectNetworkOnline } from '@/store/slices/uiSlice';
-import { askAi, type ChatMessage, type NavAction } from '@/services/aiService';
-import { palette } from '@/theme/colors';
-import { ASKME_GRADIENT_COLORS, askMeStyles as s } from '@/styles/askme.styles';
+import { askAi, type ChatMessage, type NavAction } from '@/services/content/aiService';
+import { useTheme } from '@/context/ThemeContext';
+import { useStyles } from '@/hooks/common/useStyles';
+import { createStyles } from '@/styles/askme.styles';
 
 interface Bubble extends ChatMessage {
   id: string;
@@ -35,6 +37,8 @@ function nowTime() {
 
 export default function AskMeScreen() {
   const { t, language } = useLanguage();
+  const { theme } = useTheme();
+  const s = useStyles(createStyles);
   const insets = useSafeAreaInsets();
   const online = useAppSelector(selectNetworkOnline);
   const listRef = useRef<FlatList<Bubble>>(null);
@@ -45,9 +49,43 @@ export default function AskMeScreen() {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
 
+  useEffect(() => {
+    const loadMessages = async () => {
+      try {
+        const saved = await AsyncStorage.getItem('askme_messages');
+        if (saved) {
+          setMessages(JSON.parse(saved));
+        }
+      } catch (e) {
+        console.error('Failed to load chat history:', e);
+      }
+    };
+    loadMessages();
+  }, []);
+
+  useEffect(() => {
+    const saveMessages = async () => {
+      try {
+        await AsyncStorage.setItem('askme_messages', JSON.stringify(messages));
+      } catch (e) {
+        console.error('Failed to save chat history:', e);
+      }
+    };
+    if (messages.length > 1) saveMessages();
+  }, [messages]);
+
   const scrollToEnd = useCallback(() => {
     requestAnimationFrame(() => listRef.current?.scrollToEnd({ animated: true }));
   }, []);
+
+  const clearChat = useCallback(async () => {
+    try {
+      await AsyncStorage.removeItem('askme_messages');
+      setMessages([{ id: 'greeting', role: 'assistant', content: t.askMe.greeting, time: nowTime() }]);
+    } catch (e) {
+      console.error('Failed to clear chat:', e);
+    }
+  }, [t]);
 
   const send = useCallback(
     async (text?: string) => {
@@ -100,7 +138,7 @@ export default function AskMeScreen() {
               <Text style={s.userTimestamp}>{item.time}</Text>
             </View>
             <View style={s.userAvatar}>
-              <Ionicons name="person" size={16} color={palette.text.onBrand} />
+              <Ionicons name="person" size={16} color={theme.textOnBrand} />
             </View>
           </View>
         );
@@ -108,7 +146,7 @@ export default function AskMeScreen() {
       return (
         <View style={s.aiRow}>
           <View style={s.aiAvatar}>
-            <Ionicons name="leaf" size={14} color={palette.secondaryGreen[600]} />
+            <Ionicons name="leaf" size={14} color={theme.success} />
           </View>
           <View style={s.aiBubble}>
             <Text style={s.aiBubbleText}>{item.content}</Text>
@@ -130,7 +168,7 @@ export default function AskMeScreen() {
         </View>
       );
     },
-    [language],
+    [language, s, theme],
   );
 
   const suggestions = [
@@ -142,7 +180,7 @@ export default function AskMeScreen() {
 
   return (
     <LinearGradient
-      colors={ASKME_GRADIENT_COLORS}
+      colors={theme.chatGradient}
       start={{ x: 0.5, y: 0 }}
       end={{ x: 0.5, y: 1 }}
       style={s.container}
@@ -154,7 +192,9 @@ export default function AskMeScreen() {
         {/* Header */}
         <View style={[s.header, { paddingTop: insets.top }]}>
           <View style={s.headerInner}>
-            <View style={s.headerSide} />
+            <Pressable onPress={clearChat}>
+              <Ionicons name="refresh" size={20} color={theme.primary} />
+            </Pressable>
             <Text style={s.headerTitle}>{t.askMe.title}</Text>
             <View style={s.headerSide} />
           </View>
@@ -180,7 +220,7 @@ export default function AskMeScreen() {
         {/* Thinking indicator */}
         {loading ? (
           <View style={s.thinking}>
-            <ActivityIndicator size="small" color={palette.brand[500]} />
+            <ActivityIndicator size="small" color={theme.primary} />
             <Text style={s.thinkingText}>{t.askMe.thinking}</Text>
           </View>
         ) : null}
@@ -207,15 +247,15 @@ export default function AskMeScreen() {
               disabled={loading || input.trim().length === 0}
               style={[s.sendBtn, (loading || input.trim().length === 0) && s.sendBtnDisabled]}
             >
-              <Ionicons name="send" size={20} color={palette.text.onBrand} style={{ transform: [{ rotate: '-90deg' }] }} />
+              <Ionicons name="send" size={20} color={theme.textOnBrand} style={{ transform: [{ rotate: '180deg' }] }} />
             </Pressable>
             <TextInput
               value={input}
               onChangeText={setInput}
               placeholder={t.askMe.placeholder}
-              placeholderTextColor={palette.text.placeholder}
+              placeholderTextColor={theme.textPlaceholder}
               style={s.inputField}
-              textAlign="right"
+              textAlign={language === 'ar' ? 'right' : 'left'}
             />
           </View>
         </View>

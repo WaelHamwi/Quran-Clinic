@@ -3,6 +3,7 @@ import type { Translatable } from '@/types/translatable';
 import type { Category, Subcategory } from '@/types/category';
 import type { Recording } from '@/types/recording';
 import type { Disease } from '@/types/disease';
+import type { FavoriteNodeDto } from '@/services/content/favoriteService';
 import type { RootState } from '@/store/rootReducer';
 
 export type SyncStatus = 'idle' | 'syncing' | 'synced' | 'error';
@@ -10,8 +11,10 @@ export type SyncStatus = 'idle' | 'syncing' | 'synced' | 'error';
 /**
  * What a favorite points at. A `disease` is a ruqyah session collection; a
  * `category` / `subcategory` is a "direct" node whose recordings hang straight
- * off it (no disease layer). Only diseases sync to the server — node favorites
- * are local-only (the backend favorites table stores disease ids).
+ * off it (no disease layer). Both sync to the server — diseases via
+ * `/favorites`, category/subcategory nodes via the separate `/favorites/nodes`
+ * endpoints (kept apart so the original disease-only contract never changed
+ * for already-shipped app builds).
  */
 export type FavoriteKind = 'disease' | 'category' | 'subcategory';
 
@@ -61,15 +64,69 @@ function diseaseToItem(d: Disease): FavoriteItem {
   };
 }
 
+/** Server node favorites (category/subcategory) — adapt them to the local item shape. */
+function nodeToItem(n: FavoriteNodeDto): FavoriteItem {
+  return {
+    id: n.id,
+    name: n.name,
+    slug: n.slug,
+    icon: n.icon,
+    favoriteKind: n.kind,
+    route:
+      n.kind === 'subcategory'
+        ? `/hospital/recordings/${n.slug}?level=subcategory`
+        : `/hospital/recordings/${n.slug}`,
+  };
+}
+
+/**
+ * Swap the `owned` half of the map for what the server just returned, refreshing
+ * each surviving entry in place. Deleting and re-inserting instead would push
+ * every synced favorite to the end of the record — and `Object.values` order is
+ * the user's drag order (see reorderFavorites), so a sync would silently
+ * reshuffle the Favorites list.
+ */
+function mergePreservingOrder(
+  current: Record<string, FavoriteItem>,
+  incoming: Map<string, FavoriteItem>,
+  owned: (item: FavoriteItem) => boolean,
+): Record<string, FavoriteItem> {
+  const next: Record<string, FavoriteItem> = {};
+  for (const key of Object.keys(current)) {
+    const item = current[key];
+    if (!owned(item)) {
+      next[key] = item;
+      continue;
+    }
+    const fresh = incoming.get(key);
+    if (fresh) {
+      next[key] = fresh;
+      incoming.delete(key);
+    }
+  }
+  for (const [key, item] of incoming) next[key] = item;
+  return next;
+}
+
 const favoritesSlice = createSlice({
   name: 'favorites',
   initialState,
   reducers: {
+    /** Replaces server-synced disease favorites only — leaves category/subcategory
+     *  node favorites (set separately by setNodeFavorites) untouched. */
     setFavorites(state, action: PayloadAction<Disease[]>) {
-      state.items = {};
-      for (const d of action.payload) {
-        state.items[favoriteKey('disease', d.id)] = diseaseToItem(d);
-      }
+      const incoming = new Map(
+        action.payload.map((d) => [favoriteKey('disease', d.id), diseaseToItem(d)]),
+      );
+      state.items = mergePreservingOrder(state.items, incoming, (i) => i.favoriteKind === 'disease');
+    },
+    /** Replaces server-synced category/subcategory node favorites only — leaves
+     *  disease favorites (set separately by setFavorites) untouched. */
+    setNodeFavorites(state, action: PayloadAction<FavoriteNodeDto[]>) {
+      const incoming = new Map(
+        action.payload.map((n) => [favoriteKey(n.kind, n.id), nodeToItem(n)]),
+      );
+      state.items = mergePreservingOrder(state.items, incoming, (i) => i.favoriteKind !== 'disease');
     },
     addFavorite(state, action: PayloadAction<FavoriteItem>) {
       const item = action.payload;
@@ -110,6 +167,7 @@ const favoritesSlice = createSlice({
 
 export const {
   setFavorites,
+  setNodeFavorites,
   addFavorite,
   removeFavorite,
   toggleFavorite,

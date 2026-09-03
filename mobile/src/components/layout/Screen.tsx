@@ -1,17 +1,16 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  StyleSheet,
   View,
   type RefreshControlProps,
   type StyleProp,
   type ViewStyle,
 } from 'react-native';
 import { SafeAreaView, type Edge } from 'react-native-safe-area-context';
-import { useTheme } from '@/context/ThemeContext';
-import type { Theme } from '@/theme/colors';
+import { useStyles } from '@/hooks/common/useStyles';
+import { createStyles } from './Screen.styles';
 
 interface ScreenProps {
   children: React.ReactNode;
@@ -33,8 +32,7 @@ export function Screen({
   contentStyle,
   refreshControl,
 }: ScreenProps) {
-  const { theme } = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const styles = useStyles(createStyles);
 
   const body = scroll ? (
     <ScrollView
@@ -64,12 +62,4 @@ export function Screen({
       )}
     </SafeAreaView>
   );
-}
-
-function createStyles(theme: Theme) {
-  return StyleSheet.create({
-    container: { flex: 1, backgroundColor: theme.background },
-    flex: { flex: 1 },
-    scrollContent: { flexGrow: 1 },
-  });
 }

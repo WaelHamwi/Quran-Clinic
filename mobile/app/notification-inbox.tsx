@@ -13,11 +13,9 @@ import {
   selectInboxItems,
   type InboxNotification,
 } from '@/store/slices/notificationInboxSlice';
-import {
-  notificationInboxStyles as s,
-  ICON_BRAND,
-  EMPTY_ICON_COLOR,
-} from '@/styles/notificationInboxScreen.styles';
+import { useTheme } from '@/context/ThemeContext';
+import { useStyles } from '@/hooks/common/useStyles';
+import { createStyles } from '@/styles/notificationInboxScreen.styles';
 
 type IoniconName = React.ComponentProps<typeof Ionicons>['name'];
 
@@ -38,6 +36,8 @@ function formatTime(ms: number): string {
 
 export default function NotificationInboxScreen() {
   const { t } = useLanguage();
+  const { theme } = useTheme();
+  const s = useStyles(createStyles);
   const dispatch = useAppDispatch();
   const items = useAppSelector(selectInboxItems);
 
@@ -56,7 +56,7 @@ export default function NotificationInboxScreen() {
           <Ionicons
             name={ICON_FOR_TYPE[item.type] ?? ICON_FOR_TYPE.reminder}
             size={20}
-            color={ICON_BRAND}
+            color={theme.primary}
           />
         </View>
         <View style={s.itemTexts}>
@@ -68,7 +68,7 @@ export default function NotificationInboxScreen() {
         </View>
       </View>
     ),
-    [t.notifications.inboxToday],
+    [t.notifications.inboxToday, s, theme],
   );
 
   const footer = useMemo(
@@ -78,7 +78,7 @@ export default function NotificationInboxScreen() {
           <Text style={s.clearText}>{t.notifications.inboxClear}</Text>
         </Pressable>
       ) : null,
-    [items.length, onClear, t.notifications.inboxClear],
+    [items.length, onClear, t.notifications.inboxClear, s],
   );
 
   return (
@@ -94,7 +94,7 @@ export default function NotificationInboxScreen() {
         ListFooterComponent={footer}
         ListEmptyComponent={
           <View style={s.empty}>
-            <Ionicons name="notifications-off-outline" size={48} color={EMPTY_ICON_COLOR} />
+            <Ionicons name="notifications-off-outline" size={48} color={theme.textPlaceholder} />
             <Text style={s.emptyTitle}>{t.notifications.inboxEmpty}</Text>
             <Text style={s.emptyDesc}>{t.notifications.inboxEmptyDesc}</Text>
           </View>

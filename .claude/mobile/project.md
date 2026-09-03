@@ -59,8 +59,11 @@ Full routing and terminal-redirect rules in `hierarchy-navigation.md`.
 - **General Ruqyah** — quick-launch button plays the `is_general` disease audio
   immediately, with no intermediate screens.
 - **Favorites** — DISEASES only. Not adhkar, not Quran, not courses. Store `disease_id`.
-- **Session access** — session 1 free for everyone; sessions 2 & 3 require an active
-  subscription or trial.
+- **Recording access** — each disease/subcategory/category has at most TWO recordings:
+  `type=summarized` (مختصرة) free for everyone; `type=detailed` (مطوّلة) requires an active
+  subscription or trial. The record screen switches types ONLY via the segmented type tabs
+  (Figma 19214:3234) — no wird numbering and no swapping inside the reader area.
+  Single source: `.claude/shared-context.md` → RECORDING TYPES.
 - **Search** — tolerant of synonyms/aliases, supports Arabic and English.
 - **Adhkar** — categories: Morning, Evening, Sleep, Waking.
 - **Tahsinat** — categories: Self-fortification, Fortification for others.

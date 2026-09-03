@@ -3,40 +3,35 @@
 namespace App\Services;
 
 use App\Models\Recitation;
-use App\Models\Reciter;
 use App\Repositories\Contracts\RecitationRepositoryInterface;
+use App\Support\ModelCache;
 use Illuminate\Database\Eloquent\Collection;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
 class RecitationService
 {
+    /** The full recitation set (with reciter) cached under one key. */
+    public const CACHE_ALL = 'recitations.v1.all';
+
+    /** Keys invalidated when a Recitation is written. */
+    public const CACHE_KEYS = [self::CACHE_ALL];
+
     public function __construct(private RecitationRepositoryInterface $repository) {}
 
+    public function find(int $id): ?Recitation
+    {
+        return $this->repository->findById($id);
+    }
+
+    /**
+     * Recitations for one surah — sliced in PHP from the cached aggregate, the
+     * same static-key + filter-in-PHP pattern the surah/reciter lists use.
+     */
     public function getBySurah(int $surahId): Collection
     {
-        try {
-            $rows = Cache::remember("recitations.surah.{$surahId}", 300, fn() =>
-                $this->repository->getBySurah($surahId)->map(fn(Recitation $r) => [
-                    'attrs'   => $r->getAttributes(),
-                    'reciter' => $r->reciter?->getAttributes(),
-                ])->all()
-            );
+        $all = ModelCache::rememberMany(self::CACHE_ALL, 300, fn () => $this->repository->all());
 
-            return new Collection(array_map(function (array $row) {
-                $recitation = new Recitation;
-                $recitation->setRawAttributes($row['attrs']);
-                $recitation->exists = true;
-                if ($row['reciter']) {
-                    $recitation->setRelation('reciter', Reciter::newFromBuilder($row['reciter']));
-                }
-                return $recitation;
-            }, $rows));
-        } catch (\Throwable $e) {
-            Log::warning('RecitationService cache failed, falling back to DB: ' . $e->getMessage());
-            return $this->repository->getBySurah($surahId);
-        }
+        return $all->where('surah_id', $surahId)->values();
     }
 
     public function getAudioUrl(Recitation $recitation): string

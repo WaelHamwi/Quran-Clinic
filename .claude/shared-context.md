@@ -96,6 +96,12 @@ C:\Users\wael\Desktop\Quran\
 ├── mobile/                     # React Native Expo
 └── docs/                       # Documentation
 
+## ⚠ RECORDING TYPES (SINGLE SOURCE OF TRUTH)
+Every recording owner (category, subcategory, or disease) can have AT MOST TWO recordings:
+- `summarized` (مختصرة) → ALWAYS FREE, playable by everyone including guests
+- `detailed` (مطولة) → PAID, requires active subscription OR trial (trial: 7 days, max 2 per user)
+Stored in `recordings.type` enum('summarized','detailed'), default 'summarized'. The old `is_free` column is REMOVED — free access is derived from `type = summarized` (Recording::isFreeSession()). One recording per type per owner, enforced at the model level (LogicException on save, surfaced as a validation error in Filament). Recordings still belong to exactly one of disease/subcategory/category — ownership and access-gating logic are otherwise unchanged. The API still returns `is_free` and `requires_subscription` (derived) plus the new `type` field.
+
 ## CATEGORY TYPES
 - `standard`: Category → Subcategories → Diseases → Recordings (normal flow).
 - `disease_direct`: Category → Diseases directly (no subcategory layer) → Recordings. Disease has `category_id` set, `subcategory_id` is null.

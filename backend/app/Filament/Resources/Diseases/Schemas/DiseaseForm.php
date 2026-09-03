@@ -3,6 +3,8 @@
 namespace App\Filament\Resources\Diseases\Schemas;
 
 use App\Filament\Support\IconUpload;
+use App\Filament\Support\RecordingAttachmentsField;
+use App\Filament\Support\TranslatedName;
 use App\Models\Category;
 use App\Models\Disease;
 use App\Models\Subcategory;
@@ -43,15 +45,20 @@ class DiseaseForm
 
             Select::make('subcategory_id')
                 ->label('Subcategory')
-                ->options(fn () => Subcategory::doesntHave('recordings')->ordered()->get()->pluck('name', 'id'))
+                ->options(fn () => TranslatedName::options(
+                    Subcategory::where('type', Subcategory::TYPE_STANDARD)
+                        ->doesntHave('recordings')
+                        ->ordered()
+                        ->get()
+                ))
                 ->searchable()
                 ->visible(fn (Get $get) => $get('parent_type') !== 'category')
                 ->required(fn (Get $get) => $get('parent_type') !== 'category')
-                ->helperText('Only subcategories without directly-attached recordings can have diseases.'),
+                ->helperText('Only subcategories set to hold diseases are listed.'),
 
             Select::make('category_id')
                 ->label('Category (direct)')
-                ->options(fn () => Category::where('type', 'disease_direct')->ordered()->get()->pluck('name', 'id'))
+                ->options(fn () => TranslatedName::options(Category::where('type', 'disease_direct')->ordered()->get()))
                 ->searchable()
                 ->visible(fn (Get $get) => $get('parent_type') === 'category')
                 ->required(fn (Get $get) => $get('parent_type') === 'category')
@@ -67,6 +74,7 @@ class DiseaseForm
             ...IconUpload::make('diseases'),
             TextInput::make('display_order')->numeric()->default(0),
             Toggle::make('is_active')->default(true),
+            ...RecordingAttachmentsField::make(),
         ];
     }
 }

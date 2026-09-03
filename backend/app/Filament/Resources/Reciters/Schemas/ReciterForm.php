@@ -33,6 +33,8 @@ class ReciterForm
                 ->disk('public')
                 ->directory('reciters/photos')
                 ->image()
+                ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp'])
+                ->maxSize(5120)
                 ->imageResizeMode('cover')
                 ->imageCropAspectRatio('1:1')
                 ->columnSpanFull(),

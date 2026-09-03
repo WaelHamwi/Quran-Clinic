@@ -4,17 +4,17 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Resources\SubcategoryResource;
-use App\Services\CategoryService;
+use App\Services\SubcategoryService;
 use Illuminate\Http\JsonResponse;
 
 class SubcategoryController extends Controller
 {
-    public function __construct(private CategoryService $service) {}
+    public function __construct(private SubcategoryService $service) {}
 
     public function show(string $slug): JsonResponse
     {
         try {
-            $subcategory = $this->service->getSubcategoryBySlug($slug);
+            $subcategory = $this->service->getBySlug($slug);
 
             if (! $subcategory) {
                 return $this->error('Subcategory not found', 404);

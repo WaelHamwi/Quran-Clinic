@@ -2,19 +2,28 @@
 
 namespace App\Models;
 
+use App\Exceptions\BusinessRuleException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphToMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
 use App\Models\Concerns\HasTranslations;
+use App\Models\Concerns\InvalidatesCache;
+use App\Services\DiseaseService;
 
 class Disease extends Model
 {
-    use HasFactory, HasTranslations, SoftDeletes;
+    use HasFactory, HasTranslations, InvalidatesCache, SoftDeletes;
+
+    protected function cacheKeysToForget(): array
+    {
+        return DiseaseService::CACHE_KEYS;
+    }
 
     protected $fillable = [
         'subcategory_id', 'category_id', 'name', 'slug', 'icon',
@@ -34,24 +43,27 @@ class Disease extends Model
             $hasCat = ! empty($r->category_id);
 
             if ($hasSub && $hasCat) {
-                throw new \LogicException('A disease cannot belong to both a subcategory and a direct category.');
+                throw new BusinessRuleException('A disease cannot belong to both a subcategory and a direct category.');
             }
             if (! $hasSub && ! $hasCat) {
-                throw new \LogicException('A disease must belong to either a subcategory or a direct category.');
+                throw new BusinessRuleException('A disease must belong to either a subcategory or a direct category.');
             }
             if ($hasSub) {
                 $sub = Subcategory::find($r->subcategory_id);
+                if ($sub && $sub->isDirect()) {
+                    throw new BusinessRuleException('That subcategory is set to hold recordings directly, so it cannot take diseases.');
+                }
                 if ($sub && $sub->recordings()->exists()) {
-                    throw new \LogicException('Cannot assign a disease to a subcategory that already has direct recordings.');
+                    throw new BusinessRuleException('Cannot assign a disease to a subcategory that already has direct recordings.');
                 }
             }
             if ($hasCat) {
                 $cat = Category::find($r->category_id);
                 if ($cat && ! $cat->isDiseaseDirect()) {
-                    throw new \LogicException('The selected category does not accept direct diseases (must be type disease_direct).');
+                    throw new BusinessRuleException('The selected category does not accept direct diseases (must be type disease_direct).');
                 }
                 if ($cat && $cat->subcategories()->exists()) {
-                    throw new \LogicException('Cannot assign a disease directly to a category that already has subcategories.');
+                    throw new BusinessRuleException('Cannot assign a disease directly to a category that already has subcategories.');
                 }
             }
         });
@@ -115,9 +127,18 @@ class Disease extends Model
             : asset('storage/' . ltrim($this->icon, '/'));
     }
 
-    public function recordings(): HasMany
+    /**
+     * The ordered sequence of ruqyah recordings for this disease. A recording
+     * may appear more than once, so the pivot id — not the recording id — is
+     * what identifies an occurrence.
+     */
+    public function recordings(): MorphToMany
     {
-        return $this->hasMany(Recording::class);
+        return $this->morphToMany(Recording::class, 'attachable', 'recording_attachments')
+            ->using(RecordingAttachment::class)
+            ->withPivot(['id', 'session_number'])
+            ->withTimestamps()
+            ->orderByPivot('session_number');
     }
 
     public function aliases(): HasMany

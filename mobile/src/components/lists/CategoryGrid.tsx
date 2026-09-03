@@ -1,9 +1,9 @@
 import React, { useCallback } from 'react';
-import { FlatList, type ListRenderItem } from 'react-native';
-import type { RefreshControlProps } from 'react-native';
+import { FlatList, type ListRenderItem , RefreshControlProps } from 'react-native';
 import { CategoryCard } from '@/components/lists/CategoryCard';
+import { useStyles } from '@/hooks/common/useStyles';
 import type { Category } from '@/types/category';
-import { categoryGridStyles as s } from './CategoryGrid.styles';
+import { createStyles } from './CategoryGrid.styles';
 
 interface CategoryGridProps {
   categories: Category[];
@@ -13,6 +13,7 @@ interface CategoryGridProps {
 }
 
 export function CategoryGrid({ categories, onItemPress, ListHeaderComponent, refreshControl }: CategoryGridProps) {
+  const s = useStyles(createStyles);
   const renderItem = useCallback<ListRenderItem<Category>>(
     ({ item }) => <CategoryCard category={item} onPress={onItemPress} />,
     [onItemPress],

@@ -4,9 +4,11 @@ import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { RemoteSvg } from '@/components/common/RemoteSvg';
 import { useLanguage } from '@/context/LanguageContext';
+import { useTheme } from '@/context/ThemeContext';
+import { useStyles } from '@/hooks/common/useStyles';
 import { pickText } from '@/utils/formatters';
-import type { HospitalResultKind, HospitalSearchResult } from '@/hooks/useHospitalSearch';
-import { searchResultListStyles as s, ICON_COLOR } from './SearchResultList.styles';
+import type { HospitalResultKind, HospitalSearchResult } from '@/hooks/hospital/useHospitalSearch';
+import { createStyles } from './SearchResultList.styles';
 
 const KIND_ICON: Record<HospitalResultKind, keyof typeof Ionicons.glyphMap> = {
   category: 'grid-outline',
@@ -21,10 +23,12 @@ interface SearchResultListProps {
 }
 
 function ResultIcon({ item }: { item: HospitalSearchResult }) {
+  const { theme } = useTheme();
+  const s = useStyles(createStyles);
   const isUrl = !!item.icon && /^https?:\/\//.test(item.icon);
   const isSvg = isUrl && /\.svg($|\?)/i.test(item.icon as string);
   if (isSvg) {
-    return <RemoteSvg uri={item.icon as string} width={28} height={28} color={ICON_COLOR} />;
+    return <RemoteSvg uri={item.icon as string} width={28} height={28} color={theme.primary} />;
   }
   if (isUrl) {
     return (
@@ -32,15 +36,16 @@ function ResultIcon({ item }: { item: HospitalSearchResult }) {
         source={{ uri: item.icon as string, headers: { 'ngrok-skip-browser-warning': 'true' } }}
         style={s.iconImage}
         contentFit="contain"
-        tintColor={ICON_COLOR}
+        tintColor={theme.primary}
       />
     );
   }
-  return <Ionicons name={KIND_ICON[item.kind]} size={22} color={ICON_COLOR} />;
+  return <Ionicons name={KIND_ICON[item.kind]} size={22} color={theme.primary} />;
 }
 
 export function SearchResultList({ results, onItemPress, ListEmptyComponent }: SearchResultListProps) {
   const { isArabic, t } = useLanguage();
+  const s = useStyles(createStyles);
 
   const kindLabel = useCallback(
     (kind: HospitalResultKind) => t.hospital.resultKind[kind],
@@ -64,7 +69,7 @@ export function SearchResultList({ results, onItemPress, ListEmptyComponent }: S
         </View>
       </Pressable>
     ),
-    [isArabic, onItemPress, kindLabel],
+    [isArabic, onItemPress, kindLabel, s],
   );
 
   const keyExtractor = useCallback((item: HospitalSearchResult) => item.key, []);

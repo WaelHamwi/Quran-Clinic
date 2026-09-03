@@ -27,18 +27,32 @@ tying up a PHP-FPM worker per stream. `X-Accel-Redirect` hands the byte transfer
 the worker immediately. Remote/CDN audio is still proxied unchanged (the mobile never hits the CDN
 directly — that contract is preserved).
 
-**Nginx** — add an internal location that maps the X-Accel prefix to the storage path:
+**Nginx** — add the internal locations that map the X-Accel prefixes to the storage paths.
+There are **two**: one for public recitations (`storage/app/public`) and one for **private,
+gated recordings** (`storage/app/private`, which must NOT be web-served any other way):
 
 ```nginx
 server {
     # … existing config …
 
-    # Internal-only: the app emits `X-Accel-Redirect: /__audio_internal/<path>`.
+    # Internal-only: public recitations. App emits `X-Accel-Redirect: /__audio_internal/<path>`.
     location /__audio_internal/ {
         internal;
         alias /var/www/mashfa/app/storage/app/public/;
         add_header Accept-Ranges bytes;
     }
+
+    # Internal-only: gated premium recordings. App emits `X-Accel-Redirect: /__protected_audio/<path>`
+    # ONLY after RecordingController::audio() passes the subscription check.
+    location /__protected_audio/ {
+        internal;
+        alias /var/www/mashfa/app/storage/app/private/;
+        add_header Accept-Ranges bytes;
+    }
+
+    # Make sure nothing serves the private dir directly (it is outside the web root by
+    # default; this is just a belt-and-suspenders guard if you ever symlink it).
+    location ~ ^/storage/recordings/ { return 404; }
 }
 ```
 
@@ -47,7 +61,24 @@ Then enable it:
 ```env
 AUDIO_X_ACCEL=true
 AUDIO_X_ACCEL_PREFIX=/__audio_internal
+AUDIO_PROTECTED_X_ACCEL_PREFIX=/__protected_audio
 ```
+
+### Premium-audio paywall (one-time relocation)
+
+Recording audio now lives on the **private** disk and is reachable only through the gated
+`GET /api/recordings/{id}/audio` endpoint (subscription/trial enforced server-side, then served
+via `X-Accel-Redirect`). To migrate audio that currently sits in `storage/app/public/recordings`:
+
+```bash
+php artisan recordings:relocate-audio --dry-run   # preview
+php artisan recordings:relocate-audio             # move public → private (idempotent)
+# add --keep to retain the public copies until you've verified playback
+```
+
+After relocating, confirm nothing remains publicly served under `/storage/recordings/`. The mobile
+app already sends the bearer token to this endpoint (only to our origin); free sessions remain
+playable by guests.
 
 Keep `AUDIO_X_ACCEL=false` anywhere Nginx isn't fronting PHP (e.g. `php artisan serve`), or the
 file won't be served. The app falls back to `response()->file()` when the flag is off.
@@ -169,11 +200,37 @@ makes rate limiting inaccurate across servers). Use `redis` or `database`. Silen
 
 ---
 
+## 6. Verse search — normalized column (one-time backfill)
+
+Verse search now matches against a pre-normalized `verses.text_norm` column (plain `LIKE`)
+instead of running two `REGEXP_REPLACE` calls per row per request. Fresh databases get the
+column from the verses migration and the values from the seeder. **Existing databases upgrade
+in place — no migration needed:**
+
+```bash
+php artisan verses:normalize        # adds the column if missing + backfills (idempotent)
+```
+
+Until the command runs, search still works: the repository catches the missing-column error and
+falls back to the legacy per-row scan automatically.
+
+---
+
+## 7. OTP email is queued
+
+`OtpVerificationMail` implements `ShouldQueue`, so the sign-in/resend response no longer waits
+for the SMTP round-trip. **The queue worker (`mashfa-queue.service`) must be running or OTP
+codes will not be delivered.** Check with `php artisan queue:health`.
+
+---
+
 ## Deploy order (summary)
 
 1. Pull code, `composer install --no-dev`, `php artisan config:cache route:cache`.
-2. (Optional) Add the Nginx internal location, set `AUDIO_X_ACCEL=true`, reload Nginx.
+2. Deploy `deploy/nginx-mashfa.conf` (now includes gzip, the X-Accel internal locations and
+   static cache headers), set `AUDIO_X_ACCEL=true`, reload Nginx.
 3. (Optional) Install Redis, flip `CACHE_STORE`/`SESSION_DRIVER`/`QUEUE_CONNECTION` to `redis`.
-4. Install/refresh the Supervisor worker; `php artisan queue:restart`.
+4. Install/refresh the Supervisor worker; `php artisan queue:restart` — **required for OTP mail**.
 5. (Optional) Apply the FULLTEXT SQL, set `SEARCH_USE_FULLTEXT=true`.
-6. `php artisan config:clear && php artisan config:cache`.
+6. `php artisan verses:normalize` (one-time backfill for verse search).
+7. `php artisan config:clear && php artisan config:cache`.

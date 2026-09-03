@@ -1,0 +1,7 @@
+{
+  "name": "wake-detection",
+  "version": "1.0.0",
+  "description": "Android foreground-service wake detection for Quranic Clinic",
+  "main": "index.ts",
+  "private": true
+}

@@ -1,104 +1,103 @@
 import { StyleSheet } from 'react-native';
-import { palette } from '@/theme/colors';
-import { fontFamily } from '@/theme/typography';
+import type { Theme } from '@/theme/colors';
+import { spacing, radius } from '@/theme/spacing';
+import { fontFamily, fontSize, lineHeight } from '@/theme/typography';
 
-export const loginGateStyles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: palette.white },
-  flex: { flex: 1 },
-  body: {
-    flex: 1,
-    // Matches the Clinic (home) page exactly: a 20px gap below the box-shadow header
-    // (homeScreen__headerWrap paddingTop: 20). Small enough to read as "stuck" to the
-    // header, not the old detached ~90px gap.
-    paddingTop: 20,
-    paddingHorizontal: 24,
-    paddingBottom: 24,
-    alignItems: 'center',
-  },
+export const createStyles = (theme: Theme) =>
+  StyleSheet.create({
+    root: { flex: 1, backgroundColor: theme.background },
+    flex: { flex: 1 },
+    body: {
+      flex: 1,
+      paddingTop: 20,
+      paddingHorizontal: spacing.xl,
+      paddingBottom: spacing.xl,
+      alignItems: 'center',
+    },
 
-  logoBlock: { width: 129, height: 218, marginBottom: 120 },
-  logoTop: { position: 'absolute', top: 0, right: '2.63%', bottom: '41.54%', left: '4.45%' },
-  logoMid: { position: 'absolute', top: '66.85%', right: '0.84%', bottom: '21.42%', left: '0.46%' },
-  logoBottom: {
-    position: 'absolute',
-    top: '83.47%',
-    right: '0.46%',
-    bottom: '0.09%',
-    left: '1.37%',
-  },
+    logoBlock: { width: 129, height: 218, marginBottom: 120 },
+    logoTop: { position: 'absolute', top: 0, right: '2.63%', bottom: '41.54%', left: '4.45%' },
+    logoMid: { position: 'absolute', top: '66.85%', right: '0.84%', bottom: '21.42%', left: '0.46%' },
+    logoBottom: {
+      position: 'absolute',
+      top: '83.47%',
+      right: '0.46%',
+      bottom: '0.09%',
+      left: '1.37%',
+    },
 
-  ctaBlock: { width: '100%', gap: 24, alignItems: 'center' },
-  textBlock: { width: '100%', alignItems: 'center', gap: 16 },
+    ctaBlock: { width: '100%', gap: spacing.xl, alignItems: 'center' },
+    textBlock: { width: '100%', alignItems: 'center', gap: spacing.lg },
 
-  welcome: {
-    fontFamily: fontFamily.alexandria,
-    fontSize: 16,
-    lineHeight: 24,
-    color: palette.text.primary,
-    textAlign: 'center',
-  },
-  subtitle: {
-    fontFamily: fontFamily.alexandriaLight,
-    fontSize: 12,
-    lineHeight: 18,
-    color: palette.text.primary,
-    textAlign: 'center',
-  },
+    welcome: {
+      fontFamily: fontFamily.alexandria,
+      fontSize: fontSize.md,
+      lineHeight: lineHeight.md,
+      color: theme.text,
+      textAlign: 'center',
+    },
+    subtitle: {
+      fontFamily: fontFamily.alexandriaLight,
+      fontSize: fontSize.xs,
+      lineHeight: lineHeight.xs,
+      color: theme.text,
+      textAlign: 'center',
+    },
 
-  buttons: { width: '100%', gap: 16, alignItems: 'stretch' },
+    buttons: { width: '100%', gap: spacing.lg, alignItems: 'stretch' },
 
-  googleBtn: {
-    backgroundColor: palette.brand[500],
-    borderRadius: 999,
-    height: 40,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 4,
-    minWidth: 260,
-  },
-  googleBtnText: {
-    color: palette.white,
-    fontFamily: fontFamily.alexandria,
-    fontSize: 14,
-    lineHeight: 20,
-    textAlign: 'center',
-  },
-  googleIcon: { width: 16, height: 16 },
+    googleBtn: {
+      backgroundColor: theme.primary,
+      borderRadius: radius.pill,
+      height: 40,
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.sm,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: spacing.xs,
+      minWidth: 260,
+    },
+    googleBtnText: {
+      color: theme.textOnBrand,
+      fontFamily: fontFamily.alexandria,
+      fontSize: fontSize.sm,
+      lineHeight: lineHeight.sm,
+      textAlign: 'center',
+    },
+    googleIcon: { width: 16, height: 16 },
 
-  guestBtn: {
-    backgroundColor: palette.white,
-    borderWidth: 1,
-    borderColor: palette.border.primary,
-    borderRadius: 999,
-    height: 40,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  guestBtnText: {
-    color: palette.text.secondary,
-    fontFamily: fontFamily.alexandria,
-    fontSize: 14,
-    lineHeight: 20,
-    textAlign: 'center',
-  },
+    guestBtn: {
+      backgroundColor: theme.card,
+      borderWidth: 1,
+      borderColor: theme.border,
+      borderRadius: radius.pill,
+      height: 40,
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.sm,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    guestBtnText: {
+      color: theme.textSecondary,
+      fontFamily: fontFamily.alexandria,
+      fontSize: fontSize.sm,
+      lineHeight: lineHeight.sm,
+      textAlign: 'center',
+    },
 
-  pressed: { opacity: 0.85 },
+    pressed: { opacity: 0.85 },
 
-  terms: {
-    fontFamily: fontFamily.alexandriaLight,
-    fontSize: 12,
-    lineHeight: 18,
-    color: palette.text.primary,
-    textAlign: 'center',
-  },
-  termsLink: {
-    fontFamily: fontFamily.alexandriaMedium,
-    color: palette.brand[600],
-    textDecorationLine: 'underline',
-  },
-});
+    terms: {
+      fontFamily: fontFamily.alexandriaLight,
+      fontSize: fontSize.xs,
+      lineHeight: lineHeight.xs,
+      color: theme.text,
+      textAlign: 'center',
+    },
+    termsLink: {
+      fontFamily: fontFamily.alexandriaMedium,
+      color: theme.primaryMid,
+      textDecorationLine: 'underline',
+    },
+  });

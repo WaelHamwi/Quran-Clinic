@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import LogoTop from '@/assets/figma/login-logo-3.svg';
@@ -7,16 +7,23 @@ import LogoBottom from '@/assets/figma/login-logo-1.svg';
 import GoogleIcon from '@/assets/figma/google-icon.svg';
 import { PatternedBackground } from '@/components/layout/PatternedBackground';
 import { FigmaTopBar } from '@/components/layout/FigmaTopBar';
+import { LegalSheet, type LegalKind } from '@/components/common/LegalSheet';
 import { useAuth } from '@/context/AuthContext';
 import { useLanguage } from '@/context/LanguageContext';
-import { loginGateStyles as s } from './LoginGate.styles';
-import { palette } from '@/theme/colors';
+import { useTheme } from '@/context/ThemeContext';
+import { useStyles } from '@/hooks/common/useStyles';
+import { createStyles } from './LoginGate.styles';
 
 type Props = { onSuccess: () => void };
 
 export function LoginGate({ onSuccess }: Props) {
   const { t } = useLanguage();
+  const { theme } = useTheme();
+  const s = useStyles(createStyles);
   const { signIn, loading } = useAuth();
+  // LoginGate renders before MainApp mounts the expo-router navigator, so the
+  // legal pages must open as a modal here — a route push has nowhere to go yet.
+  const [legalKind, setLegalKind] = useState<LegalKind | null>(null);
 
   const handleGoogleSignIn = async () => {
     try {
@@ -63,7 +70,7 @@ export function LoginGate({ onSuccess }: Props) {
                 style={({ pressed }) => [s.googleBtn, pressed && !loading && s.pressed, loading && { opacity: 0.6 }]}
               >
                 {loading ? (
-                  <ActivityIndicator color={palette.text.onBrand} />
+                  <ActivityIndicator color={theme.textOnBrand} />
                 ) : (
                   <>
                     <Text style={s.googleBtnText}>{t.login.googleSignIn}</Text>
@@ -84,13 +91,29 @@ export function LoginGate({ onSuccess }: Props) {
 
             <Text style={s.terms}>
               {t.login.termsPrefix}{' '}
-              <Text style={s.termsLink}>{t.login.terms}</Text>
+              <Text
+                style={s.termsLink}
+                onPress={() => setLegalKind('terms')}
+                suppressHighlighting
+                accessibilityRole="link"
+              >
+                {t.login.terms}
+              </Text>
               {' '}{t.login.and}{' '}
-              <Text style={s.termsLink}>{t.login.privacy}</Text>
+              <Text
+                style={s.termsLink}
+                onPress={() => setLegalKind('privacy')}
+                suppressHighlighting
+                accessibilityRole="link"
+              >
+                {t.login.privacy}
+              </Text>
             </Text>
           </View>
         </View>
       </SafeAreaView>
+
+      <LegalSheet kind={legalKind} onClose={() => setLegalKind(null)} />
     </View>
   );
 }

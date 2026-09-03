@@ -43,7 +43,7 @@ src/store/
 - Reducers: `setUser`, `clearAuth`, `setSubscription`, `setStatus`.
 - Thunks: `loginWithGoogle`, `register`, `login`, `logout`, `fetchMe`.
 - Selectors: `selectIsAuthenticated`, `selectIsPaid`, `selectCanAccessSession(n)`
-  (session 1 → true; ≥2 → paid or trial).
+  (summarized recording → true; detailed → paid or trial).
 - Note: auth is **bypassed for development** (see CLAUDE.md). The slice exists and is
   wired, but `_layout.tsx` does not gate on it. Do not re-enable the guard unasked.
 

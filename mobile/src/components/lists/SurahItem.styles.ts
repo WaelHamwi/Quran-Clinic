@@ -1,71 +1,60 @@
 import { StyleSheet } from 'react-native';
-import { fontFamily } from '@/theme/typography';
+import type { Theme } from '@/theme/colors';
+import { spacing, radius } from '@/theme/spacing';
+import { fontFamily, fontSize, lineHeight } from '@/theme/typography';
 
-const BRAND_25 = '#ebfafa';
-const BRAND_500 = '#135452';
-const TEXT_PRIMARY = '#181d27';
-const TEXT_TERTIARY = '#535862';
-const WHITE = '#ffffff';
-const BORDER_SECONDARY = '#e9eaeb';
+export const createStyles = (theme: Theme) =>
+  StyleSheet.create({
+    row: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.md,
+      backgroundColor: theme.card,
+      borderRadius: radius.md,
+      borderWidth: 1,
+      borderColor: theme.cardBorder,
+    },
+    pressed: { opacity: 0.85 },
 
-export const surahItemStyles = StyleSheet.create({
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    backgroundColor: WHITE,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: BORDER_SECONDARY,
-  },
-  pressed: { opacity: 0.85 },
+    leftGroup: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.sm,
+    },
+    arrowText: {
+      fontSize: fontSize.lg,
+      lineHeight: lineHeight.xs,
+      color: theme.primary,
+      fontFamily: fontFamily.alexandriaBold,
+    },
+    versePill: {
+      backgroundColor: theme.brandSubtle,
+      borderRadius: radius.pill,
+      paddingHorizontal: spacing.sm,
+      paddingVertical: 2,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    verseCount: {
+      fontSize: fontSize['2xs'],
+      lineHeight: lineHeight['2xs'],
+      color: theme.text,
+      fontFamily: fontFamily.alexandriaLight,
+    },
 
-  leftGroup: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  arrowText: {
-    fontSize: 18,
-    lineHeight: 18,
-    color: BRAND_500,
-    fontFamily: fontFamily.alexandriaBold,
-  },
-  versePill: {
-    backgroundColor: BRAND_25,
-    borderRadius: 999,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  verseCount: {
-    fontSize: 10,
-    lineHeight: 16,
-    color: TEXT_PRIMARY,
-    fontFamily: fontFamily.alexandriaLight,
-  },
+    bookmarkBtn: { padding: 2 },
 
-  bookmarkBtn: { padding: 2 },
-
-  rightGroup: {
-    alignItems: 'flex-end',
-    gap: 4,
-  },
-  nameAr: {
-    fontSize: 16,
-    lineHeight: 22,
-    color: BRAND_500,
-    fontFamily: fontFamily.alexandriaMedium,
-    textAlign: 'right',
-  },
-  meta: {
-    fontSize: 12,
-    lineHeight: 18,
-    color: TEXT_TERTIARY,
-    fontFamily: fontFamily.alexandriaLight,
-    textAlign: 'right',
-  },
-});
+    rightGroup: {
+      alignItems: 'flex-end',
+      gap: spacing.xs,
+    },
+    nameAr: {
+      fontSize: fontSize.md,
+      lineHeight: 22,
+      color: theme.primary,
+      fontFamily: fontFamily.alexandriaMedium,
+      textAlign: 'right',
+    },
+  });

@@ -36,19 +36,20 @@ class GoogleAuthService
 
             $user = User::where('email', $googleUser->getEmail())->first();
             if (! $user) {
-                $user = User::create([
+                // forceFill so email_verified_at persists — create() silently
+                // dropped it because it was never in the Fillable list.
+                $user = (new User)->forceFill([
                     'name'              => $googleUser->getName() ?? $googleUser->getNickname() ?? 'Google User',
                     'email'             => $googleUser->getEmail(),
                     'email_verified_at' => now(),
                     'password'          => bcrypt(Str::random(32)),
                 ]);
+                $user->save();
             }
 
             $user->oauthProviders()->create([
-                'provider'               => 'google',
-                'provider_user_id'       => $googleUser->getId(),
-                'provider_token'         => $googleUser->token,
-                'provider_refresh_token' => $googleUser->refreshToken ?? null,
+                'provider'         => 'google',
+                'provider_user_id' => $googleUser->getId(),
             ]);
 
             return $user;
@@ -76,13 +77,10 @@ class GoogleAuthService
             'headers' => ['Authorization' => 'Bearer ' . $accessToken],
         ]);
 
-        return [
-            'access_token' => $accessToken,
-            'profile'      => json_decode($userInfoResponse->getBody(), true),
-        ];
+        return json_decode($userInfoResponse->getBody(), true);
     }
 
-    public function resolveMobileProfile(array $googleUser, string $accessToken): array
+    public function resolveMobileProfile(array $googleUser): array
     {
         $oauthProvider = OAuthProvider::where('provider', 'google')
             ->where('provider_user_id', $googleUser['sub'])
@@ -91,7 +89,6 @@ class GoogleAuthService
         if ($oauthProvider) {
             $user = $oauthProvider->user;
             if ($user) {
-                $oauthProvider->update(['provider_token' => $accessToken]);
                 return $this->successResult($user);
             }
             $oauthProvider->delete();
@@ -99,18 +96,25 @@ class GoogleAuthService
 
         $existingUser = User::where('email', $googleUser['email'])->first();
         if ($existingUser) {
-            $existingUser->oauthProviders()->create([
-                'provider'         => 'google',
-                'provider_user_id' => $googleUser['sub'],
-                'provider_token'   => $accessToken,
-            ]);
-            return $this->successResult($existingUser);
+            // Only auto-link onto an EXISTING account when Google itself has verified
+            // the email — otherwise an attacker with an unverified Google email that
+            // happens to match a victim's address could hijack that account. Don't
+            // fall through to the OTP/create flow below either: that path assumes no
+            // existing user and would crash on the email unique constraint.
+            if ($googleUser['email_verified'] ?? false) {
+                $existingUser->oauthProviders()->create([
+                    'provider'         => 'google',
+                    'provider_user_id' => $googleUser['sub'],
+                ]);
+                return $this->successResult($existingUser);
+            }
+
+            return ['outcome' => 'verification_required', 'email' => $googleUser['email']];
         }
 
         $email = $googleUser['email'];
         $this->issueOtp($email, [
             'google_sub'     => $googleUser['sub'],
-            'google_token'   => $accessToken,
             'name'           => $googleUser['name'] ?? $googleUser['given_name'] ?? 'User',
             'email_verified' => $googleUser['email_verified'] ?? false,
         ]);
@@ -139,13 +143,13 @@ class GoogleAuthService
             $existingUser->oauthProviders()->create([
                 'provider'         => 'google',
                 'provider_user_id' => $googleUser->getId(),
-                'provider_token'   => $googleUser->token,
             ]);
             if (! $existingUser->google_id) {
-                $existingUser->update([
+                // google_id is not mass assignable (overposting guard) — set explicitly.
+                $existingUser->forceFill([
                     'google_id'   => $googleUser->getId(),
                     'avatar_path' => $existingUser->avatar_path ?? $googleUser->getAvatar(),
-                ]);
+                ])->save();
             }
             $this->cacheExchangeResult($sessionToken, $existingUser->fresh());
             return ['outcome' => 'success'];
@@ -154,7 +158,6 @@ class GoogleAuthService
         $email = $googleUser->getEmail();
         $this->issueOtp($email, [
             'google_sub'     => $googleUser->getId(),
-            'google_token'   => $googleUser->token,
             'name'           => $googleUser->getName() ?? 'User',
             'avatar_url'     => $googleUser->getAvatar(),
             'email_verified' => true,
@@ -209,7 +212,9 @@ class GoogleAuthService
                     $trashed->forceDelete();
                 });
 
-                $user = User::create([
+                // forceFill: google_id is not mass assignable (overposting guard),
+                // and email_verified_at never was — create() silently dropped it.
+                $user = (new User)->forceFill([
                     'name'              => $cached['name'],
                     'email'             => $email,
                     'email_verified_at' => now(),
@@ -217,11 +222,11 @@ class GoogleAuthService
                     'google_id'         => $cached['google_sub'],
                     'avatar_path'       => $cached['avatar_url'] ?? null,
                 ]);
+                $user->save();
 
                 $user->oauthProviders()->create([
                     'provider'         => 'google',
                     'provider_user_id' => $cached['google_sub'],
-                    'provider_token'   => $cached['google_token'],
                 ]);
 
                 $user->assignRole('user');
@@ -282,7 +287,7 @@ class GoogleAuthService
         return [
             'outcome' => 'success',
             'user'    => $user,
-            'token'   => $user->createToken('mobile-app')->plainTextToken,
+            'token'   => $user->issueApiToken('mobile-app'),
         ];
     }
 
@@ -299,7 +304,7 @@ class GoogleAuthService
     {
         Cache::put("auth_exchange:{$sessionToken}", [
             'status' => 'success',
-            'token'  => $user->createToken('mobile-app')->plainTextToken,
+            'token'  => $user->issueApiToken('mobile-app'),
             'user'   => $user->only(['id', 'name', 'email', 'avatar_path']),
         ], self::EXCHANGE_TTL);
     }

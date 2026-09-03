@@ -7,13 +7,14 @@ use App\Models\Disease;
 use App\Models\DiseaseAlias;
 use App\Models\Recording;
 use App\Models\Subcategory;
+use App\Services\RecordingAttachmentService;
 use Illuminate\Database\Seeder;
 
 class CategorySeeder extends Seeder
 {
     private const SAMPLE_AUDIO = 'https://download.quranicaudio.com/quran/mishaari_raashid_al_3afaasee';
 
-    public function run(): void
+    public function run(RecordingAttachmentService $attachments): void
     {
         if (Category::count() > 0) {
             $this->command->info('Hospital categories already seeded. Skipping.');
@@ -117,16 +118,15 @@ class CategorySeeder extends Seeder
                     DiseaseAlias::create(['disease_id' => $disease->id, 'alias' => $alias]);
                 }
 
-                for ($session = 1; $session <= 3; $session++) {
-                    Recording::create([
-                        'disease_id'       => $disease->id,
-                        'session_number'   => $session,
-                        'is_free'          => $session === 1,
+                foreach ([1 => Recording::TYPE_SUMMARIZED, 2 => Recording::TYPE_DETAILED] as $session => $type) {
+                    $recording = Recording::create([
+                        'type'             => $type,
                         'audio_path'       => self::SAMPLE_AUDIO . '/' . str_pad((string) $session, 3, '0', STR_PAD_LEFT) . '.mp3',
                         'duration_seconds' => 300,
                         'is_general'       => \in_array($session, $disData['general_recording_sessions']),
                         'plays_count'      => 0,
                     ]);
+                    $attachments->attach($recording, Disease::class, $disease->id);
                 }
             }
 
@@ -152,16 +152,15 @@ class CategorySeeder extends Seeder
                         DiseaseAlias::create(['disease_id' => $disease->id, 'alias' => $alias]);
                     }
 
-                    for ($session = 1; $session <= 3; $session++) {
-                        Recording::create([
-                            'disease_id'       => $disease->id,
-                            'session_number'   => $session,
-                            'is_free'          => $session === 1,
+                    foreach ([1 => Recording::TYPE_SUMMARIZED, 2 => Recording::TYPE_DETAILED] as $session => $type) {
+                        $recording = Recording::create([
+                            'type'             => $type,
                             'audio_path'       => self::SAMPLE_AUDIO . '/' . str_pad((string) $session, 3, '0', STR_PAD_LEFT) . '.mp3',
                             'duration_seconds' => 300,
                             'is_general'       => \in_array($session, $disData['general_recording_sessions']),
                             'plays_count'      => 0,
                         ]);
+                        $attachments->attach($recording, Disease::class, $disease->id);
                     }
                 }
             }

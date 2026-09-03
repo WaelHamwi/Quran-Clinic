@@ -2,19 +2,36 @@
 
 namespace App\Models;
 
+use App\Exceptions\BusinessRuleException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphToMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
 use App\Models\Concerns\HasTranslations;
+use App\Models\Concerns\InvalidatesCache;
+use App\Services\SubcategoryService;
 
 class Subcategory extends Model
 {
-    use HasTranslations, SoftDeletes;
+    use HasTranslations, InvalidatesCache, SoftDeletes;
 
-    protected $fillable = ['category_id', 'name', 'slug', 'icon', 'display_order', 'is_active'];
+    protected function cacheKeysToForget(): array
+    {
+        return SubcategoryService::CACHE_KEYS;
+    }
+
+    /** Holds diseases, which carry the recordings. */
+    public const TYPE_STANDARD = 'standard';
+
+    /** Holds recordings attached straight to it, with no diseases in between. */
+    public const TYPE_DIRECT = 'direct';
+
+    public const TYPES = [self::TYPE_STANDARD, self::TYPE_DIRECT];
+
+    protected $fillable = ['category_id', 'name', 'slug', 'type', 'icon', 'display_order', 'is_active'];
 
     protected static function booted(): void
     {
@@ -22,14 +39,29 @@ class Subcategory extends Model
             static::assignSlug($r);
             $cat = Category::find($r->category_id);
             if ($cat && ! ($cat->type === 'standard')) {
-                throw new \LogicException('Cannot add a subcategory to a category that is not type standard.');
+                throw new BusinessRuleException('Cannot add a subcategory to a category that is not type standard.');
             }
         });
         static::updating(function (self $r): void {
             if ($r->isDirty('name')) {
                 static::assignSlug($r);
             }
+            // Mirrors Category::booted(): the kind cannot move out from under
+            // content that already depends on it.
+            if ($r->isDirty('type')) {
+                if ($r->type === self::TYPE_DIRECT && $r->diseases()->exists()) {
+                    throw new BusinessRuleException('Cannot switch to direct recordings: remove this subcategory\'s diseases first.');
+                }
+                if ($r->type !== self::TYPE_DIRECT && $r->recordings()->exists()) {
+                    throw new BusinessRuleException('Cannot switch away from direct recordings: unlink the attached recordings first.');
+                }
+            }
         });
+    }
+
+    public function isDirect(): bool
+    {
+        return $this->type === self::TYPE_DIRECT;
     }
 
     private static function assignSlug(self $record): void
@@ -90,10 +122,18 @@ class Subcategory extends Model
         return $this->hasMany(Disease::class);
     }
 
-    /** Ruqyah recordings attached directly to this subcategory (no diseases). */
-    public function recordings(): HasMany
+    /**
+     * The ordered sequence of ruqyah recordings attached directly to this
+     * subcategory (no diseases). A recording may appear more than once, so the
+     * pivot id — not the recording id — is what identifies an occurrence.
+     */
+    public function recordings(): MorphToMany
     {
-        return $this->hasMany(Recording::class);
+        return $this->morphToMany(Recording::class, 'attachable', 'recording_attachments')
+            ->using(RecordingAttachment::class)
+            ->withPivot(['id', 'session_number'])
+            ->withTimestamps()
+            ->orderByPivot('session_number');
     }
 
     public function scopeActive(Builder $query): Builder

@@ -1,6 +1,6 @@
 # Claude Project Knowledge Pack - Quranic Clinic (Al-Mashfa Al-Qurani)
 
-Generated: 2026-06-20 15:37
+Generated: 2026-07-12 19:12
 Source machine: C:\Users\wael\Desktop\Quran
 
 ## What this document is
@@ -41,8 +41,12 @@ recreating individual files (copy/paste preserves exact formatting).
 - MEMORY/project_quran.md
 - MEMORY/project_quran_auth_token_fix.md
 - MEMORY/project_quran_deployment.md
+- MEMORY/project_quran_monorepo.md
 - MEMORY/project_quran_oauth_flow.md
 - MEMORY/project_quran_offline_cache.md
+- MEMORY/project_quran_ota_updates.md
+- MEMORY/project_quran_redis.md
+- MEMORY/reference_backend_cache_models.md
 - MEMORY/reference_mobile_dev_build.md
 - MEMORY/reference_ssh_server.md
 - MEMORY/user_profile.md
@@ -61,6 +65,7 @@ recreating individual files (copy/paste preserves exact formatting).
 - .claude/backend/agents/service-generator.md
 - .claude/backend/amendment-rules.md
 - .claude/backend/cache-strategy.md
+- .claude/backend/caching.md
 - .claude/backend/deployment-checklist.md
 - .claude/backend/error-handling-patterns.md
 - .claude/backend/mcp/database-config.json
@@ -87,6 +92,7 @@ recreating individual files (copy/paste preserves exact formatting).
 - .claude/backend/rules.md
 - .claude/backend/scan-instructions.md
 - .claude/backend/system-prompt.md
+- .claude/backend/testing.md
 - .claude/backend/validation-checklist.md
 - .claude/mobile/CLAUDE.md
 - .claude/mobile/components-design.md
@@ -102,6 +108,7 @@ recreating individual files (copy/paste preserves exact formatting).
 - .claude/mobile/services-design.md
 - .claude/mobile/store-design.md
 - .claude/mobile/styling-convention.md
+- .claude/prompt-rules.md
 - mobile/CLAUDE.md
 
 
@@ -119,13 +126,17 @@ recreating individual files (copy/paste preserves exact formatting).
 - [No Server Start](feedback_no_server_start.md) — Never start Expo or occupy any port; user runs the terminal themselves
 - [Quran Deployment](project_quran_deployment.md) — Backend deployed to mashfa.odooclick.com (Ubuntu, PHP 8.4, MySQL, Nginx) at /var/www/mashfa/app from Azure repo
 - [Filament Separation Rule](feedback_filament_separation.md) — Every Filament resource must have separate Schemas/XxxForm.php and Tables/XxxTable.php; never inline form/table logic in the Resource file
-- [SSH Server Access](reference_ssh_server.md) — Key at C:\Users\wael\Downloads\id_ed25519_MashfaQurani_pro, port 2222, root@***REDACTED-HOST***; deploy via deploy.sh
+- [SSH Server Access](reference_ssh_server.md) — Key at C:\Users\wael\Downloads\id_ed25519_MashfaQurani_pro, port 2222, root@185.55.243.191; deploy via deploy.sh
 - [Mobile Dev Build vs Metro](reference_mobile_dev_build.md) — Phone runs a standalone build (expo-updates, android/ folder, no dev-client); local Metro edits won't show unless using Expo Go (press s), expo run:android, or eas update --channel preview
 - [Offline Caching](project_quran_offline_cache.md) — All text/metadata auto-caches via cachedFetch + networkMode offlineFirst; only Ruqyah/recitation AUDIO is download-only; Mushaf uses separate offlineStorage SQLite
 - [OAuth Flow](project_quran_oauth_flow.md) — Google sign-in must use openAuthSessionAsync; backend↔mobile return-URL contract quranicclinic://auth-callback; session-token polling
 - [Deploy+Build Shortcut](feedback_deploy_shortcut.md) — "ship it" / "شيب" / "d+b" / "deploy+build" / "push and build" = push backend to server + EAS APK build + return link
 - [API Test-Mode Toggle](feedback_api_test_mode_toggle.md) — Flip mobile between LOCAL and PRODUCTION testing via EXPO_PUBLIC_API_URL in mobile/.env; auth-gated bugs only surface in production mode
 - [Auth Token Fix](project_quran_auth_token_fix.md) — Production-only auth bug fixed: tokenManager read wrong SecureStore key; keep its keys in sync with AuthContext ("token"/"user")
+- [Backend Cache & Models](reference_backend_cache_models.md) — DB cache store model round-trip issue; now have App\Support\ModelCache (snapshot+rehydrate). Adhkar/Tahsinat/Sponsor fixed 2026-06-25; FeatureFlag was already array-safe
+- [Quran Monorepo](project_quran_monorepo.md) — github.com/WaelHamwi/Quran-Clinic (backend+mobile via subtree, 2026-06-25); ⚠️ leaked Google OAuth secret purged from history but MUST be rotated
+- [Production Redis](project_quran_redis.md) — prod cache + rate limiting on Redis (predis client, db1) since 2026-06-27; fallback must run in boot() not register()
+- [OTA Updates](project_quran_ota_updates.md) — Preview APK uses expo-updates; "failed to download remote update" = stale update; fix by republishing `eas update --branch preview`
 ```
 
 ---
@@ -373,7 +384,7 @@ metadata:
 
 The Quranic Clinic Laravel backend ([[project-quran]]) is deployed to a production server.
 
-- **Server:** Ubuntu 24.04, SSH `ssh -i C:\Users\wael\Downloads\id_ed25519_MashfaQurani_pro -p 2222 root@***REDACTED-HOST***`.
+- **Server:** Ubuntu 24.04, SSH `ssh -i C:\Users\wael\Downloads\id_ed25519_MashfaQurani_pro -p 2222 root@185.55.243.191`.
 - **Domain:** https://mashfa.odooclick.com (Let's Encrypt/Certbot SSL, Nginx).
 - **App path:** `/var/www/mashfa/app` (git repo, `origin` = Azure DevOps `Core-Click/Almashfa`). Nginx root → `/var/www/mashfa/app/public`.
 - **Stack:** PHP **8.4** (from `ondrej/php` PPA — project needs 8.4 because composer.lock pins Symfony 8; Ubuntu's default 8.3 is too old), Composer, MySQL 8. PHP-FPM socket `/run/php/php8.4-fpm.sock`.
@@ -381,12 +392,41 @@ The Quranic Clinic Laravel backend ([[project-quran]]) is deployed to a producti
 - **Env:** `APP_ENV=production`, `APP_DEBUG=false` (differs from local's debug=true, deliberately).
 - **Nginx config** kept in repo at `deploy/nginx-mashfa.conf`.
 - **Deploy update flow (intended):** push to Azure `master`, then on server run `bash /var/www/mashfa/app/deploy.sh` (in repo: `backend/deploy.sh`) — does git pull + composer install --no-dev + migrate --force + config/route/view:cache + chown storage + reload php8.4-fpm. Azure PAT is now stored in git credential store (`/root/.git-credentials`, chmod 600) so pulls are non-interactive.
-- **Deploy reality (caveats, as of 2026-06-13):** the live tree `/var/www/mashfa/app` carries **uncommitted direct edits** (e.g. GoogleAuthController, AuthController, blades), so `deploy.sh`'s `git pull --ff-only` won't apply cleanly. Also `route:cache` **fails** because `routes/web.php` uses Closures (the two `/auth/google/mobile*` routes + `/`) — Laravel can't serialize closures. Practical flow used: `scp` changed files up → `php artisan config:clear route:clear view:clear` (clear, NOT cache) → `systemctl reload php8.4-fpm`. The local `backend/` folder is NOT its own git repo (nearest `.git` is `C:/Users/wael`, an unrelated MalakBeautyLanding repo), so commits don't flow from local — diff local vs server before overwriting.
+- **Deploy reality (as of 2026-07-04):** local `backend/` IS its own git repo now (branch `master`, `origin` = Azure Almashfa, `github` = quranic-api) and the normal push → `deploy.sh` flow works, including `route:cache`. **The Azure PAT in `/root/.git-credentials` EXPIRED (2026-07-04)** — `deploy.sh`'s `git pull` fails with auth error until Wael rotates it (PAT scope Code→Read, then rewrite `/root/.git-credentials` per `.claude/server-production.md`). **Working fallback used:** `git bundle create` locally → `scp` to `/root/mashfa-deploy.bundle` → on server `git fetch /root/mashfa-deploy.bundle master && git merge --ff-only FETCH_HEAD` → run deploy.sh's remaining steps manually (composer install --no-dev, migrate --force, config/route/view:cache, chown storage, reload php8.4-fpm).
 - **Full live-reflection runbook** (backend, CMS, API, APK): `.claude/server-production.md`, summarized as a rule in `.claude/shared-context.md`.
 - **Mobile APK** built via EAS from the server (local IPv4 to api.expo.dev is broken). Project `@wael_hamwi/quranic-clinic`; API base URL fixed to production in `mobile/src/services/api.ts`. Rebuild needed for native changes; EAS Update (OTA) not yet set up for JS-only changes.
 - Admin login: `admin@quran.local` (seeded, same as local).
 - **Google OAuth:** Configured. Client ID/Secret in `.env` (Web client `848883725084-knuqqgdkkkd1vlf6q1c8t7atforfunlh`). OAuth app published to production on Google Cloud Console (`mashfa-quranic-clinic` project, owner `haw6218@gmail.com`). SMTP relay also via `haw6218@gmail.com` (App Password in `.env`).
-- **Not yet configured:** No daemonized queue worker (queue driver = database).
+- **Queue worker & scheduler (FIXED 2026-07-06, backend commit `79837bb`):** systemd service `mashfa-queue` (unit versioned at `deploy/mashfa-queue.service`, worker log `storage/logs/worker.log`) + `/etc/cron.d/mashfa` running `schedule:run` (versioned at `deploy/mashfa-cron`). deploy.sh now installs both idempotently and signals `queue:restart` each deploy. `DB_QUEUE_RETRY_AFTER=630` added to server .env (must exceed CompressAudioJob's 600 s timeout). **ffmpeg installed** on the server (was missing — compression jobs could never have run). The 8 stuck jobs were stale pre-`$disk`-refactor payloads (typed-property unserialize crash); re-dispatched fresh for recordings 16/17/25/26/27 — all compressed OK (27's .m4a → .mp3, audio_path updated) — then `queue:flush`ed the stale failures. The old never-installed `deploy/laravel-worker.conf` (Supervisor) was deleted.
+```
+
+---
+
+# FILE: MEMORY/project_quran_monorepo.md
+
+```
+---
+name: project-quran-monorepo
+description: Quran-Clinic GitHub monorepo (backend+mobile) created 2026-06-25; plus a leaked OAuth secret that must be rotated
+metadata: 
+  node_type: memory
+  type: project
+  originSessionId: e4e67272-9644-4c58-abb4-2dd3da0ee36f
+---
+
+On 2026-06-25 the Quran project was consolidated into a **GitHub monorepo**: https://github.com/WaelHamwi/Quran-Clinic.git (branch `main`). Built from `C:\Users\wael\Desktop\Quran-Clinic` via `git subtree` from the two pre-existing sub-repos, preserving full history:
+- `backend/` ← was `Desktop/Quran/backend` (.git remotes: Azure `Almashfa` = deploy, GitHub `quranic-api`).
+- `mobile/` ← was `Desktop/Quran/mobile` (had NO remote before).
+
+Each sub-project keeps its own `.gitignore`. Deploy still flows through Azure `Almashfa`; to keep deploying, push the backend subtree: `git subtree push --prefix=backend <azure-Almashfa-url> master` (or repoint deploy.sh).
+
+**Accidental repo:** there was a stray `.git` at `C:\Users\wael` (home dir) pointing at an unrelated Azure `MalakBeautyLanding`/Next.js project — it polluted `git status` and held the misleading "Initial commit" history. User chose to remove it (move `.git` to a backup, then delete) — **still NOT removed as of 2026-07-06** (`git rev-parse --show-toplevel` from Desktop/Quran still resolves to `C:/Users/wael`).
+
+**⚠️ SECURITY ACTION PENDING:** `mobile/.env` (with a **Google OAuth Client Secret**) had been tracked since early mobile history; GitHub push protection caught it. Purged from the monorepo history via `git filter-branch` and `.env` is now gitignored. BUT the secret is still compromised — **must be rotated in Google Cloud Console**. **Fixed 2026-07-06 (commit `e097afb` in the mobile repo):** the secret line was deleted from `mobile/.env`, `.env` is now untracked + gitignored, and a secret-free `.env.example` template was added. The secret env var was referenced nowhere in mobile source. Old commits in the local mobile repo history still contain it (unpushed, no remote), which rotation makes harmless. **Rotation in Google Cloud Console still pending user action** — re-verified 2026-07-12: the leaked secret in mobile history (pre-`e097afb`) is byte-identical to the live `GOOGLE_CLIENT_SECRET` in `backend/.env`, so it has NOT been rotated.
+
+**Claude files pushed (2026-06-25):** root `.claude/` (agents/prompts/rules/shared-context/mcp configs), `CLAUDE_PROJECT_KNOWLEDGE.md`, `docs/`, `build-claude-knowledge.ps1`, `.mcp.json` are now in the monorepo. EXCLUDED + gitignored: `.claude/settings.json` and `.claude/settings.local.json` (they embed a **live Expo access token** `EXPO_TOKEN` + SSH host/key paths), and generated `*.pdf`. The Expo token also appeared inside `CLAUDE_PROJECT_KNOWLEDGE.md` (the build script concatenates the settings files) — redacted before commit. Token was never pushed, but consider rotating it as hygiene. ⚠️ As of 2026-07-12 the LOCAL `Desktop/Quran/CLAUDE_PROJECT_KNOWLEDGE.md` and `.html` again contain the UNREDACTED Expo token (build script re-embedded it) — must be re-redacted before any future push of those files. Server IP 185.55.243.191 is NOT secret and is already public in `backend/deploy.sh`.
+
+Related: [[project_quran]] [[project_quran_deployment]] [[reference_backend_cache_models]] [[reference_ssh_server]]
 ```
 
 ---
@@ -469,9 +509,84 @@ The Mashfa mobile app must work offline for all content the user has navigated t
 
 **Hooks wired to cachedFetch:** useCategories, useCategory, useSubcategory, useDisease, useDiseases, useRecordings (metadata/text only), useReciters, useCourses, useSponsors, SponsorScreen, plus useGeneralRuqyah (manual contentCache.get/setItem). Adhkar/Tahsinat already used it.
 
+**Remote icons:** `RemoteSvg.tsx` caches fetched SVG XML via `cachedFetch('svg:'+uri)` so category/disease icons render offline (raw `fetch` with no cache was the bug — icons vanished offline). Raster images use expo-image's default `memory-disk` cache (no `cachePolicy` overrides anywhere). Note: RN `StyleSheet`/styles and fonts are bundled in the APK — there is no "CSS" to cache.
+
 **Mushaf uses the separate `offlineStorage.ts` SQLite DB (`quran_v2.db`), not contentCache.** Key fix: `useSurah` now saves the surah's own metadata via `saveSurahs([surahMeta])` on every open (not just list page 1) — otherwise surahs beyond #15 had verses but no metadata and threw "Failed to load surah" offline. `useSurahs` now caches every scrolled page, not just page 1. Mushaf hooks use `retry: false` + `networkMode: 'offlineFirst'`.
 
 Related: [[project_quran]], [[feedback_migration_and_naming_rules]]
+```
+
+---
+
+# FILE: MEMORY/project_quran_ota_updates.md
+
+```
+---
+name: project_quran_ota_updates
+description: Preview APK uses expo-updates OTA; "failed to download remote update" is fixed by republishing to the preview branch
+metadata:
+  type: project
+---
+
+The Quran mobile **preview** EAS APK ships with expo-updates **enabled** (app.json has `updates.url` + `runtimeVersion.policy: appVersion` → runtime `1.0.0`; `/android` is gitignored so EAS prebuilds native config from app.json — the local AndroidManifest `ENABLED=false` never reaches the build).
+
+**Symptom:** `Uncaught Error: java.io.IOException: failed to download remote update` when opening the installed APK. Root cause is usually a **stale published update whose assets no longer download**, not a code bug.
+
+**How to apply / fix:** republish a fresh update — the installed APK grabs it on next launch (needs internet; may take 2 full relaunches since download applies on the *following* launch):
+```
+cd mobile && npx eas-cli update --branch preview --message "..." --non-interactive
+```
+Check channel state with `npx eas-cli channel:view preview`. Logged in as `wael-hamwi` (haw6218@gmail.com), projectId c44a0590-7866-4458-b3d0-e01e4a9ca4d8.
+
+**If it still red-screens after republish + 2 relaunches:** it's a real JS/native startup crash that expo-updates masks behind the same message — pull `adb logcat` (adb at `%LOCALAPPDATA%\Android\Sdk\platform-tools`) to get the true error. Alternatively, disabling OTA (`updates.enabled=false` in app.json) + rebuilding forces the embedded bundle and unmasks the real crash. See [[reference_mobile_dev_build]] and [[feedback_deploy_shortcut]].
+```
+
+---
+
+# FILE: MEMORY/project_quran_redis.md
+
+```
+---
+name: project_quran_redis
+description: "Production Redis is now enabled for cache + rate limiting (predis client, db1); the boot()-vs-register() fallback gotcha"
+metadata: 
+  node_type: memory
+  type: project
+  originSessionId: ce355cee-d320-4ed6-b402-5521536d4002
+---
+
+As of 2026-06-27, production (mashfa.odooclick.com) uses **Redis 7** for the cache store and rate limiting. SESSION_DRIVER and QUEUE_CONNECTION stay on `database` (sessions to avoid logout churn; queue has no worker, so Redis would be inert there).
+
+Key facts:
+- Client is **predis** (pure PHP), not phpredis — `REDIS_CLIENT=predis`, `predis/predis` is in composer. So no `ext-redis` extension is needed on the server. Added via the Azure deploy repo so `deploy.sh`'s `composer install` keeps it.
+- Laravel's cache uses the **`cache` redis connection = DB 1**; the `default` connection is DB 0. Keys are double-prefixed: `quranic-clinic-database-` (connection options.prefix) + `quranic-clinic-cache-`. So inspect with `redis-cli -n 1 keys '*'`.
+- **Gotcha fixed:** `AppServiceProvider::applyRedisFallbacks()` (the auto-fallback that pings Redis and degrades to file/database if down) was called in `register()`. That's too early — `app('redis')` throws there, and during `php artisan config:cache` the thrown `cache.default=file` got compiled into the cached config, permanently masking a healthy Redis (warning lost because Log isn't booted in register()). Fix: call it in `boot()` and skip under `runningInConsole()` so config:cache can never bake a stale fallback.
+- To enable on the server originally: `apt install redis-server` (bound to 127.0.0.1 only), flip prod `.env` `CACHE_STORE=redis` + `REDIS_CLIENT=predis`, run `deploy.sh`. A pre-redis `.env.bak.before-redis.*` rollback sits in the app dir. See [reference_ssh_server]] and [[project_quran_deployment]].
+```
+
+---
+
+# FILE: MEMORY/reference_backend_cache_models.md
+
+```
+---
+name: reference-backend-cache-models
+description: Quran backend DB cache store cannot round-trip Eloquent models; cache raw attribute arrays and hydrate instead
+metadata: 
+  node_type: memory
+  type: reference
+  originSessionId: 9a7a49a2-efb2-44cd-b1dc-1447dacdfd0c
+---
+
+On the Quran Laravel backend (`CACHE_STORE=database`), caching Eloquent **models/collections** via `Cache::remember(...)` is broken: the value writes fine but reads back as `__PHP_Incomplete_Class`, so any service returning a typed `Collection` throws a `TypeError` on the **cache hit** (cache miss runs the closure and works, which masks the bug until an entry is both written and hit). Surfaces as the API's generic `{"success":false,"message":"Server error"}` 500 — the controller catches `\Throwable` and does NOT log, so `laravel.log` stays silent.
+
+**Fix / pattern:** cache plain `->map->getAttributes()->all()` arrays and rebuild with `Model::hydrate($rows)`. Already used by `RecitationService`; `ReciterService` uses a try/catch + `Cache::forget` fallback. Applied to `CourseService` on 2026-06-23.
+
+**Reusable helper (added 2026-06-25):** `App\Support\ModelCache` — `rememberMany()` / `remember()` cache a primitive snapshot (attributes + nested relations, fully object-free / serialize-safe) and **rehydrate real models with relations** on read, so API Resources keep working (getTranslations/iconUrl/whenLoaded/whenCounted). Unit-tested in `tests/Unit/Support/ModelCacheTest.php`.
+
+**Fixed via ModelCache (2026-06-25):** `AdhkarService`, `TahsinatService`, `SponsorService`. `FeatureFlagService` was never broken — its repository already returns a plain `array`. NOTE: empirical test showed plain `serialize()` of these translatable models actually round-trips fine (no media/closures), so the original 500 cause is narrower than "all models"; ModelCache is store-agnostic regardless.
+
+Part of [[project_quran]] / deployed via [[project_quran_deployment]].
 ```
 
 ---
@@ -517,8 +632,10 @@ metadata:
 Production server SSH access:
 
 ```
-ssh -i "C:\Users\wael\Downloads\id_ed25519_MashfaQurani_pro" -p 2222 root@***REDACTED-HOST***
+ssh -i "C:\Users\wael\Downloads\id_ed25519_MashfaQurani_pro" -p 2222 root@185.55.243.191
 ```
+
+⚠️ 2026-07-12: the key file `id_ed25519_MashfaQurani_pro` no longer exists in Downloads, and `C:\Users\wael\.ssh\id_ed25519_tkeys` is refused (Permission denied). Ask Wael where the Mashfa key now lives before attempting SSH.
 
 To deploy after pushing to Azure:
 ```
@@ -562,6 +679,10 @@ Software engineer working across full-stack web and mobile apps — comfortable 
 ```
 # SHARED CONTEXT - QURANIC CLINIC
 
+## ⚠ HIGHEST PRIORITY — READ FIRST
+The rules in `.claude/prompt-rules.md` take precedence over EVERYTHING in this repo
+(this file included). Read and obey them before doing any work.
+
 ## PROJECT IDENTITY
 Name: Quranic Clinic (Al-Mashfa Al-Qurani)
 Components: Backend (Laravel) + Mobile (React Native Expo)
@@ -583,6 +704,11 @@ Local edits are NOT live until shipped. See `.claude/server-production.md` for t
 - **Backend / CMS / API** (one Laravel app at https://mashfa.odooclick.com): push to Azure `master`, then run `bash /var/www/mashfa/app/deploy.sh` on the server. No build step.
 - **Mobile**: a code change is live only after an **EAS Update** (JS-only) or a **new APK/AAB build** (native). The API base URL is fixed to production in `mobile/src/services/api.ts` via `app.json` → `extra.API_BASE_URL` — never hardcode a tunnel/localhost URL.
 - **Do NOT** run `migrate:fresh` on production (it drops data); production uses additive `migrate --force`.
+
+## ⚠ NO COMMENTS IN CODE
+Do NOT add comments to code files (PHP, TS/TSX, Blade, etc.). Write self-explanatory code with clear names instead. This applies to docblocks, inline `//` / `#` notes, and `{{-- --}}` Blade comments alike.
+- Exceptions (keep these): functional/tooling directives that change behavior — e.g. `// eslint-disable-*`, `@ts-expect-error`, PHPStan/Psalm annotations, `@var` hints required by tooling, and license/copyright headers where mandated.
+- When editing an existing file, strip explanatory comments you encounter as part of the change.
 
 ## ⚠ FILE SIZE LIMIT
 Max 450 lines per file. Migrations are exempt.
@@ -649,6 +775,12 @@ C:\Users\wael\Desktop\Quran\
 ├── mobile/                     # React Native Expo
 └── docs/                       # Documentation
 
+## ⚠ RECORDING TYPES (SINGLE SOURCE OF TRUTH)
+Every recording owner (category, subcategory, or disease) can have AT MOST TWO recordings:
+- `summarized` (مختصرة) → ALWAYS FREE, playable by everyone including guests
+- `detailed` (مطولة) → PAID, requires active subscription OR trial (trial: 7 days, max 2 per user)
+Stored in `recordings.type` enum('summarized','detailed'), default 'summarized'. The old `is_free` column is REMOVED — free access is derived from `type = summarized` (Recording::isFreeSession()). One recording per type per owner, enforced at the model level (LogicException on save, surfaced as a validation error in Filament). Recordings still belong to exactly one of disease/subcategory/category — ownership and access-gating logic are otherwise unchanged. The API still returns `is_free` and `requires_subscription` (derived) plus the new `type` field.
+
 ## CATEGORY TYPES
 - `standard`: Category → Subcategories → Diseases → Recordings (normal flow).
 - `disease_direct`: Category → Diseases directly (no subcategory layer) → Recordings. Disease has `category_id` set, `subcategory_id` is null.
@@ -687,7 +819,7 @@ component: backend, CMS, API, and the mobile app. Referenced from `shared-contex
 
 | Item | Value |
 |---|---|
-| Server | Ubuntu 24.04 — `ssh -i <key> -p 2222 root@***REDACTED-HOST***` |
+| Server | Ubuntu 24.04 — `ssh -i <key> -p 2222 root@185.55.243.191` |
 | SSH key | `id_ed25519_MashfaQurani_pro` |
 | Domain | https://mashfa.odooclick.com (Let's Encrypt SSL via Certbot, Nginx) |
 | Backend path | `/var/www/mashfa/app` (git repo, `origin` = Azure DevOps `Core-Click/Almashfa`) |
@@ -728,7 +860,7 @@ git push origin master
 
 ```bash
 # 2. SERVER — pull & apply (one command)
-ssh -i C:\Users\wael\Downloads\id_ed25519_MashfaQurani_pro -p 2222 root@***REDACTED-HOST***
+ssh -i C:\Users\wael\Downloads\id_ed25519_MashfaQurani_pro -p 2222 root@185.55.243.191
 bash /var/www/mashfa/app/deploy.sh
 ```
 
@@ -772,10 +904,10 @@ The local machine cannot reach EAS over IPv4; builds are launched from the serve
 cd C:\Users\wael\Desktop\Quran\mobile
 git add -A && git commit -m "..."
 git archive --format=tar.gz -o C:/Users/wael/Downloads/mobile-build.tgz HEAD
-scp -i <key> -P 2222 C:/Users/wael/Downloads/mobile-build.tgz root@***REDACTED-HOST***:/root/mobile-build.tgz
+scp -i <key> -P 2222 C:/Users/wael/Downloads/mobile-build.tgz root@185.55.243.191:/root/mobile-build.tgz
 
 # SERVER — extract over the existing build dir (keeps node_modules) and build
-ssh -i <key> -p 2222 root@***REDACTED-HOST***
+ssh -i <key> -p 2222 root@185.55.243.191
 cd /root/mobile-build && tar xzf /root/mobile-build.tgz
 export EXPO_TOKEN='<expo-access-token>'   # https://expo.dev/settings/access-tokens
 export EAS_NO_VCS=1
@@ -829,9 +961,8 @@ contains the updates runtime. After that, JS-only changes ship with:
       "Bash(grep -n \"upload_max_filesize\\\\|post_max_size\" /c/php/php.ini)",
       "Read(//c/php/**)",
       "Bash(findstr \"\\\\\"version\\\\\"\")",
-      "Bash(scp -i \"C:/Users/wael/Downloads/id_ed25519_MashfaQurani_pro\" -P 2222 -o BatchMode=yes \"c:/Users/wael/Desktop/Quran/backend/deploy/nginx-mashfa.conf\" root@***REDACTED-HOST***:/etc/nginx/sites-available/mashfa)",
-      "Bash(ssh -i \"C:/Users/wael/Downloads/id_ed25519_MashfaQurani_pro\" -o BatchMode=yes -p 2222 root@***REDACTED-HOST*** \"nginx -t 2>&1 && systemctl reload nginx && echo 'NGINX_RELOADED'\")",
-      "Bash(export EXPO_TOKEN=\"***REDACTED-EXPO-TOKEN***\")",
+      "Bash(scp -i \"C:/Users/wael/Downloads/id_ed25519_MashfaQurani_pro\" -P 2222 -o BatchMode=yes \"c:/Users/wael/Desktop/Quran/backend/deploy/nginx-mashfa.conf\" root@185.55.243.191:/etc/nginx/sites-available/mashfa)",
+      "Bash(ssh -i \"C:/Users/wael/Downloads/id_ed25519_MashfaQurani_pro\" -o BatchMode=yes -p 2222 root@185.55.243.191 \"nginx -t 2>&1 && systemctl reload nginx && echo 'NGINX_RELOADED'\")",
       "Bash(npx eas-cli *)",
       "Bash(curl -s \"https://mashfa.odooclick.com/api/categories\" -H \"Accept: application/json\")",
       "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); [print\\(c['name'], c.get\\('subcategories_count'\\), c.get\\('recordings_count'\\)\\) for c in d['data']]\")"
@@ -868,12 +999,9 @@ contains the updates runtime. After that, JS-only changes ship with:
       "Bash(curl -s -o /dev/null -w \"expo home: HTTP %{http_code}, time %{time_total}s\\\\n\" --max-time 20 https://expo.dev)",
       "Bash(curl -s -o /dev/null -w \"google: HTTP %{http_code}\\\\n\" --max-time 20 https://www.google.com)",
       "Bash(eas whoami *)",
-      "Bash(ssh -i \"C:/Users/wael/Downloads/id_ed25519_MashfaQurani_pro\" -o BatchMode=yes -p 2222 root@***REDACTED-HOST*** \"cd /root/mobile-build && export EXPO_TOKEN='***REDACTED-EXPO-TOKEN***' && export EAS_NO_VCS=1 && npx eas-cli build --platform android --profile preview --non-interactive --no-wait 2>&1 | tail -25\")",
-      "Bash(ssh -i \"C:/Users/wael/Downloads/id_ed25519_MashfaQurani_pro\" -o BatchMode=yes -p 2222 root@***REDACTED-HOST*** \"cd /root/mobile-build && export EXPO_TOKEN='***REDACTED-EXPO-TOKEN***' && export EAS_NO_VCS=1 && npx eas-cli build --platform android --profile preview --non-interactive --no-wait 2>&1 | grep -viE 'npm warn|deprecated' | tail -20\")",
-      "Bash(ssh -i C:/Users/wael/Downloads/id_ed25519_MashfaQurani_pro -o BatchMode=yes -p 2222 root@***REDACTED-HOST*** 'cd /root/mobile-build && export EXPO_TOKEN='\\\\''***REDACTED-EXPO-TOKEN***'\\\\'' && export EAS_NO_VCS=1; for i in $\\(seq 1 11\\); do s=$\\(npx eas-cli build:view 960ccd06-854f-47c4-b296-199b7549c46e 2>/dev/null | grep -E '\\\\''Status|Application Archive URL'\\\\''\\); st=$\\(echo \"$s\" | grep Status | sed '\\\\''s/Status *//'\\\\''\\); url=$\\(echo \"$s\" | grep '\\\\''Application Archive URL'\\\\'' | sed '\\\\''s/Application Archive URL *//'\\\\''\\); echo \"[$i] $\\(date +%H:%M:%S\\) status: $st\"; if echo \"$s\" | grep -qiE '\\\\''finished|errored|canceled'\\\\''; then echo '\\\\''=== DONE ==='\\\\''; echo \"ARTIFACT: $url\"; echo \"$s\"; break; fi; sleep 50; done')",
-      "Bash(ssh -i C:/Users/wael/Downloads/id_ed25519_MashfaQurani_pro -o BatchMode=yes -p 2222 root@***REDACTED-HOST*** 'cd /root/mobile-build && export EXPO_TOKEN='\\\\''***REDACTED-EXPO-TOKEN***'\\\\'' && export EAS_NO_VCS=1; for i in $\\(seq 1 12\\); do s=$\\(npx eas-cli build:view 960ccd06-854f-47c4-b296-199b7549c46e 2>/dev/null | grep -E '\\\\''Status|Application Archive URL'\\\\''\\); st=$\\(echo \"$s\" | grep Status | sed '\\\\''s/Status *//'\\\\''\\); url=$\\(echo \"$s\" | grep '\\\\''Application Archive URL'\\\\'' | sed '\\\\''s/Application Archive URL *//'\\\\''\\); echo \"[$i] $\\(date +%H:%M:%S\\) status: $st\"; if echo \"$s\" | grep -qiE '\\\\''finished|errored|canceled'\\\\''; then echo '\\\\''=== DONE ==='\\\\''; echo \"ARTIFACT_URL: $url\"; break; fi; sleep 50; done')",
+      "Bash(ssh -i \"C:/Users/wael/Downloads/id_ed25519_MashfaQurani_pro\" -o BatchMode=yes -p 2222 root@185.55.243.191 *)",
       "Bash(ipconfig)",
-      "Bash(ssh -i \"C:/Users/wael/Downloads/id_ed25519_MashfaQurani_pro\" -o BatchMode=yes -p 2222 root@***REDACTED-HOST*** \"cd /root/mobile-build && echo '===== app.json =====' && cat app.json && echo '===== eas.json =====' && cat eas.json && echo '===== expo-updates version =====' && grep 'expo-updates' package.json\")",
+      "Bash(ssh -i \"C:/Users/wael/Downloads/id_ed25519_MashfaQurani_pro\" -o BatchMode=yes -p 2222 root@185.55.243.191 \"cd /root/mobile-build && echo '===== app.json =====' && cat app.json && echo '===== eas.json =====' && cat eas.json && echo '===== expo-updates version =====' && grep 'expo-updates' package.json\")",
       "Skill(update-config)",
       "Skill(update-config:*)"
     ],
@@ -944,7 +1072,7 @@ MIGRATION 12: diseases - id,subcategory_id(fk),name,slug,description,is_general(
 
 MIGRATION 13: disease_aliases - id,disease_id(fk),alias,ts
 
-MIGRATION 14: recordings - id,disease_id(fk),session_number,title,audio_path,duration_seconds,is_free(0),plays_count(0),created_by(fk),softDeletes,ts
+MIGRATION 14: recordings - id,disease_id(fk),session_number,title,audio_path,duration_seconds,type(enum summarized|detailed, default summarized),plays_count(0),created_by(fk),softDeletes,ts
 
 MIGRATION 15: favorites - id,user_id(fk),disease_id(fk),ts,UNIQUE(user_id,disease_id)
 
@@ -989,7 +1117,7 @@ UserResource (Super Admin only)
 CategoryResource (Admin only)
 SubcategoryResource (Admin only)
 DiseaseResource (Admin only) - with is_general checkbox, aliases management
-RecordingResource (Admin only) - session_number, is_free
+RecordingResource (Admin only) - session_number, type (summarized=free / detailed=paid, max one of each per owner)
 FavoriteResource (Admin only, read-only)
 AdhkarCategoryResource (Admin only)
 AdhkarItemResource (Admin only) - morning/evening/sleep/waking flags
@@ -1132,7 +1260,7 @@ UserPolicy: viewAny(super_admin only), delete(super_admin only)
 RECORDING POLICY STREAM METHOD:
 public function stream(User $user, Recording $recording)
 {
-    if ($recording->session_number == 1) { return true; }
+    if ($recording->type === 'summarized') { return true; }
     if ($user->is_subscribed || $user->hasActiveTrial()) { return true; }
     if ($user->canGrantTrial()) { $user->grantTrial(); return true; }
     return false;
@@ -1253,7 +1381,10 @@ NOT CACHED:
 User-specific endpoints (favorites, notifications), POST/PUT/DELETE
 
 BACKEND CACHE PATTERN:
-Cache::remember($key, 300, fn() => $this->repository->findAll());
+For Eloquent data, use App\Support\ModelCache ONLY — see caching.md (MANDATORY).
+ModelCache::rememberMany($key, 300, fn() => $this->repository->findAll());
+Never cache live models directly (500s on cache hit). Plain scalars/arrays may
+use Cache::remember directly.
 
 BACKEND INVALIDATION PATTERN:
 protected static function booted()
@@ -1265,6 +1396,197 @@ protected static function booted()
 }
 
 PARALLEL CACHE WARMING: Fan-out to 4 workers
+```
+
+---
+
+# FILE: .claude/backend/caching.md
+
+```
+# CACHING RULE — `ModelCache` is the ONLY way to cache Eloquent data
+
+**Status: MANDATORY.** This supersedes the model-caching example in
+`cache-strategy.md`. Applies to every Service in `app/Services`.
+
+## Why this rule exists
+
+`CACHE_STORE=database` (and `file`, `redis`, `memcached`) serialize cached
+values. Storing a **live Eloquent model or Collection** couples cache
+correctness to PHP's ability to serialize the entire object graph. A single
+closure / resource / media-library conversion anywhere in that graph throws
+`Serialization of 'Closure' is not allowed` — and it fails on the **cache HIT,
+not the miss**, so it passes in dev and 500s in production. Symptoms seen in
+this project: `__PHP_Incomplete_Class` reads, silent `Server error` 500s.
+
+`App\Support\ModelCache` solves this once: it caches a **primitive snapshot**
+(attributes + nested relations, fully object-free) and **rehydrates real
+models** on read — so API Resources keep working (`getTranslations()`,
+`iconUrl()`, `whenLoaded()`, `whenCounted()`, eager-loaded relations,
+`withCount()` aggregates all survive).
+
+## The only allowed pattern
+
+```php
+use App\Support\ModelCache;
+
+// 1) A query that returns a Collection of models
+public function items(): Collection
+{
+    return ModelCache::rememberMany('items.v1.all', 300,
+        fn () => $this->repository->all());
+}
+
+// 2) A query that returns a single model (or null)
+public function config(): ?SomeModel
+{
+    return ModelCache::remember('something.v1.config', 300,
+        fn () => $this->repository->config());
+}
+
+// 3) A query that returns a LengthAwarePaginator (->paginate())
+public function paginated(int $perPage = 15): LengthAwarePaginator
+{
+    return ModelCache::rememberPaginated("items.v1.page.{$perPage}", 300,
+        fn () => $this->repository->paginate($perPage));
+}
+```
+
+Key conventions:
+
+- **Namespace + version the key:** `<resource>.v<n>.<scope>`. Bump `v<n>` when the
+  cached shape changes so old payloads can't be rehydrated wrongly.
+- **TTL ≤ 300s** (see `rules.md` RULE_7) — it is a backstop; invalidation (below)
+  is what makes edits appear immediately.
+
+### Which method to use
+
+| Repository returns | Use | Returns |
+|---|---|---|
+| `Collection` of models (`->get()`) | `ModelCache::rememberMany($key, $ttl, $fn)` | `EloquentCollection` |
+| a single model or `null` (`->first()`, `->find()`) | `ModelCache::remember($key, $ttl, $fn)` | `?Model` |
+| `LengthAwarePaginator` (`->paginate()`) | `ModelCache::rememberPaginated($key, $ttl, $fn)` | `LengthAwarePaginator` |
+
+Relations are captured automatically from whatever the repository eager-loads
+(including nested, e.g. `parent.child`). Add a relation in the repository and the
+cache follows — no service change needed.
+
+## PROHIBITED — these will fail review and the `CachingConventionTest`
+
+- ❌ **Caching live models/collections/paginators.**
+  `Cache::remember($k, $ttl, fn () => $repo->get())` where the closure returns
+  models. `Cache::put($k, $modelOrPaginator)`. The `instanceof` "guard +
+  `Cache::forget`" workaround is also banned — it silently disables caching on
+  the failure path.
+- ❌ **Hand-rolled snapshot / rehydrate.** Any `->getAttributes()` +
+  `Model::hydrate()` / `setRawAttributes()` / `newFromBuilder()` /
+  `setRelation()` inside a Service. That logic lives in `ModelCache` only.
+- ❌ **Caching `->toArray()` and returning arrays** where a Resource needs a
+  model — it breaks `getTranslations()` / `whenLoaded()` etc.
+
+## Cache the aggregate; slice in PHP. Never a per-id key.
+
+Cache a whole **aggregate** (a list / tree / collection that many requests read
+identically) under **one static key**, then derive a single request's view from
+it in PHP — paginate it, or `->firstWhere(...)` / `->where(...)` it by a parent id.
+This only pays off when the whole set is **small and bounded** (so holding it all,
+and rehydrating it on every hit, is cheap).
+
+Never build a **per-id cache key** (`"items.v1.{$id}"`). A dynamic key can't be
+named by a `CACHE_KEYS` constant, so the write side can't enumerate which keys to
+forget — that is precisely what breaks single-source invalidation. One static key
+holding the whole set is trivially invalidated and trivially sliced.
+
+A read stays **uncached** (straight to the repository) when it reuses nothing
+across requests, or when caching would cost more than it saves:
+
+- **Searches / filters on free input** (a query that varies per term/user) — there
+  is no shared result to cache.
+- A **single-row convenience lookup whose data already lives in a cached
+  aggregate** — don't cache it a second time under its own key.
+- A **per-parent slice of a large table** (e.g. one parent's child rows out of
+  thousands). Caching the whole set to serve one slice snapshots/rehydrates
+  everything on each miss/hit — a net loss. Use the indexed `where parent_id`
+  query; if (and only if) that read becomes genuinely hot, it warrants caching,
+  which would require a documented per-id-key exception to the rule above.
+
+Rule of thumb: cache the *set* only when the set is small; never cache each
+*slice* of a large set.
+
+## Allowed exceptions (not Eloquent data)
+
+- **Scalars / plain arrays** — e.g. OTP tokens, counters, flag maps. If the cached
+  value contains **no Eloquent object**, plain `Cache::*` is acceptable (and
+  `ModelCache` is unnecessary).
+- **Cache invalidation** — `Cache::forget(...)` is always allowed.
+
+## Invalidation — `InvalidatesCache` trait (the write side)
+
+Caching has TWO halves: read via `ModelCache`, and **bust on write** so admin
+edits appear on the next request instead of waiting out the TTL. There is ONE
+mechanism for the write side: the `App\Models\Concerns\InvalidatesCache` trait.
+
+A cached model uses the trait and returns the keys it owns — defined as a
+`CACHE_KEYS` constant **on the owning Service**, so the read key and the write key
+can never drift:
+
+```php
+use App\Models\Concerns\InvalidatesCache;
+use App\Services\SomeService;
+
+class SomeModel extends Model
+{
+    use InvalidatesCache;
+
+    protected function cacheKeysToForget(): array
+    {
+        return SomeService::CACHE_KEYS; // const on the Service that caches this data
+    }
+}
+```
+
+The trait forgets those keys on `saved` / `deleted` / `restored`. Rules:
+
+- ❌ Do NOT hand-roll invalidation (`Cache::forget` in a model `booted()`, or a
+  `Service::flushCache()` called from a model). Use the trait.
+- **A cache that embeds data from other tables must be invalidated by those tables
+  too.** The Service that builds the aggregate **owns** its `CACHE_KEYS`; every
+  other model whose rows appear in that aggregate re-exports the owner's constant
+  so the key stays single-source:
+
+  ```php
+  // Owner — builds and caches the aggregate
+  class OwnerService { public const CACHE_KEYS = ['owner.v1.tree']; }
+
+  // Contributor — its rows are embedded in the owner's aggregate
+  class ContributorService { public const CACHE_KEYS = OwnerService::CACHE_KEYS; }
+  ```
+
+  Each contributing model then returns *its own* service's `CACHE_KEYS`, and they
+  all resolve to the same owner key.
+- A model carries the trait **only if a write of it actually dirties a cached
+  aggregate.** If nothing cached embeds the model, it has no `cacheKeysToForget`.
+- Keep the **TTL as a backstop** even with invalidation, so a missed write path
+  self-heals.
+
+Implementation notes (the trait already handles these — don't re-derive them):
+
+- The trait registers via `static::registerModelEvent()`, NOT `static::restored()`
+  — the `restored`/`restoring` static helpers exist only on SoftDeletes models, so
+  calling them on a plain model hits `__callStatic` → `(new static)` → boot recursion.
+- The `database` cache store does NOT support `Cache::tags()`; explicit
+  `Cache::forget(KEY)` is the only invalidation that works.
+
+Every cached model is enforced by `tests/Feature/Cache/CacheInvalidationTest.php`:
+it asserts each one uses the trait and returns exactly its owning Service's
+`CACHE_KEYS` — so read and write keys can't silently diverge.
+
+## Requirement for new services
+
+Any new Service that caches Eloquent query results MUST use `ModelCache`. There
+is no second pattern. If you need a shape `ModelCache` doesn't cover, extend
+`ModelCache` (and its test) — do not hand-roll in the service.
+
+Enforced by `tests/Unit/Support/CachingConventionTest.php`.
 ```
 
 ---
@@ -1432,7 +1754,7 @@ CRITICAL RULES:
 - No inline comments, Debug-first, Read before modifying
 - Never delete without user approval
 - Recordings belong to deepest level (Disease > Subcategory > Category)
-- session_number=1 free, session_number>=2 requires subscription/trial, trial max 2
+- Recording types: summarized (مختصرة) free, detailed (مطولة) requires subscription/trial, max one of each per owner, trial max 2 (see ../../shared-context.md → RECORDING TYPES)
 - Favorites store disease_id, General ruqyah flag
 
 Then user will say "Execute Phase 1. Create migration 1" and respond "✓ Next" after each file.
@@ -1547,12 +1869,14 @@ TERMINAL NODE RULE: Whichever level has recordings attached directly is the term
   • Subcategory + recordings → cannot add diseases (and vice versa)
 
 ## BUSINESS RULES
-session_number=1 → ALWAYS FREE
-session_number>=2 → REQUIRES subscription OR trial
+Recording types (single source: ../shared-context.md → RECORDING TYPES):
+type=summarized (مختصرة) → ALWAYS FREE
+type=detailed (مطولة) → REQUIRES subscription OR trial
+Max two recordings per owner (one summarized + one detailed)
 Trial: 7 days, max 2 per user
 Favorites: DISEASES only
-Free users: access 1st recording only
-Paid users: access 1st, 2nd, 3rd recordings
+Free users: access summarized recordings only
+Paid users: access summarized + detailed recordings
 General Ruqyah: is_general flag
 
 ## USER ROLES
@@ -1675,7 +1999,7 @@ ReusableFormFields.php, ReusableTableColumns.php
 UserResource.php
 CategoryResource.php, SubcategoryResource.php
 DiseaseResource.php (with is_general checkbox and aliases management)
-RecordingResource.php (session_number, is_free)
+RecordingResource.php (session_number, type: summarized/detailed)
 FavoriteResource.php (read-only)
 AdhkarCategoryResource.php, AdhkarItemResource.php
 TahsinatCategoryResource.php (self/others, random_order), TahsinatItemResource.php
@@ -1724,7 +2048,7 @@ See .claude/backend/agents/api-engineer.md
 
 RULES: No comments, ../mobile/ never referenced
 FavoriteController: toggle() method must use firstOrCreate pattern
-RecordingController: stream() method must implement business rules (session_number=1 free, session_number>=2 requires subscription/trial)
+RecordingController: stream() method must implement business rules (type=summarized free, type=detailed requires subscription/trial — see ../../shared-context.md → RECORDING TYPES)
 
 AFTER: php artisan test --filter=Feature
 
@@ -1749,7 +2073,7 @@ RoleTest.php, PolicyTest.php
 See .claude/backend/agents/security-auditor.md
 
 RULES: No comments, ../mobile/ never referenced
-RecordingPolicy: stream() method must implement: session_number=1 free, session_number>=2 requires subscription or trial, trial max 2 per user
+RecordingPolicy: stream() method must implement: type=summarized free, type=detailed requires subscription or trial, trial max 2 per user
 
 KERNEL UPDATE: add 'locale', 'subscription' middleware
 SANCTUM UPDATE: expiration = 1440
@@ -1775,8 +2099,9 @@ Summary:
 - 5 Policies
 
 Business Rules Implemented:
-- session_number = 1 → ALWAYS FREE for ALL users
-- session_number >= 2 → REQUIRES active subscription OR active trial
+- type = summarized (مختصرة) → ALWAYS FREE for ALL users
+- type = detailed (مطولة) → REQUIRES active subscription OR active trial
+- Max two recordings per owner (one summarized + one detailed)
 - Trial: 7 days, max 2 per user lifetime
 
 Recordings: Belongs to Disease (Disease > Subcategory > Category)
@@ -1869,7 +2194,7 @@ Disease: belongsTo(Subcategory::class), hasMany(Recording::class), belongsToMany
 Recording: belongsTo(Disease::class), belongsTo(User::class, 'created_by')
 
 BUSINESS RULE IMPLEMENTATION:
-if ($recording->session_number == 1) { return true; }
+if ($recording->type === 'summarized') { return true; }
 if ($user && ($user->is_subscribed || $user->hasActiveTrial())) { return true; }
 if ($user && $user->trial_used_count < 2 && !$user->is_subscribed) { return $user->grantTrial(); }
 return false;
@@ -1938,7 +2263,7 @@ READY SIGNAL: "PARENT READY. ../mobile/ IGNORED. Hierarchy: Disease > Subcategor
 VALIDATION CHECKLIST:
 - No raw SQL, No N+1 queries, Repository pattern, Service pattern
 - Transactions, Try-catch, Cache TTL <= 300s
-- session_number=1 always free, session_number>=2 requires subscription/trial, trial max 2
+- type=summarized always free, type=detailed requires subscription/trial, trial max 2, max one recording per type per owner
 - Recordings polymorphic, Hierarchy: Disease > Subcategory > Category
 - No inline comments, ../mobile/ untouched
 - Favorites store disease_id, is_general flag, search aliases work
@@ -1980,7 +2305,7 @@ RULE_4: SERVICE_PATTERN
 RULE_5: TRANSACTIONS
 RULE_6: TRY_CATCH
 RULE_7: SHORT_CACHE - Max TTL 300 seconds
-RULE_8: RUQYAH_SESSION - session_number=1 free, >=2 requires subscription/trial, trial max 2
+RULE_8: RECORDING_TYPES - max two recordings per owner: type=summarized (مختصرة) free, type=detailed (مطولة) requires subscription/trial (trial max 2). See "RECORDING TYPES" in ../shared-context.md (single source of truth).
 RULE_9: FLEXIBLE_HIERARCHY - Recordings may be attached at any level (Category, Subcategory, or Disease) via the polymorphic relation. Whichever level holds recordings directly becomes a TERMINAL node and cannot have children. Rules enforced by the Filament CMS as hard validation errors:
   • Category with direct recordings → CANNOT have subcategories
   • Subcategory with direct recordings → CANNOT have diseases
@@ -2049,7 +2374,7 @@ CORE RULES:
 - Debug-first: analyze before implementation
 - IGNORE ../mobile/ directory
 - Recordings belong to deepest level (Disease > Subcategory > Category)
-- session_number=1 free, session_number>=2 requires subscription/trial, trial max 2
+- Recording types: summarized (مختصرة) free, detailed (مطولة) requires subscription/trial, max one of each per owner, trial max 2 (see ../shared-context.md → RECORDING TYPES)
 - Favorites store disease_id, General ruqyah flag
 
 PHASE EXECUTION FLOW:
@@ -2063,7 +2388,76 @@ OUTPUT FORMAT: ✓ [filename] created. Next?
 
 LOGGING: [YYYY-MM-DD HH:MM:SS] [ROLE] [PHASE X] [MODE] message
 
-READY SIGNAL: "SYSTEM READY. Path: C:\Users\wael\Desktop\Quran\backend. ../mobile/ IGNORED. Hierarchy: Disease > Subcategory > Category. Business rule: session_number=1 free, session_number>=2 requires subscription/trial (max 2 trials). Favorites store disease_id. Awaiting Phase 1."
+READY SIGNAL: "SYSTEM READY. Path: C:\Users\wael\Desktop\Quran\backend. ../mobile/ IGNORED. Hierarchy: Disease > Subcategory > Category. Business rule: summarized (مختصرة) recording free, detailed (مطولة) recording requires subscription/trial (max 2 trials); max one of each per owner. Favorites store disease_id. Awaiting Phase 1."
+```
+
+---
+
+# FILE: .claude/backend/testing.md
+
+```
+# Backend Testing Conventions
+
+Runner: **PHPUnit 12, class-style** (NOT Pest — do not write `test()` closures).
+Config: `phpunit.xml` runs against SQLite `:memory:`, `array` cache, `sync` queue, `array` mail.
+
+## Run
+
+```bash
+php artisan test                         # everything
+php artisan test --testsuite=Feature     # one suite
+php artisan test --filter=DiseaseSearch  # one class/method
+```
+
+## Layout & naming
+
+```
+tests/
+├── Feature/
+│   ├── Api/        # HTTP endpoint tests (one class per controller/feature)
+│   └── Console/    # artisan command tests
+└── Unit/           # pure classes/helpers, no framework boot where possible
+```
+
+- Class extends `Tests\TestCase`. Methods are `public function test_snake_case_description(): void`.
+- Add `use RefreshDatabase;` to any test that touches the database.
+- A pure unit test (no DB/container) may extend `PHPUnit\Framework\TestCase` directly — see
+  `tests/Unit/DiseaseSearchHelperTest.php` (reflection on a private helper).
+
+## Factories
+
+- Every model under test has `use HasFactory;` and a `database/factories/<Model>Factory.php`.
+- Translatable (`name`/`bio`) fields are arrays: `['ar' => '…', 'en' => '…']`.
+- Encode domain rules as factory **states**, not ad-hoc test setup. Examples:
+  - `CategoryFactory::diseaseDirect()` — diseases can only attach to a `disease_direct` category.
+  - `RecitationFactory::localFile($path)` / `->remote($url)` — drives the audio branch under test.
+  - `DiseaseFactory` leaves `slug` unset (the model's saving hook derives it).
+
+## Faking infrastructure (don't hit the network/disk/queue)
+
+| Concern | Use |
+|---------|-----|
+| Local storage | `Storage::fake('public')` then `Storage::disk('public')->put(...)` |
+| Outbound HTTP / CDN | `Http::fake([...])` |
+| Queue size / dispatch | `Queue::fake()` or `Queue::shouldReceive('size')->andReturn(n)` |
+| Mail | `Mail::fake()` |
+
+## Gotchas
+
+- **Audio X-Accel test** asserts the `X-Accel-Redirect` header — it does NOT read the file, so
+  `Storage::fake` is enough. Do **not** try to assert `response()->file()` byte-serving with
+  `Storage::fake`: the controller serves via `storage_path()` (real FS) while the fake disk lives
+  in a temp dir, so they diverge. That path is core framework behavior — don't test it here.
+- **FULLTEXT search** is MySQL/MariaDB-only and guarded in the migration. On the SQLite test DB the
+  repository falls back to LIKE; `DiseaseSearchTest::test_fulltext_toggle_falls_back_to_like_on_sqlite`
+  pins that fallback.
+- Scalability flags are plain config — override per test with `config(['scalability.audio.use_x_accel' => true])`.
+
+## What to cover first
+
+Riskiest custom logic, in order: controller branches (auth/validation/error codes), service
+outcomes (e.g. Google OTP `verifyOtp` states), repository queries, artisan commands. Skip
+framework behavior and trivial getters.
 ```
 
 ---
@@ -2087,8 +2481,8 @@ POST-FILAMENT:
 
 POST-API:
 - GET /api/categories works, GET /api/diseases/search works, GET /api/general-ruqyah works
-- POST /api/favorites/toggle stores disease_id, session_number=1 free
-- session_number>=2 requires subscription/trial, trial max 2, no comments
+- POST /api/favorites/toggle stores disease_id, type=summarized free
+- type=detailed requires subscription/trial, trial max 2, no comments
 
 POST-SECURITY:
 - Policies enforce roles, middleware registered, ../mobile/ untouched
@@ -2351,16 +2745,19 @@ CATEGORIES            Physical Diseases · Personal Property · Homes & Relation
 ├── SUBCATEGORIES     bones, chest, car, house, marriage, crying, general ruqyahs ...
 │   │
 │   ├── DISEASES      joint inflammation, fractures, anemia, asthma ...
-│   │   └── RECORDINGS   session 1 (free) · session 2 & 3 (subscription/trial)
+│   │   └── RECORDINGS   summarized/مختصرة (free) · detailed/مطولة (subscription/trial)
 │   │
 │   └── ── OR ── RECORDINGS directly (subcategory is TERMINAL — no diseases)
 │
 ├── ── OR ── DISEASES directly (category has no subcategories)
-│   └── RECORDINGS   session 1 (free) · session 2 & 3 (subscription/trial)
+│   └── RECORDINGS   summarized/مختصرة (free) · detailed/مطولة (subscription/trial)
 │
 └── ── OR ── RECORDINGS directly (category is TERMINAL — no subcategories, no diseases)
 ```
-- A disease may have multiple recordings (one per session).
+- A recording owner has at most TWO recordings — one summarized (free) and one detailed
+  (paid), switched only via the segmented type tabs on the record screen (Figma 19214:3234);
+  no wird numbering, no swapping inside the reader area.
+  Single source: `../shared-context.md` → RECORDING TYPES.
 - `is_general = true` diseases power the General Ruqyah quick-launch (no drill-down).
 - The backend API response for any category or subcategory includes `has_direct_recordings: bool`
   to let the mobile app detect the terminal level without a separate request.
@@ -2461,9 +2858,9 @@ tolerant; Arabic + English. Returns `{ results, isSearching, query, setQuery }`.
 `useDisease(slug)` — disease detail (name, description, recordings).
 
 ### useRecordings [RQ + RX]
-`useRecordings(diseaseId)` — recordings for a disease. Combines with `authSlice`
-`selectCanAccessSession` to mark each recording accessible/locked (session 1 free,
-2 & 3 paid). Returns `{ recordings, accessibleRecordings, isLoading }`.
+`useRecordings(diseaseId)` — recordings for a disease (max two: summarized + detailed).
+Combines with `authSlice` `selectIsPaid` to mark each recording accessible/locked
+(summarized free, detailed paid). Returns `{ recordings, accessibleRecordings, isLoading }`.
 
 ### useAdhkar [RQ + RX]
 Fetches Morning/Evening/Sleep/Waking items. Per-item repeat counters live in
@@ -2622,7 +3019,7 @@ State lives in `downloadsSlice` (`store-design.md`); device work in `audioServic
 Each task tracks `progress`, `totalBytes`, `localPath`, `error`.
 
 ### Constraints
-- Free users: download **session 1 only**. Paid users: all sessions.
+- Free users: download the **summarized recording only**. Paid users: both types.
 - Wi-Fi-only toggle in settings, **default on** — block downloads on cellular unless
   the user allows it.
 - On logout: clear all downloads (`clearAll`).
@@ -2864,8 +3261,11 @@ Full routing and terminal-redirect rules in `hierarchy-navigation.md`.
 - **General Ruqyah** — quick-launch button plays the `is_general` disease audio
   immediately, with no intermediate screens.
 - **Favorites** — DISEASES only. Not adhkar, not Quran, not courses. Store `disease_id`.
-- **Session access** — session 1 free for everyone; sessions 2 & 3 require an active
-  subscription or trial.
+- **Recording access** — each disease/subcategory/category has at most TWO recordings:
+  `type=summarized` (مختصرة) free for everyone; `type=detailed` (مطوّلة) requires an active
+  subscription or trial. The record screen switches types ONLY via the segmented type tabs
+  (Figma 19214:3234) — no wird numbering and no swapping inside the reader area.
+  Single source: `.claude/shared-context.md` → RECORDING TYPES.
 - **Search** — tolerant of synonyms/aliases, supports Arabic and English.
 - **Adhkar** — categories: Morning, Evening, Sleep, Waking.
 - **Tahsinat** — categories: Self-fortification, Fortification for others.
@@ -3037,13 +3437,16 @@ envelope, HTTP status codes, rate limiting, file-size limit).
 - RULE_30 FAVORITES_DISEASES_ONLY — favorites store `disease_id` only.
 - RULE_31 GENERAL_RUQYAH — quick-launch button plays the `is_general` disease audio
   directly, no intermediate screens.
-- RULE_32 SESSION_ACCESS — session 1 free; sessions ≥ 2 require subscription or trial.
+- RULE_32 RECORDING_TYPES — max two recordings per owner: `summarized` (مختصرة) free;
+  `detailed` (مطوّلة) requires subscription or trial. The wird screen switches types ONLY
+  via the segmented type tabs (Figma 19214:3234) — no wird numbering, no swapping inside
+  the reader area. Single source: `../shared-context.md` → RECORDING TYPES.
 - RULE_33 ADHKAR_CATEGORIES — Morning, Evening, Sleep, Waking.
 - RULE_34 TAHSINAT_CATEGORIES — Self, For Others; honour `random_order` when set.
 - RULE_35 OFFLINE_FIRST — downloaded audio plays from cache; SQLite caches Quran/adhkar
   text; queue offline actions and retry on reconnect (see `offline-sync.md`).
 - RULE_36 DOWNLOAD_MANAGER — dedicated per-recording download button, progress,
-  cancel, retry, Wi-Fi-only default; free users may download session 1 only.
+  cancel, retry, Wi-Fi-only default; free users may download the summarized recording only.
 - RULE_37 SPONSOR_SCREEN — show at every launch when the admin flag is on.
 - RULE_38 FEATURE_VISIBILITY — fetch flags on launch, cache offline, hide disabled.
 - RULE_39 ONBOARDING_ONCE — welcome screens on first launch only, auto-transition.
@@ -3332,7 +3735,7 @@ src/store/
 - Reducers: `setUser`, `clearAuth`, `setSubscription`, `setStatus`.
 - Thunks: `loginWithGoogle`, `register`, `login`, `logout`, `fetchMe`.
 - Selectors: `selectIsAuthenticated`, `selectIsPaid`, `selectCanAccessSession(n)`
-  (session 1 → true; ≥2 → paid or trial).
+  (summarized recording → true; detailed → paid or trial).
 - Note: auth is **bypassed for development** (see CLAUDE.md). The slice exists and is
   wired, but `_layout.tsx` does not gate on it. Do not re-enable the guard unasked.
 
@@ -3507,6 +3910,41 @@ corresponding component inside `src/components/layout/`.
 
 ---
 
+# FILE: .claude/prompt-rules.md
+
+```
+# ⚠⚠⚠ PROMPT RULES — HIGHEST PRIORITY ⚠⚠⚠
+
+These rules OVERRIDE every other instruction, plan file, agent prompt, and default
+behavior in this repository. When any other file conflicts with this one, THIS FILE WINS.
+
+---
+
+## SYSTEM RULES — DO NOT VIOLATE
+
+1. Never modify, refactor, rename, or delete any existing file, function, class, or logic unless I explicitly request it.
+2. Never assume intent. If anything is unclear, ask clarifying questions before acting.
+3. Only work inside the specific files or code blocks I provide. Do not touch anything else.
+4. Preserve all existing business logic, architecture, naming conventions, and data structures exactly as they are.
+5. When generating new code, ensure it integrates without breaking existing Laravel backend or React frontend behavior.
+6. Never introduce new dependencies, libraries, or architectural patterns unless I explicitly approve them.
+7. Never run or suggest destructive commands (migrations that drop data, file deletions, DB wipes, etc.).
+8. If you are less than 90% certain about my intent, stop and ask.
+9. Always explain the impact of any code you generate on the current system.
+10. Your default behavior is: minimal changes, maximum safety.
+
+---
+
+## OUTPUT RULES
+
+- Only produce the code I ask for.
+- Do not rewrite unrelated parts.
+- Do not optimize or "improve" anything unless I explicitly request optimization.
+- Keep responses concise and scoped to the task.
+```
+
+---
+
 # FILE: mobile/CLAUDE.md
 
 ```
@@ -3557,13 +3995,23 @@ backgroundColor: '#135452',
 color: '#181d27',
 ```
 
+### Theme tokens vs. palette — light/dark mode
+
+**Every surface/text/border colour must come from the active `theme` (light/dark aware), NOT from `palette` directly.** `palette` is the raw colour atlas (single source of truth for values); `theme` is the semantic, mode-aware layer built from it in `colors.ts` (`lightTheme` / `darkTheme`, type `Theme`).
+
+- A `.styles.ts` file exports a **factory**: `export const createStyles = (theme: Theme) => StyleSheet.create({ ... })`. Reference `theme.card`, `theme.text`, `theme.primary`, `theme.cardBorder`, etc. — never `palette.*` for a normal surface/text colour.
+- The component consumes it with the **`useStyles` hook**: `const s = useStyles(createStyles);` (from `@/hooks/useStyles`). Colours used as JSX props (icon `color=`, `placeholderTextColor=`) come from `const { theme } = useTheme();`.
+- Light values of every `theme` token equal the original Figma `palette` colour, so light mode is unchanged; dark values live in `darkTheme`.
+
+**When is a direct `palette.*` ref still correct?** Only for colours that are intentionally **constant across light & dark** — decorative/brand accents (category tile fallbacks `palette.tileFallback`, flag fills `palette.flags`, sponsor logo box, AI mint avatar), semantic warning/error *tints* with no theme token, shadow colour (`palette.shadow`), and the Mushaf **reader** parchment canvas (`reader.styles.ts` is a deliberately preserved fixed surface). Document each such ref inline.
+
 ### Rules
 
-1. **All design-system colors live in `src/theme/colors.ts`** under the `palette` export. This is the single source of truth.
-2. **Do not create local `FIGMA`, `BRAND_500`, `TEXT_PRIMARY`, `WHITE`, or similar constants** that duplicate palette values.
-3. **To add a new color**, add it to `palette` in `colors.ts` — only when the value is a genuine design-system token used in more than one place.
-4. **Component-specific opacity tints** (e.g. `rgba(255,255,255,0.18)` for a player overlay) may remain as local constants when they are not part of the global design system, but they must be documented inline.
-5. **Exported color constants** (e.g. `export const ICON_ACTIVE`) must be assigned from `palette`, not from a hardcoded hex string.
+1. **All raw colour values live in `src/theme/colors.ts`** (`palette`). Semantic light/dark tokens live in the same file (`lightTheme`/`darkTheme`, `Theme` type).
+2. **Themed surfaces/text/borders → `theme.*` via `createStyles(theme)`.** Do **not** create local `FIGMA`, `BRAND_500`, `TEXT_PRIMARY`, `WHITE` constants, and do not reach for `palette.*` when a `theme` token exists.
+3. **To add a new semantic colour**, add a token to the `Theme` type + `lightTheme` + `darkTheme` (light value = exact Figma colour). To add a new raw value, add it to `palette`.
+4. **Component-specific opacity tints** (e.g. `rgba(255,255,255,0.18)`) and fixed scrims/shadows may remain as local constants when they are not part of the global design system, but they must be documented inline.
+5. **No exported colour constants** like `export const ICON_ACTIVE` from a `.styles.ts` — pass `theme.*` from the component instead (the old pattern of exporting `ICON_*`/`*_COLOR` consts has been removed).
 
 ### Palette quick reference
 
@@ -3601,9 +4049,43 @@ before doing anything else, and never introduce a new one.
 - **Never** place a `StyleSheet.create` block inside a `.tsx` file. The only inline styles
   allowed are trivial one-liners (`{ flex: 1 }`) or values that MUST be dynamic at runtime
   (e.g. a computed `marginTop` from safe-area insets) — and even those stay minimal.
-- Import styles as a single aliased object: `import { fooStyles as s } from './Foo.styles';`
-- When touching any `.tsx` that still defines styles inline, migrate it to a `.styles.ts`
-  file as part of the change — do not leave new code that violates this rule.
+
+### Themed-factory pattern (the one and only way to define styles)
+
+Every `.styles.ts` exports a **factory** keyed on the active theme, and the component
+consumes it with the `useStyles` hook. This is what makes light/dark mode work everywhere.
+
+```ts
+// Foo.styles.ts
+import { StyleSheet } from 'react-native';
+import type { Theme } from '@/theme/colors';
+import { spacing, radius } from '@/theme/spacing';
+
+export const createStyles = (theme: Theme) =>
+  StyleSheet.create({
+    card: { backgroundColor: theme.card, borderColor: theme.cardBorder, padding: spacing.lg },
+  });
+```
+
+```tsx
+// Foo.tsx
+import { useStyles } from '@/hooks/useStyles';
+import { createStyles } from './Foo.styles';
+
+function Foo() {
+  const s = useStyles(createStyles);          // memoized, re-themes on toggle
+  // const { theme } = useTheme();             // only if a colour is needed as a JSX prop
+  return <View style={s.card} />;
+}
+```
+
+- A themeless factory still takes the param: `(_theme: Theme) => StyleSheet.create({ ... })`.
+- Use spacing/typography/radius **tokens** (`spacing.lg`, `fontSize.sm`, `radius.md`), not raw
+  numbers, whenever an exact token exists.
+- Do **not** export a plain style object (`export const fooStyles = StyleSheet.create(...)`)
+  or colour constants — that pattern was fully removed in the theming migration.
+- When touching any `.tsx`/`.styles.ts` still on the old static pattern, migrate it to the
+  factory as part of the change — do not leave new code that violates this rule.
 
 ## Bilingual Content Rule — Arabic + English Required
 
@@ -3655,6 +4137,114 @@ const title = 'المصحف';
 - The active locale is `'ar' | 'en'`.
 - It lives in the Redux store (or a dedicated i18n context) — never derive it from device locale alone without a user preference fallback.
 - Default locale: `'ar'`.
+
+## Type Definition Convention
+
+**Shared, exported types live in `src/types/`; single-use component prop types stay co-located.**
+
+The goal is one obvious home for every type without churning the codebase with needless files.
+
+### What belongs in `src/types/<domain>.ts`
+
+- **Data models** — the shape of anything from the API (`Disease`, `Recording`, `Category`, …).
+- **Cross-module contracts** — any `type`/`interface` that is imported by **more than one module**, or
+  that is exported from one module and consumed in another (e.g. the `Wird*` source contract in
+  `src/types/wird.ts`, consumed by both the hook and the screen).
+- One domain per file, named after the domain (`wird.ts`, `disease.ts`). Import via the `@/types/*` alias.
+- A type is defined **once**. Do not re-export it from the hook/component that happens to use it —
+  point every consumer at `@/types/*` so there is a single source of truth.
+
+### What stays co-located (do NOT move)
+
+- **Component / hook prop types** used by a single file — keep the `type Props = { … }` at the top of
+  that `.tsx`/`.ts`. Moving single-use prop shapes into `src/types/` adds import noise for zero benefit
+  and is **not** wanted.
+- A prop shape only graduates to `src/types/` once a **second** module needs it.
+
+### Rules for Claude
+
+1. New shared/data/contract type → add it to `src/types/<domain>.ts` (create the domain file if absent).
+2. Never duplicate a type definition; never re-export it as a convenience — fix the import instead.
+3. Leave single-use `Props` types where they are. Don't refactor them into `src/types/` "for tidiness."
+4. When a co-located type gains a second consumer, promote it to `src/types/` and update both imports.
+
+## Commenting Convention — Don't Narrate Code
+
+**Do not write comments that describe *what* the code does. Code is the source of truth; let it speak.**
+
+When writing or editing any file, **do not add** a comment unless it carries information the code
+cannot. Default to **no comment**. Never add a JSDoc/prose block that just summarizes a function,
+hook, or component's behaviour — that is exactly the noise to avoid.
+
+### Remove / never write (useless)
+
+- Prose blocks narrating what a function/hook/component does or returns
+  (`/** Recordings metadata for a disease, sorted by session… */`).
+- Restatements of the line below them (`// loop over recordings`, `// set loading to true`).
+- Decorative section labels that add no information (`// ── Main content area ──`).
+- Refactor/history meta (`// behaviour preserved exactly`, `// moved from X`).
+
+### Keep / allowed to write (carries real information)
+
+- **Why**, not what — a non-obvious decision or trade-off
+  (`// The summarized (مختصرة) recording is free for all; the detailed (مطولة) one needs a subscription`).
+- **Business rules** and edge-case reasoning that aren't evident from the code.
+- **Traceability** — Figma node IDs (`Figma node 18032:3119`), ticket refs, spec links.
+- **Mandated inline notes** required by other rules in this file — e.g. the Color Convention's
+  documentation of each intentional `palette.*` exception. These take precedence; keep them.
+- **Concise contract docs on a shared/exported type** in `src/types/*` that explain a field's
+  non-obvious meaning (`/** False when the recording is a paid session and the user lacks access. */`).
+
+### Rule of thumb
+
+If deleting the comment loses **no** information a competent reader couldn't get from the code in
+~5 seconds, the comment is useless — don't write it (and remove it if you're already editing the
+file). When in doubt, prefer a clearer name or smaller function over a comment.
+
+## Linting
+
+ESLint is configured with **Expo's official flat config** (`eslint.config.js`, `eslint-config-expo`).
+
+```bash
+npm run lint         # fails on errors only (warnings allowed) — use in CI
+npm run lint:strict  # fails on any warning too (use when ratcheting)
+npm run lint:fix     # auto-fix
+```
+
+- Pin **ESLint to v9** — v10 breaks `eslint-plugin-react-hooks` (`getFilename` removed).
+- `eslint-config-expo` enables `eslint-plugin-react-hooks` v6's experimental React-Compiler rules
+  (`refs`, `set-state-in-effect`, `immutability`, `preserve-manual-memoization`) as **errors**.
+  These flag many correct patterns, so they're downgraded to **warnings** in `eslint.config.js`.
+  Don't rewrite app hooks just to satisfy them — that's a React Compiler migration, do it
+  deliberately. The codebase currently has 0 errors / ~70 warnings; ratchet warnings down over time.
+
+## Testing Convention
+
+Runner: **Jest + `jest-expo` preset** (`jest.config.js`). The `@/` alias maps to `src/`; tests are
+`src/**/*.test.{ts,tsx}`.
+
+```bash
+npm test            # run once
+npm run test:watch  # watch mode
+```
+
+- **Co-locate** tests in a `__tests__/` folder next to the code (e.g.
+  `src/store/slices/__tests__/authSlice.test.ts`).
+- **Reliable, no-native layers (write these freely):** pure utils (`src/utils/*`), Redux slice
+  reducers + selectors (test `reducer(state, action)` and pass a partial `RootState` to selectors),
+  and services (mock `@/services/apiClient`).
+- A module importing `@/services/api`, `expo-*`, or native modules must be **mocked**
+  (`jest.mock('@/services/api', () => ({ API_URL: 'http://test/api' }))`). `jest-expo` mocks most
+  Expo native modules already.
+- **Hooks** → `renderHook` from `@testing-library/react-native` (+ `jest.useFakeTimers()` for
+  time-based hooks). **Components** → `render`/`fireEvent`; mock `@/context/ThemeContext` and
+  `@/hooks/useStyles` so the test targets behavior, not styling.
+- **Pin `@testing-library/react-native` to v13** — v14 fails to resolve its renderer under this
+  jest-expo/React 19 setup (`Cannot find module 'test-renderer'`).
+- `jest.config.js` extends the preset's `transformIgnorePatterns` to also transform
+  `@reduxjs/toolkit` & the redux ecosystem (jest-expo resolves them to their TS source).
+- Never start Expo to run tests; Jest runs standalone.
+- Bilingual/locale logic: when testing a locale selector, assert **both** `ar` and `en` paths.
 
 ## Server / Port Convention
 

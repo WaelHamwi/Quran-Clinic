@@ -167,4 +167,4 @@ The Mushaf is the app in microcosm: server-authoritative text, a structured offl
 
 ---
 
-*End of the Quranic Clinic master-thesis edition — §1 through §52, plus the honesty-ledger appendix. This document was produced by reverse-engineering the live source tree; every code excerpt is quoted from the repository, every SQL statement is the query the ORM generates for the cited call, and every assumption is labelled inline. The companion Markdown and HTML sources, and the `build.js` renderer, sit beside this PDF in `docs/`.*
+> *This concludes the architecture teardown (§1–52). The **code-walkthrough & principles reference** follows: §53 the unified caching architecture (annotated), §54–58 five line-by-line code walkthroughs (read path, write path & lifecycle, authentication, mobile networking, mobile state), and §59–67 a programming-principles reference (constructors, dependency injection, the four OOP pillars, prototypes & object models, type systems, relational modeling, web engineering, data structures, and algorithms & optimization) — each principle shown in the project's real code.*

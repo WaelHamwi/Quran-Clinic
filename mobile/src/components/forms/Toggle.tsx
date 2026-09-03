@@ -1,10 +1,9 @@
-import React, { useMemo } from 'react';
-import { StyleSheet, Switch, Text, View } from 'react-native';
+import React from 'react';
+import { Switch, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/context/ThemeContext';
-import type { Theme } from '@/theme/colors';
-import { spacing } from '@/theme/spacing';
-import { fontSize, fontWeight } from '@/theme/typography';
+import { useStyles } from '@/hooks/common/useStyles';
+import { createStyles } from './Toggle.styles';
 
 interface ToggleProps {
   label: string;
@@ -17,7 +16,7 @@ interface ToggleProps {
 
 function ToggleBase({ label, description, value, onValueChange, icon, disabled }: ToggleProps) {
   const { theme } = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const styles = useStyles(createStyles);
 
   return (
     <View style={styles.row}>
@@ -37,21 +36,6 @@ function ToggleBase({ label, description, value, onValueChange, icon, disabled }
       />
     </View>
   );
-}
-
-function createStyles(theme: Theme) {
-  return StyleSheet.create({
-    row: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      paddingVertical: spacing.md,
-      gap: spacing.md,
-    },
-    icon: { width: 24, textAlign: 'center' },
-    texts: { flex: 1, gap: 2 },
-    label: { fontSize: fontSize.md, fontWeight: fontWeight.medium, color: theme.text },
-    description: { fontSize: fontSize.xs, color: theme.textMuted },
-  });
 }
 
 export const Toggle = React.memo(ToggleBase);

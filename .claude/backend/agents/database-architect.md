@@ -16,7 +16,7 @@ MIGRATION 12: diseases - id,subcategory_id(fk),name,slug,description,is_general(
 
 MIGRATION 13: disease_aliases - id,disease_id(fk),alias,ts
 
-MIGRATION 14: recordings - id,disease_id(fk),session_number,title,audio_path,duration_seconds,is_free(0),plays_count(0),created_by(fk),softDeletes,ts
+MIGRATION 14: recordings - id,disease_id(fk),session_number,title,audio_path,duration_seconds,type(enum summarized|detailed, default summarized),plays_count(0),created_by(fk),softDeletes,ts
 
 MIGRATION 15: favorites - id,user_id(fk),disease_id(fk),ts,UNIQUE(user_id,disease_id)
 

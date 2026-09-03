@@ -4,44 +4,47 @@ namespace App\Services;
 
 use App\Models\Surah;
 use App\Repositories\Contracts\SurahRepositoryInterface;
+use App\Support\ModelCache;
 use Illuminate\Pagination\LengthAwarePaginator;
-use Illuminate\Support\Facades\Cache;
+use Illuminate\Pagination\Paginator;
+use Illuminate\Support\Collection;
 
 class SurahService
 {
+    /** The full surah list (small, immutable Quran data) cached under one key. */
+    public const CACHE_ALL = 'surahs.v1.all';
+
+    /** Keys invalidated when a Surah is written. */
+    public const CACHE_KEYS = [self::CACHE_ALL];
+
     public function __construct(private SurahRepositoryInterface $repository) {}
 
     public function getAllSurahs(int $perPage = 15, int $page = 1): LengthAwarePaginator
     {
-        $key = "surahs.v2.list.{$page}.{$perPage}";
-        $cached = Cache::get($key);
+        $surahs = ModelCache::rememberMany(self::CACHE_ALL, 300, fn () => $this->repository->all());
 
-        // Accept only a properly deserialized paginator; evict anything else silently.
-        if ($cached instanceof LengthAwarePaginator) {
-            return $cached;
-        }
-
-        Cache::forget($key);
-        $result = $this->repository->getAllSurahs($perPage, $page);
-        Cache::put($key, $result, 3600);
-        return $result;
+        return $this->paginate($surahs, $perPage, $page);
     }
 
+    /**
+     * One surah with its verses — uncached. Verses are a large table read one
+     * surah at a time; an indexed `where surah_id` query is the right tool, and
+     * caching the whole set to serve one slice is a net loss. This endpoint is
+     * also cold (the mobile Mushaf reads verses from its own local SQLite).
+     */
     public function getSurahWithVerses(int $id): ?Surah
     {
-        $key = "surahs.v2.{$id}.verses";
-        $cached = Cache::get($key);
+        return $this->repository->getSurahWithVerses($id);
+    }
 
-        // Accept only a properly deserialized Surah model; evict __PHP_Incomplete_Class etc.
-        if ($cached instanceof Surah) {
-            return $cached;
-        }
-
-        Cache::forget($key);
-        $result = $this->repository->getSurahWithVerses($id);
-        if ($result !== null) {
-            Cache::put($key, $result, 300);
-        }
-        return $result;
+    private function paginate(Collection $items, int $perPage, int $page): LengthAwarePaginator
+    {
+        return new LengthAwarePaginator(
+            $items->forPage($page, $perPage)->values(),
+            $items->count(),
+            $perPage,
+            $page,
+            ['path' => Paginator::resolveCurrentPath()],
+        );
     }
 }

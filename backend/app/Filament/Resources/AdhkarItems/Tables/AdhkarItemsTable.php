@@ -11,6 +11,7 @@ use Filament\Actions\EditAction;
 use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
+use Livewire\Component;
 
 class AdhkarItemsTable
 {
@@ -34,7 +35,13 @@ class AdhkarItemsTable
                 ->options(fn () => AdhkarCategory::ordered()->get()->pluck('name', 'id')),
             SelectFilter::make('adhkar_section_id')
                 ->label('Section')
-                ->options(fn () => AdhkarSection::ordered()->get()->pluck('name', 'id')),
+                ->searchable()
+                ->options(fn (Component $livewire) => AdhkarSection::query()
+                    ->when(
+                        $livewire->getTableFilterFormState('adhkar_category_id')['value'] ?? null,
+                        fn ($query, $categoryId) => $query->where('adhkar_category_id', $categoryId),
+                    )
+                    ->ordered()->get()->pluck('name', 'id')),
         ];
     }
 

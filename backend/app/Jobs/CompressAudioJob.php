@@ -8,6 +8,7 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use Symfony\Component\Process\Process;
 
 class CompressAudioJob implements ShouldQueue
@@ -21,15 +22,16 @@ class CompressAudioJob implements ShouldQueue
         private string $modelClass,
         private int    $modelId,
         private string $relativePath, // path stored in audio_path column, e.g. "recordings/abc.mp3"
+        private string $disk = 'public', // storage disk the file lives on (recordings use the private 'local' disk)
     ) {
-        Log::info("CompressAudioJob: queued {$relativePath} for {$modelClass}#{$modelId}");
+        Log::info("CompressAudioJob: queued {$relativePath} for {$modelClass}#{$modelId} on disk '{$disk}'");
     }
 
     public function handle(): void
     {
         Log::info("CompressAudioJob: processing {$this->relativePath} for {$this->modelClass}#{$this->modelId}");
 
-        $absInput = storage_path('app/public/' . ltrim($this->relativePath, '/\\'));
+        $absInput = Storage::disk($this->disk)->path(ltrim($this->relativePath, '/\\'));
 
         if (! file_exists($absInput)) {
             Log::warning("CompressAudioJob: file not found — {$absInput}");

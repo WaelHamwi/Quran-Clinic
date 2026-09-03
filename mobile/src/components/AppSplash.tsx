@@ -7,20 +7,24 @@ import SplashLogoMid from '@/assets/figma/splash-logo-mid.svg';
 import SplashLogoBottom from '@/assets/figma/splash-logo-bottom.svg';
 import { PatternedBackground } from '@/components/layout/PatternedBackground';
 import { useLanguage } from '@/context/LanguageContext';
-import { palette } from '@/theme/colors';
-import { appSplashStyles as s } from './AppSplash.styles';
+import { useTheme } from '@/context/ThemeContext';
+import { useStyles } from '@/hooks/common/useStyles';
+import { createStyles } from './AppSplash.styles';
 
 type Props = { onReady: () => void };
 
 export function AppSplash({ onReady }: Props) {
   const insets = useSafeAreaInsets();
   const { language, isArabic, selectLanguage, t } = useLanguage();
+  const { theme } = useTheme();
+  const s = useStyles(createStyles);
   const [menuOpen, setMenuOpen] = useState(false);
 
   const buttonTop = insets.top + 24;
 
   // FR-2.1 — welcome screen flashes/animates on first launch: the three logo
   // parts reveal in sequence, then the subtitle fades up.
+  /* eslint-disable react-hooks/refs -- Animated.Value is RN's designated escape hatch from React's render model; mutating/reading it outside state is the intended API */
   const topA = useRef(new Animated.Value(0)).current;
   const midA = useRef(new Animated.Value(0)).current;
   const botA = useRef(new Animated.Value(0)).current;
@@ -61,12 +65,12 @@ export function AppSplash({ onReady }: Props) {
           pressed && s.langPickerPressed,
         ]}
       >
-        <Ionicons name="globe-outline" size={16} color={palette.text.primary} />
+        <Ionicons name="globe-outline" size={16} color={theme.text} />
         <Text style={s.langText}>{isArabic ? 'العربية' : 'English'}</Text>
         <Ionicons
           name={menuOpen ? 'chevron-up' : 'chevron-down'}
           size={14}
-          color={palette.text.secondary}
+          color={theme.textSecondary}
         />
       </Pressable>
 
@@ -80,10 +84,10 @@ export function AppSplash({ onReady }: Props) {
               onPress={() => { selectLanguage('ar'); setMenuOpen(false); }}
             >
               <Text style={[s.langOptionText, language === 'ar' && s.langOptionTextActive]}>
-                العربية dasdsad 
+                العربية
               </Text>
               {language === 'ar' && (
-                <Ionicons name="checkmark" size={16} color={palette.brand[500]} />
+                <Ionicons name="checkmark" size={16} color={theme.primary} />
               )}
             </Pressable>
             <View style={s.langOptionDivider} />
@@ -92,10 +96,10 @@ export function AppSplash({ onReady }: Props) {
               onPress={() => { selectLanguage('en'); setMenuOpen(false); }}
             >
               <Text style={[s.langOptionText, language === 'en' && s.langOptionTextActive]}>
-                English dasd asd
+                English
               </Text>
               {language === 'en' && (
-                <Ionicons name="checkmark" size={16} color={palette.brand[500]} />
+                <Ionicons name="checkmark" size={16} color={theme.primary} />
               )}
             </Pressable>
           </View>
@@ -130,6 +134,7 @@ export function AppSplash({ onReady }: Props) {
           {t.splash.subtitle}
         </Animated.Text>
       </View>
+      {/* eslint-enable react-hooks/refs */}
 
       {/* CTA button */}
       <Pressable

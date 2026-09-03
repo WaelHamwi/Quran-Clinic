@@ -3,10 +3,6 @@
 namespace App\Filament\Resources\FeatureFlags\Tables;
 
 use App\Models\FeatureFlag;
-use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteAction;
-use Filament\Actions\DeleteBulkAction;
-use Filament\Actions\EditAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\ToggleColumn;
 
@@ -31,18 +27,18 @@ class FeatureFlagsTable
         return [];
     }
 
+    /**
+     * Feature flags are a fixed, seeded set — the only supported interaction is
+     * flipping the Visible toggle. Create/edit/delete are intentionally absent so
+     * a flag can never be removed by accident (which silently breaks the mobile app).
+     */
     public static function getActions(): array
     {
-        return [
-            EditAction::make(),
-            DeleteAction::make(),
-        ];
+        return [];
     }
 
     public static function getBulkActions(): array
     {
-        return [
-            BulkActionGroup::make([DeleteBulkAction::make()]),
-        ];
+        return [];
     }
 }

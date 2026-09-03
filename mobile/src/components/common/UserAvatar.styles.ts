@@ -1,19 +1,11 @@
-import { StyleSheet } from 'react-native';
-import { palette } from '@/theme/colors';
+import type { Theme } from '@/theme/colors';
 import { fontFamily } from '@/theme/typography';
 
-export const s = StyleSheet.create({
-  initialsText: {
-    fontFamily: fontFamily.alexandriaSemiBold,
-    color: palette.brand[500],
-  },
-});
-
-export const avatarContainerStyle = (size: number) => ({
+export const avatarContainerStyle = (theme: Theme, size: number) => ({
   width: size,
   height: size,
   borderRadius: size / 2,
-  backgroundColor: palette.brand[50],
+  backgroundColor: theme.brandSubtleBorder,
   alignItems: 'center' as const,
   justifyContent: 'center' as const,
 });
@@ -24,8 +16,8 @@ export const avatarImageStyle = (size: number) => ({
   borderRadius: size / 2,
 });
 
-export const initialsTextStyle = (size: number) => ({
+export const initialsTextStyle = (theme: Theme, size: number) => ({
   fontFamily: fontFamily.alexandriaSemiBold,
   fontSize: Math.floor(size * 0.38),
-  color: palette.brand[500],
+  color: theme.primary,
 });

@@ -1,14 +1,15 @@
 import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { palette } from '@/theme/colors';
 import { useLanguage } from '@/context/LanguageContext';
-import { lockedWirdStyles as s } from './LockedWird.styles';
+import { useTheme } from '@/context/ThemeContext';
+import { useStyles } from '@/hooks/common/useStyles';
+import { createStyles } from './LockedWird.styles';
 
 interface LockedWirdProps {
   /** Open the subscription plans screen. */
   onSubscribe: () => void;
-  /** Jump back to the first (free) wird. */
+  /** Jump back to the summarized (free) recording. */
   onReturn: () => void;
 }
 
@@ -18,12 +19,14 @@ interface LockedWirdProps {
  */
 function LockedWirdBase({ onSubscribe, onReturn }: LockedWirdProps) {
   const { t } = useLanguage();
+  const { theme } = useTheme();
+  const s = useStyles(createStyles);
 
   return (
     <View style={s.container}>
       <View style={s.top}>
         <View style={s.iconCircle}>
-          <Ionicons name="lock-closed" size={48} color={palette.brand[500]} />
+          <Ionicons name="lock-closed" size={48} color={theme.primary} />
         </View>
         <Text style={s.title}>{t.disease.lockedTitle}</Text>
         <Text style={s.body}>{t.disease.lockedBody}</Text>

@@ -4,26 +4,27 @@ import { Stack } from 'expo-router';
 import { SponsorScreen } from '@/components/onboarding/SponsorScreen';
 import { Toast } from '@/components/common/Toast';
 import { DrivingModeOverlay } from '@/components/common/DrivingModeOverlay';
-import { useTheme } from '@/context/ThemeContext';
+import { GlobalPlayerOverlay } from '@/components/players/GlobalPlayerOverlay';
 import { useLanguage } from '@/context/LanguageContext';
-import { useNetworkStatus } from '@/hooks/useNetworkStatus';
-import { useOfflineQueue } from '@/hooks/useOfflineQueue';
-import { useFeatures } from '@/hooks/useFeatures';
-import { useNotifications } from '@/hooks/useNotifications';
-import { useDrivingMode } from '@/hooks/useDrivingMode';
+import { useNetworkStatus } from '@/hooks/common/useNetworkStatus';
+import { useOfflineQueue } from '@/hooks/common/useOfflineQueue';
+import { useFeatures } from '@/hooks/common/useFeatures';
+import { useNotifications } from '@/hooks/common/useNotifications';
+import { useDrivingMode } from '@/hooks/player/useDrivingMode';
+import { useFavoritesSync } from '@/hooks/content/useFavoritesSync';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { selectPlayerLoadError, setLoadError } from '@/store/slices/playerSlice';
 import { showToast } from '@/store/slices/uiSlice';
 
 /** Main navigator — only mounted once the first-run flow is complete. */
 export function MainApp() {
-  const { theme } = useTheme();
   const { t } = useLanguage();
   const dispatch = useAppDispatch();
   useNetworkStatus();
   useOfflineQueue();
   useFeatures();
   useNotifications();
+  useFavoritesSync();
   const { isDriving, onContinueAnyway, onStop } = useDrivingMode();
 
   const playerLoadError = useAppSelector(selectPlayerLoadError);
@@ -63,6 +64,7 @@ export function MainApp() {
           <Stack.Screen name="notifications" />
           <Stack.Screen name="notification-inbox" />
         </Stack>
+        <GlobalPlayerOverlay />
         <DrivingModeOverlay
           visible={isDriving}
           onContinueAnyway={onContinueAnyway}

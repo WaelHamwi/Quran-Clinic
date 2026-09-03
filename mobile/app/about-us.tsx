@@ -7,10 +7,12 @@ import { Screen } from '@/components/layout/Screen';
 import { PatternedBackground } from '@/components/layout/PatternedBackground';
 import { Header } from '@/components/layout/Header';
 import { useLanguage } from '@/context/LanguageContext';
-import { aboutUsScreenStyles as s } from '@/styles/aboutUsScreen.styles';
+import { useStyles } from '@/hooks/common/useStyles';
+import { createStyles } from '@/styles/aboutUsScreen.styles';
 
 export default function AboutUsScreen() {
   const { t, isArabic } = useLanguage();
+  const s = useStyles(createStyles);
 
   const bullets = [
     t.aboutUs.appContainsItem1,

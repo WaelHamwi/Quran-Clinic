@@ -1,9 +1,12 @@
 import { StyleSheet } from 'react-native';
+import type { Theme } from '@/theme/colors';
+import { spacing } from '@/theme/spacing';
 
-export const categoryGridStyles = StyleSheet.create({
-  categoryGrid__content: {
-    paddingHorizontal: 16,
-    paddingBottom: 20,
-    gap: 8,
-  },
-});
+export const createStyles = (_theme: Theme) =>
+  StyleSheet.create({
+    categoryGrid__content: {
+      paddingHorizontal: spacing.lg,
+      paddingBottom: 20,
+      gap: spacing.sm,
+    },
+  });

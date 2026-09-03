@@ -13,7 +13,7 @@ import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { UserAvatar } from '@/components/common/UserAvatar';
 import { Ionicons } from '@expo/vector-icons';
-import { persistAvatar } from '@/services/avatarStorage';
+import { persistAvatar } from '@/services/auth/avatarStorage';
 import { Screen } from '@/components/layout/Screen';
 import { PatternedBackground } from '@/components/layout/PatternedBackground';
 import { Header } from '@/components/layout/Header';
@@ -22,8 +22,9 @@ import { useAuth } from '@/context/AuthContext';
 import { useLanguage } from '@/context/LanguageContext';
 import { useAppDispatch } from '@/store/hooks';
 import { showToast } from '@/store/slices/uiSlice';
-import { palette } from '@/theme/colors';
-import { editProfileStyles as s } from '@/styles/editProfileScreen.styles';
+import { useTheme } from '@/context/ThemeContext';
+import { useStyles } from '@/hooks/common/useStyles';
+import { createStyles } from '@/styles/editProfileScreen.styles';
 import { COUNTRIES, type Country } from '@/data/countries';
 
 type Gender = 'male' | 'female';
@@ -39,6 +40,8 @@ function resolveCountry(value?: string | null): Country | null {
 export default function EditProfileScreen() {
   const { profile, isGuest, updateProfile } = useAuth();
   const { t, isArabic, language } = useLanguage();
+  const { theme } = useTheme();
+  const s = useStyles(createStyles);
   const dispatch = useAppDispatch();
 
   const [fullName, setFullName] = useState<string>(profile?.name ?? '');
@@ -130,7 +133,7 @@ export default function EditProfileScreen() {
               <Pressable style={s.avatarPressable} onPress={handlePickAvatar}>
                 <UserAvatar uri={avatar} name={fullName || profile?.name} size={80} />
                 <View style={s.avatarEditBadge}>
-                  <Ionicons name="camera" size={15} color={palette.text.onBrand} />
+                  <Ionicons name="camera" size={15} color={theme.textOnBrand} />
                 </View>
               </Pressable>
             ) : (
@@ -144,7 +147,7 @@ export default function EditProfileScreen() {
             <Text style={[s.label, isArabic && s.labelRtl]}>{t.editProfile.fullName}</Text>
             <View style={[s.inputRow, isArabic && s.inputRowRtl]}>
               <View style={s.inputIcon}>
-                <Ionicons name="person-outline" size={16} color={palette.text.secondary} />
+                <Ionicons name="person-outline" size={16} color={theme.textSecondary} />
               </View>
               <TextInput
                 style={s.input}
@@ -152,7 +155,7 @@ export default function EditProfileScreen() {
                 onChangeText={setFullName}
                 textAlign={isArabic ? 'right' : 'left'}
                 placeholder={t.editProfile.fullName}
-                placeholderTextColor={palette.text.placeholder}
+                placeholderTextColor={theme.textPlaceholder}
               />
             </View>
           </View>
@@ -163,14 +166,14 @@ export default function EditProfileScreen() {
               <Text style={[s.label, isArabic && s.labelRtl]}>{t.editProfile.email}</Text>
               <View style={[s.inputRow, s.inputRowDisabled, isArabic && s.inputRowRtl]}>
                 <View style={s.inputIcon}>
-                  <Ionicons name="mail-outline" size={16} color={palette.text.secondary} />
+                  <Ionicons name="mail-outline" size={16} color={theme.textSecondary} />
                 </View>
                 <TextInput
                   style={s.input}
                   value={email}
                   editable={false}
                   textAlign={isArabic ? 'right' : 'left'}
-                  placeholderTextColor={palette.text.placeholder}
+                  placeholderTextColor={theme.textPlaceholder}
                 />
               </View>
               <Text style={[s.hint, isArabic && s.hintRtl]}>{t.editProfile.emailReadOnly}</Text>
@@ -182,7 +185,7 @@ export default function EditProfileScreen() {
             <Text style={[s.label, isArabic && s.labelRtl]}>{t.editProfile.phone}</Text>
             <View style={[s.inputRow, isArabic && s.inputRowRtl]}>
               <View style={s.inputIcon}>
-                <Ionicons name="call-outline" size={16} color={palette.text.secondary} />
+                <Ionicons name="call-outline" size={16} color={theme.textSecondary} />
               </View>
               <TextInput
                 style={s.input}
@@ -191,7 +194,7 @@ export default function EditProfileScreen() {
                 keyboardType="phone-pad"
                 textAlign={isArabic ? 'right' : 'left'}
                 placeholder={t.editProfile.phone}
-                placeholderTextColor={palette.text.placeholder}
+                placeholderTextColor={theme.textPlaceholder}
               />
             </View>
           </View>
@@ -206,25 +209,25 @@ export default function EditProfileScreen() {
               {isArabic ? (
                 <>
                   <View style={s.chevronIcon}>
-                    <Ionicons name="chevron-down" size={16} color={palette.text.secondary} />
+                    <Ionicons name="chevron-down" size={16} color={theme.textSecondary} />
                   </View>
-                  <Text style={[s.input, !country && { color: palette.text.placeholder }, { textAlign: 'right' }]}>
+                  <Text style={[s.input, !country && { color: theme.textPlaceholder }, { textAlign: 'right' }]}>
                     {countryLabel}
                   </Text>
                   <View style={s.inputIcon}>
-                    <Ionicons name="flag-outline" size={16} color={palette.text.secondary} />
+                    <Ionicons name="flag-outline" size={16} color={theme.textSecondary} />
                   </View>
                 </>
               ) : (
                 <>
                   <View style={s.inputIcon}>
-                    <Ionicons name="flag-outline" size={16} color={palette.text.secondary} />
+                    <Ionicons name="flag-outline" size={16} color={theme.textSecondary} />
                   </View>
-                  <Text style={[s.input, !country && { color: palette.text.placeholder }]}>
+                  <Text style={[s.input, !country && { color: theme.textPlaceholder }]}>
                     {countryLabel}
                   </Text>
                   <View style={s.chevronIcon}>
-                    <Ionicons name="chevron-down" size={16} color={palette.text.secondary} />
+                    <Ionicons name="chevron-down" size={16} color={theme.textSecondary} />
                   </View>
                 </>
               )}
@@ -265,7 +268,7 @@ export default function EditProfileScreen() {
             disabled={saving}
           >
             {saving ? (
-              <ActivityIndicator size="small" color={palette.text.onBrand} />
+              <ActivityIndicator size="small" color={theme.textOnBrand} />
             ) : (
               <Text style={s.saveButtonText}>{t.editProfile.save}</Text>
             )}

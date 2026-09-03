@@ -10,28 +10,16 @@ class OAuthProvider extends Model
 {
     use HasFactory;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var array<int, string>
-     */
     protected $table = 'oauth_providers';
+
+    // Google access/refresh tokens are deliberately not persisted: nothing ever
+    // reads them back, and keeping live provider credentials in plaintext is a
+    // liability. The nullable provider_token columns stay in the schema for a
+    // future integration, which must store them encrypted.
     protected $fillable = [
         'user_id',
         'provider',
         'provider_user_id',
-        'access_token',
-        'refresh_token',
-        'token_expires_at',
-    ];
-
-    /**
-     * The attributes that should be cast.
-     *
-     * @var array<string, string>
-     */
-    protected $casts = [
-        'token_expires_at' => 'datetime',
     ];
 
     /**

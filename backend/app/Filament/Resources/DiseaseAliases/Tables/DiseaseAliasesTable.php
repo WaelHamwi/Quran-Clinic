@@ -2,7 +2,9 @@
 
 namespace App\Filament\Resources\DiseaseAliases\Tables;
 
+use App\Filament\Support\TranslatedName;
 use App\Models\Disease;
+use App\Models\DiseaseAlias;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
@@ -16,7 +18,10 @@ class DiseaseAliasesTable
     {
         return [
             TextColumn::make('alias')->label('Alias')->searchable(),
-            TextColumn::make('disease.name')->label('Disease'),
+            TextColumn::make('disease.name')
+                ->label('Disease')
+                ->getStateUsing(fn (DiseaseAlias $record): ?string => TranslatedName::arabic($record->disease))
+                ->description(fn (DiseaseAlias $record): ?string => TranslatedName::english($record->disease)),
         ];
     }
 
@@ -25,7 +30,7 @@ class DiseaseAliasesTable
         return [
             SelectFilter::make('disease_id')
                 ->label('Disease')
-                ->options(fn () => Disease::ordered()->get()->pluck('name', 'id')),
+                ->options(fn () => TranslatedName::options(Disease::ordered()->get())),
         ];
     }
 

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Widgets;
 
+use App\Filament\Support\TranslatedName;
 use App\Models\Recording;
 use Filament\Widgets\ChartWidget;
 use Illuminate\Support\Str;
@@ -29,17 +30,20 @@ class TopPlayedRecordingsWidget extends ChartWidget
 
     protected function getData(): array
     {
-        $recordings = Recording::with('disease')
+        $recordings = Recording::with('attachments.attachable')
             ->orderByDesc('plays_count')
             ->limit(8)
             ->get();
 
         $labels = $recordings->map(function ($recording) {
-            $context = $recording->disease
-                ? Str::limit($recording->disease->getTranslation('name', 'en'), 12)
+            $attachment = $recording->attachments->first();
+            $owner      = $attachment?->attachable;
+
+            $context = $owner
+                ? Str::limit(TranslatedName::display($owner) ?? '', 12)
                 : 'General';
 
-            return $context . ' · S' . $recording->session_number;
+            return $context . ' · S' . ($attachment?->session_number ?? 1);
         })->toArray();
 
         $counts = $recordings->pluck('plays_count')->toArray();

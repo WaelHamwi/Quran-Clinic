@@ -4,9 +4,11 @@ import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { RemoteSvg } from '@/components/common/RemoteSvg';
 import { useLanguage } from '@/context/LanguageContext';
+import { useTheme } from '@/context/ThemeContext';
+import { useStyles } from '@/hooks/common/useStyles';
 import { pickText } from '@/utils/formatters';
 import type { Disease } from '@/types/disease';
-import { diseaseCardStyles as s, ICON_COLOR } from './DiseaseCard.styles';
+import { createStyles } from './DiseaseCard.styles';
 
 interface DiseaseCardProps {
   disease: Disease;
@@ -14,11 +16,15 @@ interface DiseaseCardProps {
 }
 
 function DiseaseCardBase({ disease, onPress }: DiseaseCardProps) {
-  const { isArabic, t } = useLanguage();
+  const { isArabic } = useLanguage();
+  const { theme } = useTheme();
+  const s = useStyles(createStyles);
   const handlePress = useCallback(() => onPress(disease.slug), [onPress, disease.slug]);
-  const count = disease.recordings_count ?? disease.recordings?.length ?? 0;
   const iconIsUrl = !!disease.icon && /^https?:\/\//.test(disease.icon);
   const iconIsSvg = iconIsUrl && /\.svg($|\?)/i.test(disease.icon as string);
+  // See FavoriteRow — remount on url change so a recycled cell never keeps the
+  // previous disease's image.
+  const iconKey = disease.icon ?? 'no-icon';
 
   return (
     <Pressable
@@ -26,27 +32,32 @@ function DiseaseCardBase({ disease, onPress }: DiseaseCardProps) {
       style={({ pressed }) => [s.diseaseCard, pressed && s['diseaseCard--pressed']]}
     >
       {iconIsSvg ? (
-        <RemoteSvg uri={disease.icon as string} width={48} height={48} color={ICON_COLOR} />
+        <RemoteSvg
+          key={iconKey}
+          uri={disease.icon as string}
+          width={48}
+          height={48}
+          color={theme.primary}
+        />
       ) : iconIsUrl ? (
         <Image
+          key={iconKey}
+          recyclingKey={iconKey}
           source={{
             uri: disease.icon as string,
             headers: { 'ngrok-skip-browser-warning': 'true' },
           }}
           style={s.diseaseCard__iconImage}
           contentFit="contain"
-          tintColor={ICON_COLOR}
+          tintColor={theme.primary}
         />
       ) : (
         <View style={s.diseaseCard__iconBubble}>
-          <Ionicons name="pulse-outline" size={24} color={ICON_COLOR} />
+          <Ionicons name="pulse-outline" size={24} color={theme.primary} />
         </View>
       )}
       <Text style={s.diseaseCard__name} numberOfLines={2}>
         {pickText(disease.name, isArabic)}
-      </Text>
-      <Text style={s.diseaseCard__count}>
-        {t.hospital.recordingCount(count)}
       </Text>
     </Pressable>
   );

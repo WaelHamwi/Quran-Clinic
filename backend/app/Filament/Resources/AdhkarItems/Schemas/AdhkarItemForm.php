@@ -37,6 +37,7 @@ class AdhkarItemForm
             FileUpload::make('image')
                 ->label('Image (optional)')
                 ->image()
+                ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp', 'image/gif'])
                 ->disk('public')
                 ->directory('adhkar-items')
                 ->maxSize(2048)

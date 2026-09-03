@@ -20,12 +20,14 @@ TERMINAL NODE RULE: Whichever level has recordings attached directly is the term
   • Subcategory + recordings → cannot add diseases (and vice versa)
 
 ## BUSINESS RULES
-session_number=1 → ALWAYS FREE
-session_number>=2 → REQUIRES subscription OR trial
+Recording types (single source: ../shared-context.md → RECORDING TYPES):
+type=summarized (مختصرة) → ALWAYS FREE
+type=detailed (مطولة) → REQUIRES subscription OR trial
+Max two recordings per owner (one summarized + one detailed)
 Trial: 7 days, max 2 per user
 Favorites: DISEASES only
-Free users: access 1st recording only
-Paid users: access 1st, 2nd, 3rd recordings
+Free users: access summarized recordings only
+Paid users: access summarized + detailed recordings
 General Ruqyah: is_general flag
 
 ## USER ROLES

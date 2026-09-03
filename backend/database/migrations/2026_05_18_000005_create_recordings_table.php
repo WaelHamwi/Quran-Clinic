@@ -18,7 +18,7 @@ return new class extends Migration
             $table->json('segments')->nullable();
             $table->string('audio_path', 500)->nullable();
             $table->unsignedInteger('duration_seconds')->nullable();
-            $table->boolean('is_free')->default(false);
+            $table->enum('type', ['summarized', 'detailed'])->default('summarized');
             $table->boolean('is_general')->default(false);
             $table->unsignedInteger('plays_count')->default(0);
             $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();

@@ -1,22 +1,25 @@
-import React, { useMemo, useRef } from 'react';
-import { PanResponder, Pressable, StyleSheet, Text, View } from 'react-native';
+import React, { useRef } from 'react';
+import { PanResponder, Pressable, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
 import { useTheme } from '@/context/ThemeContext';
 import { useLanguage } from '@/context/LanguageContext';
+import { useStyles } from '@/hooks/common/useStyles';
 import { useAppSelector } from '@/store/hooks';
-import { selectMiniPlayerVisible } from '@/store/slices/playerSlice';
-import type { Theme } from '@/theme/colors';
-import { spacing, hitSlop } from '@/theme/spacing';
-import { fontSize, fontWeight } from '@/theme/typography';
-import { usePlayer } from '@/hooks/usePlayer';
-import { useGeneralRuqyah } from '@/hooks/useGeneralRuqyah';
+import { selectMiniPlayerVisible, selectPlaybackOrigin } from '@/store/slices/playerSlice';
+import { hitSlop } from '@/theme/spacing';
+import { usePlayer } from '@/hooks/player/usePlayer';
+import { useGeneralRuqyah } from '@/hooks/player/useGeneralRuqyah';
+import { recordingTypeOf } from '@/utils/recordings';
+import { createStyles } from './MiniPlayer.styles';
 
 /** Floating playback bar pinned above the tab bar while ruqyah audio plays. */
 function MiniPlayerBase() {
   const { theme } = useTheme();
   const { t } = useLanguage();
-  const styles = useMemo(() => StyleSheet.create(createStyles(theme)), [theme]);
+  const styles = useStyles(createStyles);
   const visible = useAppSelector(selectMiniPlayerVisible);
+  const originRoute = useAppSelector(selectPlaybackOrigin);
   const { currentRecording, isPlaying, isLoading, position, duration, togglePlay, stop, seekTo } =
     usePlayer();
   const { playNext, playPrevious, hasPrevious, hasNext, isGeneralMode } = useGeneralRuqyah();
@@ -25,6 +28,7 @@ function MiniPlayerBase() {
   const barWidthRef = useRef(0);
   const durationRef = useRef(duration);
   const seekToRef = useRef(seekTo);
+  /* eslint-disable react-hooks/refs -- always-fresh refs read by the PanResponder handlers below, created once via useRef so they see the latest values without recreating the responder every render */
   durationRef.current = duration;
   seekToRef.current = seekTo;
 
@@ -55,11 +59,16 @@ function MiniPlayerBase() {
       },
     }),
   ).current;
+  /* eslint-enable react-hooks/refs */
   // ─────────────────────────────────────────────────────────────────────────
 
-  if (!visible || !currentRecording) return null;
+  // General ruqyah is driven entirely by its toggle button — no bottom bar for it.
+  // The favorites queue (a different queue kind) keeps its bar with skip controls.
+  if (!visible || !currentRecording || isGeneralMode) return null;
 
   const progress = duration > 0 ? position / duration : 0;
+  // Skip controls appear whenever a multi-track queue (favorites) is playing.
+  const canSkip = hasPrevious || hasNext;
 
   return (
     <View style={styles.container}>
@@ -67,6 +76,7 @@ function MiniPlayerBase() {
       <View
         style={styles.progressWrap}
         onLayout={(e) => { barWidthRef.current = e.nativeEvent.layout.width; }}
+        // eslint-disable-next-line react-hooks/refs -- reading the stable, once-created PanResponder's handlers during render is the standard idiom
         {...panResponder.panHandlers}
       >
         <View style={styles.progressTrack}>
@@ -76,15 +86,23 @@ function MiniPlayerBase() {
 
       <View style={styles.row}>
         <Ionicons name="musical-notes" size={18} color={theme.primary} />
-        <View style={styles.texts}>
+        <Pressable
+          style={styles.texts}
+          disabled={!originRoute}
+          // navigate, not push: tapping twice returns to the wird screen already
+          // on the stack instead of stacking a second copy of it.
+          onPress={() => { if (originRoute) router.navigate(originRoute as never); }}
+        >
           <Text style={styles.title} numberOfLines={1}>
-            {t.disease.session(currentRecording.session_number)}
+            {recordingTypeOf(currentRecording) === 'detailed'
+              ? t.disease.typeDetailed
+              : t.disease.typeSummarized}
           </Text>
           <Text style={styles.label}>{t.player.nowPlaying}</Text>
-        </View>
+        </Pressable>
 
-        {/* Prev / next skip buttons — only visible in general ruqyah queue mode */}
-        {isGeneralMode && (
+        {/* Prev / next skip buttons — visible while a favorites queue is playing */}
+        {canSkip && (
           <Pressable onPress={playPrevious} hitSlop={hitSlop} disabled={!hasPrevious}>
             <Ionicons
               name="play-skip-back"
@@ -102,7 +120,7 @@ function MiniPlayerBase() {
           />
         </Pressable>
 
-        {isGeneralMode && (
+        {canSkip && (
           <Pressable onPress={playNext} hitSlop={hitSlop} disabled={!hasNext}>
             <Ionicons
               name="play-skip-forward"
@@ -118,41 +136,6 @@ function MiniPlayerBase() {
       </View>
     </View>
   );
-}
-
-function createStyles(theme: Theme) {
-  return {
-    container: {
-      backgroundColor: theme.surface,
-      borderTopWidth: StyleSheet.hairlineWidth,
-      borderTopColor: theme.border,
-    },
-    // Tall touch area so the finger can comfortably land anywhere on the bar
-    progressWrap: {
-      height: 16,
-      justifyContent: 'center' as const,
-      paddingHorizontal: 0,
-    },
-    progressTrack: {
-      height: 3,
-      backgroundColor: theme.border,
-      overflow: 'hidden' as const,
-    },
-    progressFill: {
-      height: 3,
-      backgroundColor: theme.primary,
-    },
-    row: {
-      flexDirection: 'row' as const,
-      alignItems: 'center' as const,
-      gap: spacing.md,
-      paddingHorizontal: spacing.lg,
-      paddingBottom: spacing.sm,
-    },
-    texts: { flex: 1 },
-    title: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: theme.text },
-    label: { fontSize: fontSize.xs, color: theme.textMuted },
-  };
 }
 
 export const MiniPlayer = React.memo(MiniPlayerBase);

@@ -10,12 +10,15 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Verse extends Model
 {
+    // No InvalidatesCache: verses are read one surah at a time via the uncached
+    // SurahService::getSurahWithVerses (indexed query) — no cached aggregate embeds them.
     use HasTranslations, SoftDeletes;
 
     protected $fillable = [
         'surah_id',
         'verse_number',
         'text',
+        'text_norm',
     ];
 
     public array $translatable = ['text'];
@@ -23,6 +26,17 @@ class Verse extends Model
     protected $casts = [
         'verse_number' => 'integer',
     ];
+
+    protected static function booted(): void
+    {
+        // Keep the pre-normalized search column in sync with the Arabic text for
+        // any single-model write (e.g. Filament edits). Bulk seeder inserts bypass
+        // model events and fill text_norm themselves in QuranSeederService.
+        static::saving(function (Verse $verse): void {
+            $ar = $verse->getTranslations('text')['ar'] ?? '';
+            $verse->text_norm = $ar === '' ? null : self::normalizeArabic($ar);
+        });
+    }
 
     public function surah(): BelongsTo
     {
@@ -34,7 +48,31 @@ class Verse extends Model
         return $query->where('surah_id', $surahId)->orderBy('verse_number');
     }
 
+    /**
+     * Fast search against the pre-normalized `text_norm` column — a plain LIKE
+     * instead of the legacy full-scan that ran two REGEXP_REPLACE calls per row.
+     * VerseRepository falls back to scopeSearchLegacy when the column is absent
+     * (database not yet upgraded via `php artisan verses:normalize`).
+     */
     public function scopeSearch(Builder $query, string $term): Builder
+    {
+        $term = trim($term);
+
+        return $query->where(function (Builder $q) use ($term) {
+            // English — plain case-insensitive match
+            $q->where('text->en', 'like', "%{$term}%");
+
+            // Arabic — diacritic-insensitive: the stored copy is already
+            // normalized, so only the user's term needs normalizing here.
+            $normalized = self::normalizeArabic($term);
+            if ($normalized !== '') {
+                $q->orWhere('text_norm', 'like', '%' . $normalized . '%');
+            }
+        });
+    }
+
+    /** Legacy per-row normalization search — fallback for databases without `text_norm`. */
+    public function scopeSearchLegacy(Builder $query, string $term): Builder
     {
         $term = trim($term);
 
@@ -46,8 +84,11 @@ class Verse extends Model
             // vowelled (Uthmani), so a raw LIKE against undiacritised user input
             // never matches. Strip harakat/tatweel and normalise alef/hamza forms
             // on BOTH the stored column and the search term before comparing.
+            // REGEXP_REPLACE only exists on MySQL/MariaDB (same guard as the
+            // disease FULLTEXT search) — other drivers keep the English branch.
             $normalized = self::normalizeArabic($term);
-            if ($normalized !== '') {
+            $driver     = $q->getConnection()->getDriverName();
+            if ($normalized !== '' && in_array($driver, ['mysql', 'mariadb'], true)) {
                 $expr = self::arabicNormalizeSql("JSON_UNQUOTE(JSON_EXTRACT(`text`, '$.ar'))");
                 $q->orWhereRaw("{$expr} LIKE ?", ['%' . $normalized . '%']);
             }

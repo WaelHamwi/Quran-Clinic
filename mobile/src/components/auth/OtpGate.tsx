@@ -12,14 +12,17 @@ import { PatternedBackground } from '@/components/layout/PatternedBackground';
 import { FigmaTopBar } from '@/components/layout/FigmaTopBar';
 import { useAuth } from '@/context/AuthContext';
 import { useLanguage } from '@/context/LanguageContext';
-import { palette } from '@/theme/colors';
-import { otpGateStyles as s } from './OtpGate.styles';
+import { useTheme } from '@/context/ThemeContext';
+import { useStyles } from '@/hooks/common/useStyles';
+import { createStyles } from './OtpGate.styles';
 
 const OTP_LENGTH = 6;
 const RESEND_COOLDOWN = 60;
 
 export function OtpGate() {
   const { t } = useLanguage();
+  const { theme } = useTheme();
+  const s = useStyles(createStyles);
   const { verifyOtp, resendOtp, loading } = useAuth();
 
   const [digits, setDigits] = useState<string[]>(Array(OTP_LENGTH).fill(''));
@@ -113,7 +116,7 @@ export function OtpGate() {
           {error && <Text style={s.errorText}>{error}</Text>}
 
           {loading && (
-            <ActivityIndicator style={s.spinner} color={palette.brand[500]} />
+            <ActivityIndicator style={s.spinner} color={theme.primary} />
           )}
 
           <Pressable

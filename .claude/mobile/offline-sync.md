@@ -26,7 +26,7 @@ State lives in `downloadsSlice` (`store-design.md`); device work in `audioServic
 Each task tracks `progress`, `totalBytes`, `localPath`, `error`.
 
 ### Constraints
-- Free users: download **session 1 only**. Paid users: all sessions.
+- Free users: download the **summarized recording only**. Paid users: both types.
 - Wi-Fi-only toggle in settings, **default on** — block downloads on cellular unless
   the user allows it.
 - On logout: clear all downloads (`clearAll`).

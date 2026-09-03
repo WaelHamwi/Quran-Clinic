@@ -2,6 +2,7 @@
 
 namespace App\Filament\Widgets;
 
+use App\Filament\Support\TranslatedName;
 use App\Models\Category;
 use App\Models\Disease;
 use Filament\Widgets\ChartWidget;
@@ -35,7 +36,7 @@ class HospitalDistributionWidget extends ChartWidget
         $data   = [];
 
         foreach ($categories as $category) {
-            $labels[] = $category->getTranslation('name', 'en');
+            $labels[] = TranslatedName::display($category) ?? "#{$category->id}";
             $data[]   = Disease::whereHas(
                 'subcategory',
                 fn ($q) => $q->where('category_id', $category->id)

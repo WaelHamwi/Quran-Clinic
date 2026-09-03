@@ -5,7 +5,7 @@ node_modules/
 
 # Expo
 .expo/
-dist/
+# dist/ — now tracked (build output kept in repo by request)
 web-build/
 
 # Native
@@ -29,7 +29,7 @@ yarn-error.*
 .DS_Store
 *.pem
 
-# local env files
+# local env files (never commit — held a Google client secret once; see .env.example)
 .env
 .env.*
 !.env.example
@@ -40,7 +40,12 @@ yarn-error.*
 
 # generated native folders
 /ios
-/android
+# /android — now tracked; android/.gitignore still excludes build/ and .gradle
+
+# Gradle output inside local Expo modules — /android above misses these,
+# since the modules live outside the root native folders
+modules/**/android/build/
+modules/**/android/.cxx/
 
 # Play Store service-account key (NEVER commit)
 /credentials/

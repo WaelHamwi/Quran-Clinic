@@ -7,7 +7,7 @@ ReusableFormFields.php, ReusableTableColumns.php
 UserResource.php
 CategoryResource.php, SubcategoryResource.php
 DiseaseResource.php (with is_general checkbox and aliases management)
-RecordingResource.php (session_number, is_free)
+RecordingResource.php (session_number, type: summarized/detailed)
 FavoriteResource.php (read-only)
 AdhkarCategoryResource.php, AdhkarItemResource.php
 TahsinatCategoryResource.php (self/others, random_order), TahsinatItemResource.php

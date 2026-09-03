@@ -1,6 +1,5 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { DevSettings, Pressable, RefreshControl, Text, View } from 'react-native';
-import { palette } from '@/theme/colors';
 import { Redirect, useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useQueryClient } from '@tanstack/react-query';
@@ -13,20 +12,24 @@ import { CategoryGrid } from '@/components/lists/CategoryGrid';
 import { DiseaseList } from '@/components/lists/DiseaseList';
 import { HomeSectionPills } from '@/components/lists/HomeSectionPills';
 import { GeneralRuqyahButton } from '@/components/players/GeneralRuqyahButton';
-import { useCategories } from '@/hooks/useCategories';
-import { useDiseaseSearch } from '@/hooks/useDiseaseSearch';
-import { useFeatureVisibility, useRefreshFeatures } from '@/hooks/useFeatures';
+import { useCategories } from '@/hooks/hospital/useCategories';
+import { useDiseaseSearch } from '@/hooks/hospital/useDiseaseSearch';
+import { useFeatureVisibility, useRefreshFeatures } from '@/hooks/common/useFeatures';
 import { FEATURE_KEYS } from '@/constants/features';
 import { useAuth } from '@/context/AuthContext';
 import { useLanguage } from '@/context/LanguageContext';
-import { offlineStorage } from '@/services/offlineStorage';
+import { offlineStorage } from '@/services/common/offlineStorage';
 import { categoryRoute } from '@/utils/hospital';
-import { homeScreenStyles as s } from '@/styles/homeScreen.styles';
+import { useTheme } from '@/context/ThemeContext';
+import { useStyles } from '@/hooks/common/useStyles';
+import { createStyles } from '@/styles/homeScreen.styles';
 
 export default function HomeScreen() {
   const router = useRouter();
   const { user } = useAuth();
   const { t } = useLanguage();
+  const { theme } = useTheme();
+  const s = useStyles(createStyles);
   const queryClient = useQueryClient();
   const isVisible = useFeatureVisibility();
   const refreshFeatures = useRefreshFeatures();
@@ -81,7 +84,7 @@ export default function HomeScreen() {
         <GeneralRuqyahButton />
       </View>
     ),
-    [],
+    [s],
   );
 
   let body: React.ReactNode;
@@ -117,8 +120,8 @@ export default function HomeScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={handleRefresh}
-            tintColor={palette.brand[500]}
-            colors={[palette.brand[500]]}
+            tintColor={theme.primary}
+            colors={[theme.primary]}
           />
         }
         ListHeaderComponent={

@@ -1,8 +1,9 @@
 import React, { useCallback } from 'react';
-import { FlatList, StyleSheet, type ListRenderItem, type RefreshControlProps } from 'react-native';
-import { spacing } from '@/theme/spacing';
+import { FlatList, type ListRenderItem, type RefreshControlProps } from 'react-native';
+import { useStyles } from '@/hooks/common/useStyles';
 import { SubcategoryCard } from '@/components/lists/SubcategoryCard';
 import type { Subcategory } from '@/types/category';
+import { createStyles } from './SubcategoryList.styles';
 
 interface SubcategoryListProps {
   subcategories: Subcategory[];
@@ -19,6 +20,7 @@ export function SubcategoryList({
   ListEmptyComponent,
   refreshControl,
 }: SubcategoryListProps) {
+  const styles = useStyles(createStyles);
   const renderItem = useCallback<ListRenderItem<Subcategory>>(
     ({ item }) => <SubcategoryCard subcategory={item} onPress={onItemPress} />,
     [onItemPress],
@@ -44,8 +46,3 @@ export function SubcategoryList({
     />
   );
 }
-
-const styles = StyleSheet.create({
-  content: { padding: spacing.lg, gap: spacing.md },
-  row: { gap: spacing.md },
-});

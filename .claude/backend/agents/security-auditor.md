@@ -12,7 +12,7 @@ UserPolicy: viewAny(super_admin only), delete(super_admin only)
 RECORDING POLICY STREAM METHOD:
 public function stream(User $user, Recording $recording)
 {
-    if ($recording->session_number == 1) { return true; }
+    if ($recording->type === 'summarized') { return true; }
     if ($user->is_subscribed || $user->hasActiveTrial()) { return true; }
     if ($user->canGrantTrial()) { $user->grantTrial(); return true; }
     return false;

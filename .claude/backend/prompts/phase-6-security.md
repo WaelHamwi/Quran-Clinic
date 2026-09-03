@@ -11,7 +11,7 @@ RoleTest.php, PolicyTest.php
 See .claude/backend/agents/security-auditor.md
 
 RULES: No comments, ../mobile/ never referenced
-RecordingPolicy: stream() method must implement: session_number=1 free, session_number>=2 requires subscription or trial, trial max 2 per user
+RecordingPolicy: stream() method must implement: type=summarized free, type=detailed requires subscription or trial, trial max 2 per user
 
 KERNEL UPDATE: add 'locale', 'subscription' middleware
 SANCTUM UPDATE: expiration = 1440
@@ -37,8 +37,9 @@ Summary:
 - 5 Policies
 
 Business Rules Implemented:
-- session_number = 1 → ALWAYS FREE for ALL users
-- session_number >= 2 → REQUIRES active subscription OR active trial
+- type = summarized (مختصرة) → ALWAYS FREE for ALL users
+- type = detailed (مطولة) → REQUIRES active subscription OR active trial
+- Max two recordings per owner (one summarized + one detailed)
 - Trial: 7 days, max 2 per user lifetime
 
 Recordings: Belongs to Disease (Disease > Subcategory > Category)

@@ -29,21 +29,24 @@ class CompressExistingAudioCommand extends Command
         $total = 0;
 
         if (in_array($model, ['recordings', 'all'])) {
+            // Recordings live on the private 'local' disk.
             $total += $this->processModel(
                 Recording::class,
                 Recording::whereNotNull('audio_path')->get(),
                 $dryRun,
+                'local',
             );
         }
 
         if (in_array($model, ['recitations', 'all'])) {
-            // Only local files — skip external CDN URLs
+            // Only local files — skip external CDN URLs. Recitations live on the public disk.
             $total += $this->processModel(
                 Recitation::class,
                 Recitation::whereNotNull('audio_path')
                     ->where('audio_path', 'not like', 'http%')
                     ->get(),
                 $dryRun,
+                'public',
             );
         }
 
@@ -57,7 +60,7 @@ class CompressExistingAudioCommand extends Command
         return Command::SUCCESS;
     }
 
-    private function processModel(string $modelClass, Collection $records, bool $dryRun): int
+    private function processModel(string $modelClass, Collection $records, bool $dryRun, string $disk): int
     {
         $shortName = class_basename($modelClass);
         $sync      = (bool) $this->option('sync');
@@ -77,9 +80,9 @@ class CompressExistingAudioCommand extends Command
 
             if (! $dryRun) {
                 if ($sync) {
-                    (new CompressAudioJob($modelClass, $record->id, $path))->handle();
+                    (new CompressAudioJob($modelClass, $record->id, $path, $disk))->handle();
                 } else {
-                    CompressAudioJob::dispatch($modelClass, $record->id, $path);
+                    CompressAudioJob::dispatch($modelClass, $record->id, $path, $disk);
                 }
             }
 

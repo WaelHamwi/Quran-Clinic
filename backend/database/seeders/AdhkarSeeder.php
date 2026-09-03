@@ -55,10 +55,6 @@ class AdhkarSeeder extends Seeder
                             'en' => "Sample dhikr {$i} in {$sec['en']} of {$cat['en']}",
                         ],
                         'repetitions'        => $i === 1 ? 3 : 1,
-                        'hint'               => [
-                            'ar' => 'يُقال بخشوع وتدبر.',
-                            'en' => 'Recite with presence of heart.',
-                        ],
                         'daleel'             => [
                             'ar' => 'رواه البخاري ومسلم',
                             'en' => 'Narrated by Bukhari and Muslim',

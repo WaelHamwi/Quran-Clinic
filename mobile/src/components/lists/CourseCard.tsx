@@ -3,9 +3,10 @@ import { ImageBackground, Pressable, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useLanguage } from '@/context/LanguageContext';
+import { useTheme } from '@/context/ThemeContext';
+import { useStyles } from '@/hooks/common/useStyles';
 import { pickText, formatDate, resolveMediaUrl } from '@/utils/formatters';
-import { palette } from '@/theme/colors';
-import { courseCardStyles as s } from './CourseCard.styles';
+import { createStyles } from './CourseCard.styles';
 import courseCover from '@/assets/figma/course-cover.jpg';
 import courseCoverSoon from '@/assets/figma/course-cover-soon.jpg';
 import type { Course } from '@/types/course';
@@ -16,6 +17,8 @@ interface CourseCardProps {
 
 function CourseCardBase({ course }: CourseCardProps) {
   const { isArabic, t, language } = useLanguage();
+  const { theme } = useTheme();
+  const s = useStyles(createStyles);
   const router = useRouter();
 
   const onShowDetails = useCallback(() => {
@@ -48,7 +51,7 @@ function CourseCardBase({ course }: CourseCardProps) {
         {pillLabel ? (
           <View style={s.datePill}>
             <Text style={s.datePillText}>{pillLabel}</Text>
-            <Ionicons name="calendar-outline" size={16} color={palette.text.primary} />
+            <Ionicons name="calendar-outline" size={16} color={theme.text} />
           </View>
         ) : null}
       </ImageBackground>
@@ -69,7 +72,7 @@ function CourseCardBase({ course }: CourseCardProps) {
           <Text style={s.instructorText} numberOfLines={1}>
             {t.courses.instructor(course.instructor_name)}
           </Text>
-          <Ionicons name="person-outline" size={20} color={palette.brand[500]} />
+          <Ionicons name="person-outline" size={20} color={theme.primary} />
         </View>
 
         <View style={s.footerRow}>

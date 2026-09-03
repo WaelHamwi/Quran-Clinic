@@ -10,8 +10,10 @@ import {
   View,
 } from 'react-native';
 import { useLanguage } from '@/context/LanguageContext';
+import { useTheme } from '@/context/ThemeContext';
+import { useStyles } from '@/hooks/common/useStyles';
 import type { Reciter } from '@/types/reciter';
-import { reciterPickerStyles as s, PLACEHOLDER_COLOR } from './ReciterPickerModal.styles';
+import { createStyles } from './ReciterPickerModal.styles';
 
 type Props = {
   visible: boolean;
@@ -33,6 +35,8 @@ export function ReciterPickerModal({
   onSearchChange,
 }: Props) {
   const { t, language } = useLanguage();
+  const { theme } = useTheme();
+  const s = useStyles(createStyles);
 
   const renderItem = useCallback(
     ({ item }: { item: Reciter }) => (
@@ -51,7 +55,7 @@ export function ReciterPickerModal({
         {selectedReciterId === item.id && <Text style={s.check}>✓</Text>}
       </TouchableOpacity>
     ),
-    [selectedReciterId, onSelect]
+    [selectedReciterId, onSelect, language, s]
   );
 
   const ListHeader = (
@@ -85,7 +89,7 @@ export function ReciterPickerModal({
               <TextInput
                 style={s.searchInput}
                 placeholder={t.mushaf.searchReciter}
-                placeholderTextColor={PLACEHOLDER_COLOR}
+                placeholderTextColor={theme.textPlaceholder}
                 value={reciterSearch}
                 onChangeText={onSearchChange}
                 autoCorrect={false}

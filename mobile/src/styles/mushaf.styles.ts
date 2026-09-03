@@ -1,24 +1,26 @@
 import { StyleSheet } from 'react-native';
-import type { Theme } from '@/theme/colors';
+import { palette, type Theme } from '@/theme/colors';
 import { fontFamily } from '@/theme/typography';
 
-const BRAND_25 = '#ebfafa';
-const BRAND_500 = '#135452';
-const TEXT_PRIMARY = '#181d27';
-const TEXT_SECONDARY = '#414651';
-const TEXT_TERTIARY = '#535862';
-const TEXT_ON_BRAND = '#ffffff';
-const TEXT_PLACEHOLDER = '#717680';
-const BORDER_PRIMARY = '#d5d7da';
-const BORDER_TERTIARY = '#f5f5f5';
-const ERROR_500 = '#f04438';
-const SHADOW = '#313940';
-const WHITE = '#ffffff';
-const BG_OVERLAY = 'rgba(255,255,255,0.5)';
+export function createMushafStyles(theme: Theme) {
+  // Theme-derived aliases keep the (large) style body below unchanged while
+  // making every surface/colour follow the active light/dark theme.
+  const BRAND_25 = theme.brandSubtle;
+  const BRAND_500 = theme.primary;
+  const TEXT_PRIMARY = theme.text;
+  const TEXT_SECONDARY = theme.textSecondary;
+  const TEXT_TERTIARY = theme.textMuted;
+  const TEXT_ON_BRAND = theme.textOnBrand;
+  const TEXT_PLACEHOLDER = theme.textPlaceholder;
+  const BORDER_PRIMARY = theme.border;
+  const BORDER_TERTIARY = theme.divider;
+  const ERROR_500 = theme.error;
+  const SHADOW = palette.shadow;
+  const WHITE = theme.card;
+  const BG_OVERLAY = theme.overlayBg;
 
-export function createMushafStyles(_theme: Theme) {
   return StyleSheet.create({
-    root: { flex: 1, backgroundColor: WHITE },
+    root: { flex: 1, backgroundColor: theme.background },
     body: { flex: 1 },
     centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     loadingText: {
@@ -115,34 +117,34 @@ export function createMushafStyles(_theme: Theme) {
       color: TEXT_ON_BRAND,
     },
 
-    // ── Filter row — "السور" | "طريقة العرض" ─────────────────────────────────
-    filterRow: {
+    // ── Continue-reading card ─────────────────────────────────────────────────
+    continueCard: {
       flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'space-between',
-      paddingHorizontal: 16,
-      paddingVertical: 4,
+      gap: 10,
+      marginHorizontal: 16,
       marginBottom: 8,
+      paddingHorizontal: 14,
+      paddingVertical: 10,
+      backgroundColor: BRAND_25,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: BRAND_500,
     },
-    filterLeft: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 4,
-    },
-    filterRight: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 4,
-    },
-    filterLabel: {
-      fontSize: 14,
-      lineHeight: 20,
-      color: TEXT_TERTIARY,
-      fontFamily: fontFamily.alexandriaMedium,
-    },
-    filterLabelActive: {
+    continueCardTexts: { flex: 1, gap: 1 },
+    continueCardHint: {
+      fontSize: 10,
+      lineHeight: 14,
       color: BRAND_500,
+      fontFamily: fontFamily.alexandriaMedium,
+      letterSpacing: 0.5,
+      textTransform: 'uppercase',
+    },
+    continueCardTitle: {
+      fontSize: 13,
+      lineHeight: 18,
       fontFamily: fontFamily.alexandriaSemiBold,
+      color: TEXT_PRIMARY,
     },
 
     // ── Reciter chip ──────────────────────────────────────────────────────────
@@ -254,6 +256,11 @@ export function createMushafStyles(_theme: Theme) {
       fontSize: 12,
       fontFamily: fontFamily.alexandriaLight,
       color: TEXT_TERTIARY,
+    },
+    // Matched search word inside a verse-result row
+    readRowTitleMatch: {
+      color: BRAND_500,
+      backgroundColor: BRAND_25,
     },
 
     // ── Surah list ───────────────────────────────────────────────────────────

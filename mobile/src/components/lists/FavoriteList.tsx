@@ -9,7 +9,8 @@ import {
   type RefreshControlProps,
 } from 'react-native';
 import { FavoriteRow } from '@/components/lists/FavoriteRow';
-import { favoriteListStyles as s, ROW_GAP } from './FavoriteList.styles';
+import { useStyles } from '@/hooks/common/useStyles';
+import { createStyles, ROW_GAP } from './FavoriteList.styles';
 import { favoriteKey, type FavoriteItem } from '@/store/slices/favoritesSlice';
 
 interface FavoriteListProps {
@@ -48,6 +49,7 @@ export function FavoriteList({
   ListEmptyComponent,
   refreshControl,
 }: FavoriteListProps) {
+  const s = useStyles(createStyles);
   const [order, setOrder] = useState<string[]>(() => favorites.map(keyOf));
   const [activeKey, setActiveKey] = useState<string | null>(null);
   const [rowH, setRowH] = useState(0);
@@ -73,9 +75,11 @@ export function FavoriteList({
   const activeKeyRef = useRef<string | null>(null);
   const startIndexRef = useRef(0);
   const lastTargetRef = useRef(0);
+  /* eslint-disable react-hooks/refs -- always-fresh refs read by PanResponder handlers created once via useCallback, so they see the latest committed values without recreating the responder every render */
   orderRef.current = order;
   slotRef.current = slot;
   onReorderRef.current = onReorder;
+  /* eslint-enable react-hooks/refs */
 
   const getPos = useCallback((key: string): Animated.Value => {
     if (!posRef.current[key]) posRef.current[key] = new Animated.Value(0);
@@ -187,6 +191,7 @@ export function FavoriteList({
         ListEmptyComponent
       ) : (
         <View style={s.dragArea}>
+          {/* eslint-disable react-hooks/refs -- Animated.Value read during render is RN's designated escape hatch from React's render model */}
           {order.map((key) => {
             const item = itemsByKey[key];
             if (!item) return null;
@@ -209,6 +214,7 @@ export function FavoriteList({
               </Animated.View>
             );
           })}
+          {/* eslint-enable react-hooks/refs */}
         </View>
       )}
     </ScrollView>

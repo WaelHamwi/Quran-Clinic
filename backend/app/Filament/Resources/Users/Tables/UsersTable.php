@@ -2,13 +2,17 @@
 
 namespace App\Filament\Resources\Users\Tables;
 
+use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
+use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Filters\TernaryFilter;
+use Illuminate\Support\Facades\DB;
 use Spatie\Permission\Models\Role;
 
 class UsersTable
@@ -58,6 +62,18 @@ class UsersTable
                 ->icon('heroicon-m-check-badge')
                 ->color('success'),
 
+            IconColumn::make('is_subscribed')
+                ->label('Subscribed')
+                ->boolean()
+                ->sortable(),
+
+            IconColumn::make('is_suspended')
+                ->label('Suspended')
+                ->boolean()
+                ->trueColor('danger')
+                ->falseColor('gray')
+                ->sortable(),
+
             TextColumn::make('created_at')
                 ->label('Joined')
                 ->date('d M Y')
@@ -77,6 +93,24 @@ class UsersTable
                     default       => 'User',
                 }))
                 ->label('Role'),
+
+            SelectFilter::make('country')
+                ->options(fn () => DB::table('users')
+                    ->whereNotNull('country')
+                    ->distinct()
+                    ->orderBy('country')
+                    ->pluck('country', 'country'))
+                ->label('Country'),
+
+            SelectFilter::make('gender')
+                ->options(['male' => 'Male', 'female' => 'Female'])
+                ->label('Gender'),
+
+            TernaryFilter::make('is_subscribed')
+                ->label('Subscription'),
+
+            TernaryFilter::make('is_suspended')
+                ->label('Suspended'),
         ];
     }
 
@@ -84,6 +118,23 @@ class UsersTable
     {
         return [
             EditAction::make(),
+
+            Action::make('suspend')
+                ->label('Suspend')
+                ->icon('heroicon-o-no-symbol')
+                ->color('danger')
+                ->requiresConfirmation()
+                ->visible(fn ($record) => ! $record->is_suspended)
+                ->action(fn ($record) => $record->forceFill(['is_suspended' => true, 'suspended_at' => now()])->save()),
+
+            Action::make('reactivate')
+                ->label('Reactivate')
+                ->icon('heroicon-o-check-circle')
+                ->color('success')
+                ->requiresConfirmation()
+                ->visible(fn ($record) => $record->is_suspended)
+                ->action(fn ($record) => $record->forceFill(['is_suspended' => false, 'suspended_at' => null])->save()),
+
             DeleteAction::make(),
         ];
     }

@@ -8,6 +8,7 @@ use App\Http\Resources\UserResource;
 use App\Services\AuthService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
@@ -35,6 +36,7 @@ class AuthController extends Controller
         } catch (ValidationException $e) {
             return $this->error('Validation failed', 422, $e->errors());
         } catch (\Throwable $e) {
+            Log::error('AuthController@register failed', ['message' => $e->getMessage(), 'exception' => $e]);
             return $this->error('Server error', 500);
         }
     }
@@ -60,6 +62,7 @@ class AuthController extends Controller
         } catch (ValidationException $e) {
             return $this->error('Validation failed', 422, $e->errors());
         } catch (\Throwable $e) {
+            Log::error('AuthController@login failed', ['message' => $e->getMessage(), 'exception' => $e]);
             return $this->error('Server error', 500);
         }
     }
@@ -87,6 +90,7 @@ class AuthController extends Controller
         } catch (ValidationException $e) {
             return $this->error('Validation failed', 422, $e->errors());
         } catch (\Throwable $e) {
+            Log::error('AuthController@updateProfile failed', ['message' => $e->getMessage(), 'exception' => $e]);
             return $this->error('Server error', 500);
         }
     }
@@ -98,6 +102,7 @@ class AuthController extends Controller
 
             return $this->success(null, 'Logged out');
         } catch (\Throwable $e) {
+            Log::error('AuthController@logout failed', ['message' => $e->getMessage(), 'exception' => $e]);
             return $this->error('Server error', 500);
         }
     }
@@ -105,17 +110,11 @@ class AuthController extends Controller
     public function deleteAccount(Request $request): JsonResponse
     {
         try {
-            $user = $request->user();
-
-            // Revoke API tokens, then permanently remove the account. forceDelete()
-            // bypasses SoftDeletes so the row is actually removed from the DB — the
-            // DB-level cascades then clean up favorites, feedback, notifications and
-            // the oauth_providers link, freeing the email for a clean re-signup.
-            $user->tokens()->delete();
-            $user->forceDelete();
+            $this->service->deleteAccount($request->user());
 
             return $this->success(null, 'Account deleted');
         } catch (\Throwable $e) {
+            Log::error('AuthController@deleteAccount failed', ['message' => $e->getMessage(), 'exception' => $e]);
             return $this->error('Server error', 500);
         }
     }

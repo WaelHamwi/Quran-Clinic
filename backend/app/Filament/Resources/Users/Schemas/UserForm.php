@@ -2,9 +2,11 @@
 
 namespace App\Filament\Resources\Users\Schemas;
 
+use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Section;
 use Illuminate\Validation\Rules\Password;
 use Spatie\Permission\Models\Role;
@@ -44,6 +46,33 @@ class UserForm
                         ->required(),
                 ]),
 
+            Section::make('Account Status')
+                ->description('Subscription and suspension state for this user.')
+                ->icon('heroicon-o-shield-check')
+                ->columns(2)
+                ->schema([
+                    Toggle::make('is_subscribed')
+                        ->label('Subscribed')
+                        ->helperText('Grants premium access independent of the trial system.'),
+
+                    DateTimePicker::make('subscription_expires_at')
+                        ->label('Subscription / Trial Expires At')
+                        ->native(false),
+
+                    Toggle::make('is_suspended')
+                        ->label('Suspended')
+                        ->helperText('A suspended user is rejected on every authenticated API request.')
+                        ->live()
+                        ->afterStateUpdated(fn ($state, callable $set) => $set('suspended_at', $state ? now() : null))
+                        ->default(false),
+
+                    DateTimePicker::make('suspended_at')
+                        ->label('Suspended At')
+                        ->native(false)
+                        ->disabled()
+                        ->dehydrated(),
+                ]),
+
             Section::make('Profile Photo')
                 ->description('Optional avatar shown in the admin panel.')
                 ->icon('heroicon-o-camera')
@@ -52,6 +81,7 @@ class UserForm
                     FileUpload::make('avatar_path')
                         ->label('')
                         ->avatar()
+                        ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp', 'image/gif'])
                         ->disk('public')
                         ->directory('avatars')
                         ->imageEditor()

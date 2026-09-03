@@ -1,10 +1,13 @@
 import { StyleSheet } from 'react-native';
+import type { Theme } from '@/theme/colors';
+import { spacing } from '@/theme/spacing';
 
-export const adhkarScreenStyles = StyleSheet.create({
-  listContent: {
-    paddingHorizontal: 16,
-    paddingBottom: 20,
-    gap: 8,
-    flexGrow: 1,
-  },
-});
+export const createStyles = (_theme: Theme) =>
+  StyleSheet.create({
+    listContent: {
+      paddingHorizontal: spacing.lg,
+      paddingBottom: 20,
+      gap: spacing.sm,
+      flexGrow: 1,
+    },
+  });

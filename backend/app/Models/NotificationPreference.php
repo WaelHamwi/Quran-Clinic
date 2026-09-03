@@ -10,7 +10,7 @@ class NotificationPreference extends Model
     protected $fillable = [
         'user_id', 'adhkar_morning_enabled', 'adhkar_evening_enabled',
         'adhkar_sleep_enabled', 'adhkar_waking_enabled',
-        'waking_start_time', 'waking_end_time',
+        'waking_start_time', 'waking_end_time', 'waking_delay_minutes',
     ];
 
     protected function casts(): array
@@ -21,6 +21,7 @@ class NotificationPreference extends Model
             'adhkar_evening_enabled' => 'boolean',
             'adhkar_sleep_enabled'   => 'boolean',
             'adhkar_waking_enabled'  => 'boolean',
+            'waking_delay_minutes'   => 'integer',
         ];
     }
 

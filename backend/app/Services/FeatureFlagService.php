@@ -9,6 +9,9 @@ class FeatureFlagService
 {
     public const CACHE_KEY = 'features.v1.all';
 
+    /** Keys invalidated when a FeatureFlag is written. */
+    public const CACHE_KEYS = [self::CACHE_KEY];
+
     public function __construct(private FeatureFlagRepositoryInterface $repository) {}
 
     public function all(): array

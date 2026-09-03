@@ -47,7 +47,7 @@ return [
     |
     */
 
-    'expiration' => null,
+    'expiration' => (int) env('SANCTUM_EXPIRATION', 525600), // 365 days — mobile app, not a browser SPA
 
     /*
     |--------------------------------------------------------------------------

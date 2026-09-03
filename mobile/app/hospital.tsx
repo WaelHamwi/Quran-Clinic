@@ -10,24 +10,22 @@ import { EmptyState } from '@/components/common/EmptyState';
 import { CategoryGrid } from '@/components/lists/CategoryGrid';
 import { SearchResultList } from '@/components/lists/SearchResultList';
 import { GeneralRuqyahButton } from '@/components/players/GeneralRuqyahButton';
-import { AudioPlayer } from '@/components/players/AudioPlayer';
-import { useCategories } from '@/hooks/useCategories';
-import { useHospitalSearch } from '@/hooks/useHospitalSearch';
-import { useGeneralRuqyah } from '@/hooks/useGeneralRuqyah';
-import { usePlayer } from '@/hooks/usePlayer';
-import { useRefresh } from '@/hooks/useRefresh';
+import { useCategories } from '@/hooks/hospital/useCategories';
+import { useHospitalSearch } from '@/hooks/hospital/useHospitalSearch';
+import { useRefresh } from '@/hooks/common/useRefresh';
 import { useLanguage } from '@/context/LanguageContext';
 import { categoryRoute } from '@/utils/hospital';
-import { palette } from '@/theme/colors';
-import { hospitalScreenStyles as s } from '@/styles/hospitalScreen.styles';
+import { useTheme } from '@/context/ThemeContext';
+import { useStyles } from '@/hooks/common/useStyles';
+import { createStyles } from '@/styles/hospitalScreen.styles';
 
 export default function HospitalScreen() {
   const { t, isArabic } = useLanguage();
+  const { theme } = useTheme();
+  const s = useStyles(createStyles);
   const router = useRouter();
   const { categories, isLoading, error, refetch } = useCategories();
   const { query, setQuery, results, isSearching, hasQuery } = useHospitalSearch(categories);
-  const { currentRecording } = usePlayer();
-  const { playNext, playPrevious, hasPrevious, hasNext, isGeneralMode } = useGeneralRuqyah();
   const { refreshing, onRefresh } = useRefresh(refetch);
 
   const openCategory = useCallback(
@@ -54,7 +52,7 @@ export default function HospitalScreen() {
         <Text style={[s.hospitalScreen__sectionTitle, isArabic && s['hospitalScreen__sectionTitle--rtl']]}>{t.hospital.categories}</Text>
       </View>
     ),
-    [t, isArabic],
+    [t, isArabic, s],
   );
 
   // Only the content area swaps; the search bar above it stays mounted so typing
@@ -93,8 +91,8 @@ export default function HospitalScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor={palette.brand[500]}
-            colors={[palette.brand[500]]}
+            tintColor={theme.primary}
+            colors={[theme.primary]}
           />
         }
       />
@@ -112,16 +110,7 @@ export default function HospitalScreen() {
           placeholder={t.hospital.searchPlaceholder}
         />
       </View>
-      {/* flex: 1 constrains the FlatList so the player panel can sit below it */}
       <View style={{ flex: 1 }}>{body}</View>
-      {currentRecording && isGeneralMode && (
-        <AudioPlayer
-          onPrevious={playPrevious}
-          onNext={playNext}
-          hasPrevious={hasPrevious}
-          hasNext={hasNext}
-        />
-      )}
     </Screen>
   );
 }

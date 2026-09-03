@@ -4,13 +4,13 @@ namespace App\Repositories;
 
 use App\Models\Surah;
 use App\Repositories\Contracts\SurahRepositoryInterface;
-use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Database\Eloquent\Collection;
 
 class SurahRepository implements SurahRepositoryInterface
 {
-    public function getAllSurahs(int $perPage, int $page = 1): LengthAwarePaginator
+    public function all(): Collection
     {
-        return Surah::orderBy('id')->paginate($perPage, ['*'], 'page', $page);
+        return Surah::orderBy('id')->get();
     }
 
     public function getSurahWithVerses(int $id): ?Surah

@@ -84,7 +84,7 @@ strong{color:#0b4a42;}
 
 const out = `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
 <title>Quranic Clinic — Reverse Engineering Dossier</title>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+<link rel="stylesheet" href="vendor/github-dark.min.css">
 <style>${css}</style></head><body>
 <div class="cover">
   <div class="badge">CONFIDENTIAL · INTERNAL ENGINEERING</div>
@@ -100,8 +100,8 @@ ${tocHtml}
 <div class="content">
 ${html}
 </div>
-<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="vendor/mermaid.min.js"></script>
+<script src="vendor/highlight.min.js"></script>
 <script>
   mermaid.initialize({ startOnLoad: true, theme: 'neutral', flowchart:{useMaxWidth:true}, securityLevel:'loose' });
   document.querySelectorAll('pre code:not(.language-mermaid)').forEach(b => { try { hljs.highlightElement(b); } catch(e){} });

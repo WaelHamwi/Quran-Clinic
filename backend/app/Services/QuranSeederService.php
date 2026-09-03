@@ -59,6 +59,9 @@ class QuranSeederService
                 'surah_id'     => $surahId,
                 'verse_number' => $index + 1,
                 'text'         => json_encode(['ar' => $verse['text']], JSON_UNESCAPED_UNICODE),
+                // Bulk insert bypasses model events, so the normalized search
+                // column (kept in sync by Verse::saving elsewhere) is filled here.
+                'text_norm'    => Verse::normalizeArabic($verse['text']),
                 'created_at'   => $now,
                 'updated_at'   => $now,
             ];

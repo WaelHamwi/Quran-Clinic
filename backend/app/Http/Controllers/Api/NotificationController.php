@@ -34,6 +34,7 @@ class NotificationController extends Controller
                 'adhkar_waking_enabled'  => 'nullable|boolean',
                 'waking_start_time'      => 'nullable|date_format:H:i',
                 'waking_end_time'        => 'nullable|date_format:H:i',
+                'waking_delay_minutes'   => 'nullable|integer|min:0|max:60',
             ]);
 
             $preference = $this->service->updatePreferences($request->user(), $data);

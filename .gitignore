@@ -1,20 +1,7 @@
-# OS / editor
-.DS_Store
-Thumbs.db
-.idea/
-.vscode/
-.fleet/
-
-# root-level scratch (sub-projects keep their own ignores in backend/ and mobile/)
-/node_modules
-*.log
-
-# Claude local/permission config — contains machine paths + tokens, never commit
-.claude/settings.json
-.claude/settings.local.json
-
-# generated knowledge artifacts (regenerate via build-claude-knowledge.ps1)
-CLAUDE_PROJECT_KNOWLEDGE.pdf
-
-# docs build deps
-docs/node_modules/
+# Credentials never enter this repo at any level (a Google client secret
+# leaked once from an .env — see backend/.githooks/pre-commit, armed via:
+#   git config core.hooksPath backend/.githooks
+# which must be re-run after every fresh clone).
+.env
+.env.*
+!.env.example

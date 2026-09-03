@@ -18,6 +18,23 @@ export type Theme = {
   tabHeaderBg: string;
   searchBg: string;
   verseArabicColor: string;
+  // Figma-screen semantic tokens. Light values are pixel-identical to the
+  // `palette` colors the screens used before they were themed; dark values are
+  // chosen to match the dark surface system above.
+  card: string;             // white card/sheet surface (was palette.white / bg.primary as a surface)
+  cardBorder: string;       // card outline (was palette.border.secondary)
+  divider: string;          // hairline dividers (was palette.border.tertiary)
+  fieldBg: string;          // subtle input / disabled fill (was palette.bg.disabled / gray[100])
+  textOnBrand: string;      // text/icon on a brand-colored surface (was palette.text.onBrand)
+  textPlaceholder: string;  // placeholder / quaternary text (was palette.text.placeholder)
+  iconMuted: string;        // muted icon / chevron (was palette.fg.quaternary / gray[400])
+  brandSubtle: string;      // active row / icon-bubble tint (was palette.brand[25])
+  brandSubtleBorder: string;// number-pill / subtle brand border (was palette.brand[50])
+  onBrandMuted: string;     // muted text on brand backgrounds (was palette.text.secondaryOnBrand)
+  success: string;          // green action button (was palette.secondaryGreen[600])
+  overlayBg: string;        // translucent top-bar background (was palette.bg.overlay)
+  backgroundGradient: readonly [string, string]; // PatternedBackground canvas stops (top → bottom)
+  chatGradient: readonly [string, string]; // Ask-me chat canvas stops (top → bottom)
 };
 
 export const palette = {
@@ -54,7 +71,7 @@ export const palette = {
   bg: {
     primary: '#ffffff',
     overlay: 'rgba(255,255,255,0.5)',
-    mushaf: 'rgba(255,252,238,0.93)',  // warm parchment page — Mushaf reader only
+    mushaf: '#F5F3ED',  // warm parchment page — Mushaf reader only
     quaternary: '#e9eaeb',
     disabled: '#f5f5f5',
     primarySolid: '#0a0d12',
@@ -85,7 +102,11 @@ export const palette = {
     warning: { 25: '#fffcf5', 400: '#fdb022', 500: '#f79009', 800: '#93370d', 900: '#7a2e0e' },
     success: { 950: '#053321' },
   },
-  accents: { green: '#34c759' },
+  accents: { green: '#34c759', sale: '#fb364a' },
+  // iOS "Separators/Vibrant" hairline used inside native-style sheets.
+  separator: '#e6e6e6',
+  // Flag pill fills (country brand colors — constant across themes).
+  flags: { sa: '#559e1c', gb: '#012169' },
   mint: {
     100: '#d1fae5', // AI chat avatar background (Figma 18081:2332)
     200: '#a7f3d0', // AI chat avatar border
@@ -93,6 +114,33 @@ export const palette = {
   white: '#ffffff',
   black: '#303030',
   shadow: '#313940',
+  // Vivid fallback tints for category/icon tiles that have no server-set color.
+  // Decorative accents (not surfaces) — intentionally constant across light/dark.
+  tileFallback: ['#9a38f0', '#1ea525', '#f79009', '#f04438', '#3894f0'],
+  // Named adhkar icon-bubble tints (Figma 18063:1291–1293) — decorative, constant.
+  tile: { green: '#1ea525', purple: '#9a38f0', blue: '#3894f0', rose: '#f04438' },
+  // Traditional Madani Mushaf palette — decorative, intentionally constant
+  // across light/dark (the parchment page itself doesn't invert). Used only
+  // by the Mushaf reader's reading surface (reader.styles.ts).
+  mushaf: {
+    ink: '#2C2C2C',        // verse & basmalah text
+    surahName: '#C9A84C',  // surah header band (surahNameIcon font)
+    verseNumber: '#8B4513',// ayah-end marker
+    borderDark: '#5C4033', // inner border ring — dark brown, contrasts the gold outer ring
+    accent: '#D4AF37',     // active-verse highlight, banner border
+    bannerFill: '#F3E5C0', // pale gold tint — banner background (kept lighter than
+                           // surahName/accent so the gold text stays readable on it)
+    divider: '#D4C4A8',    // page-break divider
+    juzTitle: '#8B0000',   // reserved for a future Juz indicator — not wired to any UI yet
+    // Sampled directly from the ornamental title end-cap artwork
+    // (assets/mushaf/title-endcap-*.png) so the stretchable CSS middle
+    // section matches the photographic end-caps seamlessly.
+    titleFill: '#E7F3DB',
+    titleBorderGold: '#C86E28',
+    // Dominant green sampled from the ornate page-border artwork
+    // (assets/mushaf/frame-edge-*.png) — ties the title lines to the frame.
+    titleBorderGreen: '#285838',
+  },
 } as const;
 
 export const shadows = {
@@ -131,7 +179,23 @@ export const lightTheme: Theme = {
   headerBg: palette.bg.primary,
   tabHeaderBg: palette.brand[500],
   searchBg: palette.bg.primary,
-  verseArabicColor: palette.text.primary,
+  verseArabicColor: palette.mushaf.ink,
+  card: palette.white,
+  cardBorder: palette.border.secondary,
+  divider: palette.border.tertiary,
+  fieldBg: palette.bg.disabled,
+  textOnBrand: palette.text.onBrand,
+  textPlaceholder: palette.text.placeholder,
+  iconMuted: palette.fg.quaternary,
+  brandSubtle: palette.brand[25],
+  brandSubtleBorder: palette.brand[50],
+  onBrandMuted: palette.text.secondaryOnBrand,
+  success: palette.secondaryGreen[600],
+  overlayBg: palette.bg.overlay,
+  // Soft mint→cream brand canvas (over white) — the original Figma gradient.
+  backgroundGradient: ['rgba(249,253,248,0.5)', 'rgba(239,249,213,0.5)'],
+  // Ask-me chat canvas — Figma 18081:2324 pre-blended branded gradient.
+  chatGradient: ['#fcfefb', '#f7fcea'],
 };
 
 export const darkTheme: Theme = {
@@ -153,5 +217,22 @@ export const darkTheme: Theme = {
   headerBg: '#0a0d12',
   tabHeaderBg: palette.brand[700],
   searchBg: '#161b22',
-  verseArabicColor: '#f5f6f7',
+  verseArabicColor: palette.mushaf.ink, // parchment canvas is fixed light — verse text must always be dark
+  card: '#161b22',
+  cardBorder: '#2a3038',
+  divider: '#21262d',
+  fieldBg: '#21262d',
+  textOnBrand: '#ffffff',
+  textPlaceholder: '#8b9098',
+  iconMuted: '#6e7681',
+  brandSubtle: '#0b3231',
+  brandSubtleBorder: palette.brand[500],
+  onBrandMuted: palette.text.secondaryOnBrand,
+  success: palette.secondaryGreen[500],
+  overlayBg: 'rgba(10,13,18,0.5)',
+  // Deep teal→ink gradient: a subtle branded glow at the top fading to the base
+  // background, giving dark screens depth instead of a flat near-black wash.
+  backgroundGradient: ['#0e2826', '#0a0d12'],
+  // Chat canvas mirrors the dark app canvas so bubbles (theme.card) read cleanly.
+  chatGradient: ['#0e2826', '#0a0d12'],
 };

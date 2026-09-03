@@ -6,6 +6,7 @@ import { QueryClientProvider, queryClient } from '@/providers/QueryProvider';
 import { StoreProvider } from '@/providers/StoreProvider';
 import { PlayerProvider } from '@/context/PlayerContext';
 import { MushafProvider } from '@/context/MushafContext';
+import { MushafAudioProvider } from '@/context/MushafAudioContext';
 
 /** Wraps the full context/provider tree so RootLayout stays minimal. */
 export function AppProviders({ children }: { children: React.ReactNode }) {
@@ -17,7 +18,9 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
             <StoreProvider>
               <PlayerProvider>
                 <MushafProvider>
-                  {children}
+                  <MushafAudioProvider>
+                    {children}
+                  </MushafAudioProvider>
                 </MushafProvider>
               </PlayerProvider>
             </StoreProvider>

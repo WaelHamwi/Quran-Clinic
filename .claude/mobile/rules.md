@@ -89,13 +89,16 @@ envelope, HTTP status codes, rate limiting, file-size limit).
 - RULE_30 FAVORITES_DISEASES_ONLY — favorites store `disease_id` only.
 - RULE_31 GENERAL_RUQYAH — quick-launch button plays the `is_general` disease audio
   directly, no intermediate screens.
-- RULE_32 SESSION_ACCESS — session 1 free; sessions ≥ 2 require subscription or trial.
+- RULE_32 RECORDING_TYPES — max two recordings per owner: `summarized` (مختصرة) free;
+  `detailed` (مطوّلة) requires subscription or trial. The wird screen switches types ONLY
+  via the segmented type tabs (Figma 19214:3234) — no wird numbering, no swapping inside
+  the reader area. Single source: `../shared-context.md` → RECORDING TYPES.
 - RULE_33 ADHKAR_CATEGORIES — Morning, Evening, Sleep, Waking.
 - RULE_34 TAHSINAT_CATEGORIES — Self, For Others; honour `random_order` when set.
 - RULE_35 OFFLINE_FIRST — downloaded audio plays from cache; SQLite caches Quran/adhkar
   text; queue offline actions and retry on reconnect (see `offline-sync.md`).
 - RULE_36 DOWNLOAD_MANAGER — dedicated per-recording download button, progress,
-  cancel, retry, Wi-Fi-only default; free users may download session 1 only.
+  cancel, retry, Wi-Fi-only default; free users may download the summarized recording only.
 - RULE_37 SPONSOR_SCREEN — show at every launch when the admin flag is on.
 - RULE_38 FEATURE_VISIBILITY — fetch flags on launch, cache offline, hide disabled.
 - RULE_39 ONBOARDING_ONCE — welcome screens on first launch only, auto-transition.

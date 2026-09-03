@@ -10,16 +10,19 @@ CATEGORIES            Physical Diseases · Personal Property · Homes & Relation
 ├── SUBCATEGORIES     bones, chest, car, house, marriage, crying, general ruqyahs ...
 │   │
 │   ├── DISEASES      joint inflammation, fractures, anemia, asthma ...
-│   │   └── RECORDINGS   session 1 (free) · session 2 & 3 (subscription/trial)
+│   │   └── RECORDINGS   summarized/مختصرة (free) · detailed/مطولة (subscription/trial)
 │   │
 │   └── ── OR ── RECORDINGS directly (subcategory is TERMINAL — no diseases)
 │
 ├── ── OR ── DISEASES directly (category has no subcategories)
-│   └── RECORDINGS   session 1 (free) · session 2 & 3 (subscription/trial)
+│   └── RECORDINGS   summarized/مختصرة (free) · detailed/مطولة (subscription/trial)
 │
 └── ── OR ── RECORDINGS directly (category is TERMINAL — no subcategories, no diseases)
 ```
-- A disease may have multiple recordings (one per session).
+- A recording owner has at most TWO recordings — one summarized (free) and one detailed
+  (paid), switched only via the segmented type tabs on the record screen (Figma 19214:3234);
+  no wird numbering, no swapping inside the reader area.
+  Single source: `../shared-context.md` → RECORDING TYPES.
 - `is_general = true` diseases power the General Ruqyah quick-launch (no drill-down).
 - The backend API response for any category or subcategory includes `has_direct_recordings: bool`
   to let the mobile app detect the terminal level without a separate request.

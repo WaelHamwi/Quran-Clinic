@@ -2,39 +2,48 @@
 
 namespace App\Services;
 
+use App\Models\Reciter;
 use App\Repositories\Contracts\ReciterRepositoryInterface;
+use App\Support\ModelCache;
 use Illuminate\Pagination\LengthAwarePaginator;
-use Illuminate\Support\Facades\Cache;
+use Illuminate\Pagination\Paginator;
+use Illuminate\Support\Collection;
 
 class ReciterService
 {
+    /** The full active-reciter list cached under one key. */
+    public const CACHE_ALL = 'reciters.v1.all';
+
+    /** Keys invalidated when a Reciter is written. */
+    public const CACHE_KEYS = [self::CACHE_ALL];
+
     public function __construct(private ReciterRepositoryInterface $repository) {}
 
     public function getAllActive(int $perPage = 15): LengthAwarePaginator
     {
-        $key = "reciters.v2.active.{$perPage}";
-        $cached = Cache::get($key);
+        $reciters = ModelCache::rememberMany(self::CACHE_ALL, 300, fn () => $this->repository->allActive());
 
-        if ($cached instanceof LengthAwarePaginator) {
-            return $cached;
-        }
-
-        Cache::forget($key);
-        $result = $this->repository->getAllActive($perPage);
-        Cache::put($key, $result, 3600);
-        return $result;
+        return $this->paginate($reciters, $perPage, Paginator::resolveCurrentPage());
     }
 
-    public function getReciterWithRecitations(int $id): mixed
+    /**
+     * One reciter with its recitations — a per-parent detail lookup, kept uncached
+     * like AdhkarService::itemsByCategorySlug, so the static CACHE_KEYS convention
+     * the models rely on stays intact.
+     */
+    public function getReciterWithRecitations(int $id): ?Reciter
     {
-        $key = "reciters.v2.{$id}.recitations";
+        return $this->repository->findById($id);
+    }
 
-        try {
-            return Cache::remember($key, 3600, fn() => $this->repository->findById($id));
-        } catch (\Throwable $e) {
-            \Log::warning('ReciterService cache failed, falling back to DB: ' . $e->getMessage());
-            Cache::forget($key);
-            return $this->repository->findById($id);
-        }
+    private function paginate(Collection $items, int $perPage, int $page): LengthAwarePaginator
+    {
+        return new LengthAwarePaginator(
+            $items->forPage($page, $perPage)->values(),
+            $items->count(),
+            $perPage,
+            $page,
+            ['path' => Paginator::resolveCurrentPath()],
+        );
     }
 }

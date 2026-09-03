@@ -34,9 +34,9 @@ tolerant; Arabic + English. Returns `{ results, isSearching, query, setQuery }`.
 `useDisease(slug)` — disease detail (name, description, recordings).
 
 ### useRecordings [RQ + RX]
-`useRecordings(diseaseId)` — recordings for a disease. Combines with `authSlice`
-`selectCanAccessSession` to mark each recording accessible/locked (session 1 free,
-2 & 3 paid). Returns `{ recordings, accessibleRecordings, isLoading }`.
+`useRecordings(diseaseId)` — recordings for a disease (max two: summarized + detailed).
+Combines with `authSlice` `selectIsPaid` to mark each recording accessible/locked
+(summarized free, detailed paid). Returns `{ recordings, accessibleRecordings, isLoading }`.
 
 ### useAdhkar [RQ + RX]
 Fetches Morning/Evening/Sleep/Waking items. Per-item repeat counters live in

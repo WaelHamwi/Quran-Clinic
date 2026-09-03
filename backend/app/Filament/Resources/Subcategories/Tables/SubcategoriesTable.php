@@ -2,17 +2,17 @@
 
 namespace App\Filament\Resources\Subcategories\Tables;
 
+use App\Filament\Support\RecordingLinkActions;
+use App\Filament\Support\TranslatedName;
 use App\Models\Category;
+use App\Models\Subcategory;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
-use Filament\Actions\EditAction;
-use Filament\Notifications\Notification;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
-use Illuminate\Database\Eloquent\Model;
 
 class SubcategoriesTable
 {
@@ -20,10 +20,29 @@ class SubcategoriesTable
     {
         return [
             ImageColumn::make('icon')->label('Icon')->disk('public'),
-            TextColumn::make('name')->label('Name')->searchable(),
-            TextColumn::make('category.name')->label('Category'),
+            // Searching hits the `name` JSON column, so a query in either
+            // language matches whichever of the two columns shows it.
+            TextColumn::make('name')
+                ->label('Name (Arabic)')
+                ->getStateUsing(fn (Subcategory $record): ?string => TranslatedName::arabic($record))
+                ->searchable()
+                ->placeholder('— not set —'),
+            TextColumn::make('name_en')
+                ->label('Name (English)')
+                ->getStateUsing(fn (Subcategory $record): ?string => TranslatedName::english($record))
+                ->placeholder('— not set —'),
+            TextColumn::make('category.name')
+                ->label('Category')
+                ->getStateUsing(fn (Subcategory $record): ?string => TranslatedName::arabic($record->category))
+                ->description(fn (Subcategory $record): ?string => TranslatedName::english($record->category)),
             TextColumn::make('slug')->searchable(),
+            TextColumn::make('type')
+                ->label('Holds')
+                ->badge()
+                ->formatStateUsing(fn (?string $state): string => $state === Subcategory::TYPE_DIRECT ? 'Recordings' : 'Diseases')
+                ->color(fn (?string $state): string => $state === Subcategory::TYPE_DIRECT ? 'warning' : 'gray'),
             TextColumn::make('diseases_count')->counts('diseases')->label('Diseases'),
+            TextColumn::make('recordings_count')->counts('recordings')->label('Recordings'),
             TextColumn::make('display_order')->sortable(),
             IconColumn::make('is_active')->boolean(),
         ];
@@ -34,7 +53,7 @@ class SubcategoriesTable
         return [
             SelectFilter::make('category_id')
                 ->label('Category')
-                ->options(fn () => Category::ordered()->get()->pluck('name', 'id')),
+                ->options(fn () => TranslatedName::options(Category::ordered()->get())),
             SelectFilter::make('is_active')->options(['1' => 'Active', '0' => 'Inactive']),
         ];
     }
@@ -42,19 +61,7 @@ class SubcategoriesTable
     public static function getActions(): array
     {
         return [
-            EditAction::make()
-                ->action(function (EditAction $action, Model $record, array $data): void {
-                    try {
-                        $record->fill($data);
-                        $record->save();
-                    } catch (\LogicException $e) {
-                        Notification::make()
-                            ->title($e->getMessage())
-                            ->danger()
-                            ->send();
-                        $action->halt();
-                    }
-                }),
+            RecordingLinkActions::edit(),
             DeleteAction::make(),
         ];
     }

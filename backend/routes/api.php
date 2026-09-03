@@ -2,10 +2,10 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Auth\GoogleAuthController;
-use App\Http\Controllers\RecitationController;
-use App\Http\Controllers\ReciterController;
-use App\Http\Controllers\SurahController;
-use App\Http\Controllers\VerseController;
+use App\Http\Controllers\Api\RecitationController;
+use App\Http\Controllers\Api\ReciterController;
+use App\Http\Controllers\Api\SurahController;
+use App\Http\Controllers\Api\VerseController;
 use App\Http\Controllers\Api\AdhkarController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CategoryController;
@@ -61,6 +61,8 @@ Route::middleware(['throttle:api'])->group(function () {
     Route::get('/diseases/{slug}', [DiseaseController::class, 'show']);
     Route::get('/recordings', [RecordingController::class, 'index']);
     Route::get('/recordings/{id}/stream', [RecordingController::class, 'stream']);
+    // Gated audio stream — subscription/trial enforced server-side; serves the private file.
+    Route::get('/recordings/{id}/audio', [RecordingController::class, 'audio']);
     Route::post('/recordings/{id}/play', [RecordingController::class, 'play']);
 
     // ── Adhkar ────────────────────────────────────────────────────
@@ -92,6 +94,8 @@ Route::middleware(['throttle:api'])->group(function () {
 
         Route::get('/favorites', [FavoriteController::class, 'index']);
         Route::post('/favorites/toggle', [FavoriteController::class, 'toggle']);
+        Route::get('/favorites/nodes', [FavoriteController::class, 'nodes']);
+        Route::post('/favorites/nodes/toggle', [FavoriteController::class, 'toggleNode']);
 
         Route::post('/feedback', [FeedbackController::class, 'store']);
 

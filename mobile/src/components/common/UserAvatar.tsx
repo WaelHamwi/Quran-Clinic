@@ -1,5 +1,6 @@
 import React from 'react';
 import { Image, Text, View } from 'react-native';
+import { useTheme } from '@/context/ThemeContext';
 import { avatarContainerStyle, avatarImageStyle, initialsTextStyle } from './UserAvatar.styles';
 
 interface Props {
@@ -9,6 +10,7 @@ interface Props {
 }
 
 export function UserAvatar({ uri, name, size = 48 }: Props) {
+  const { theme } = useTheme();
   const initials = name
     ? name.trim().split(/\s+/).slice(0, 2).map(w => w[0]).join('').toUpperCase()
     : '?';
@@ -18,8 +20,8 @@ export function UserAvatar({ uri, name, size = 48 }: Props) {
   }
 
   return (
-    <View style={avatarContainerStyle(size)}>
-      <Text style={initialsTextStyle(size)}>{initials}</Text>
+    <View style={avatarContainerStyle(theme, size)}>
+      <Text style={initialsTextStyle(theme, size)}>{initials}</Text>
     </View>
   );
 }

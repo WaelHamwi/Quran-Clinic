@@ -3,13 +3,11 @@ import { Pressable, ScrollView, Text } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useLanguage } from '@/context/LanguageContext';
-import { useFeatureVisibility } from '@/hooks/useFeatures';
+import { useTheme } from '@/context/ThemeContext';
+import { useStyles } from '@/hooks/common/useStyles';
+import { useFeatureVisibility } from '@/hooks/common/useFeatures';
 import { FEATURE_KEYS } from '@/constants/features';
-import {
-  homeSectionPillsStyles as s,
-  PILL_ACTIVE_TINT,
-  PILL_INACTIVE_TINT,
-} from './HomeSectionPills.styles';
+import { createStyles } from './HomeSectionPills.styles';
 
 interface PillProps {
   label: string;
@@ -20,7 +18,9 @@ interface PillProps {
 
 function Pill({ label, icon, active, onPress }: PillProps) {
   const { isArabic } = useLanguage();
-  const tint = active ? PILL_ACTIVE_TINT : PILL_INACTIVE_TINT;
+  const { theme } = useTheme();
+  const s = useStyles(createStyles);
+  const tint = active ? theme.textOnBrand : theme.primary;
   return (
     <Pressable
       onPress={onPress}
@@ -42,12 +42,15 @@ function Pill({ label, icon, active, onPress }: PillProps) {
 export function HomeSectionPills() {
   const { t, isArabic } = useLanguage();
   const router = useRouter();
+  const s = useStyles(createStyles);
   const isVisible = useFeatureVisibility();
   const scrollRef = useRef<ScrollView>(null);
 
   const goCourses = useCallback(() => router.push('/courses'), [router]);
   const goAdhkar = useCallback(() => router.push('/adhkar'), [router]);
   const goTahsinat = useCallback(() => router.push('/tahsinat'), [router]);
+  const goTawjihat = useCallback(() => router.push('/tawjihat'), [router]);
+  const goFaq = useCallback(() => router.push('/faq'), [router]);
 
   useEffect(() => {
     if (isArabic) {
@@ -74,6 +77,8 @@ export function HomeSectionPills() {
       {isVisible(FEATURE_KEYS.TAHSINAT) && (
         <Pill label={t.home.pillTahsinat} icon="shield-checkmark-outline" onPress={goTahsinat} />
       )}
+      <Pill label={t.home.pillTawjihat} icon="information-circle-outline" onPress={goTawjihat} />
+      <Pill label={t.home.pillFaq} icon="person-outline" onPress={goFaq} />
     </ScrollView>
   );
 }

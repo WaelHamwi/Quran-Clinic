@@ -3,13 +3,20 @@
 namespace App\Models;
 
 use App\Models\Concerns\HasTranslations;
+use App\Models\Concerns\InvalidatesCache;
+use App\Services\TahsinatService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class TahsinatItem extends Model
 {
-    use HasTranslations;
+    use HasTranslations, InvalidatesCache;
+
+    protected function cacheKeysToForget(): array
+    {
+        return TahsinatService::CACHE_KEYS;
+    }
 
     protected $fillable = [
         'tahsinat_category_id', 'tahsinat_section_id', 'label', 'text',

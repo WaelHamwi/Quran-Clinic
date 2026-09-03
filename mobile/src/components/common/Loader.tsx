@@ -1,9 +1,8 @@
-import React, { useMemo } from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import React from 'react';
+import { ActivityIndicator, Text, View } from 'react-native';
 import { useTheme } from '@/context/ThemeContext';
-import type { Theme } from '@/theme/colors';
-import { spacing } from '@/theme/spacing';
-import { fontSize } from '@/theme/typography';
+import { useStyles } from '@/hooks/common/useStyles';
+import { createStyles } from './Loader.styles';
 
 interface LoaderProps {
   message?: string;
@@ -13,7 +12,7 @@ interface LoaderProps {
 
 function LoaderBase({ message, fullScreen = false, size = 'large' }: LoaderProps) {
   const { theme } = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const styles = useStyles(createStyles);
 
   return (
     <View style={fullScreen ? styles.fullScreen : styles.inline}>
@@ -21,20 +20,6 @@ function LoaderBase({ message, fullScreen = false, size = 'large' }: LoaderProps
       {message ? <Text style={styles.message}>{message}</Text> : null}
     </View>
   );
-}
-
-function createStyles(theme: Theme) {
-  return StyleSheet.create({
-    fullScreen: {
-      flex: 1,
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: theme.background,
-      gap: spacing.md,
-    },
-    inline: { alignItems: 'center', justifyContent: 'center', padding: spacing.xl, gap: spacing.md },
-    message: { color: theme.textSecondary, fontSize: fontSize.sm },
-  });
 }
 
 export const Loader = React.memo(LoaderBase);

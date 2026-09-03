@@ -3,29 +3,27 @@
 namespace App\Services;
 
 use App\Models\Category;
-use App\Models\Subcategory;
 use App\Repositories\Contracts\CategoryRepositoryInterface;
+use App\Support\ModelCache;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Cache;
 
 class CategoryService
 {
+    /** Cache of the full category→subcategory(→disease counts) navigation tree. */
+    public const CACHE_KEY = 'categories.v1.all';
+
+    /** Keys invalidated when a Category/Subcategory/Disease is written. */
+    public const CACHE_KEYS = [self::CACHE_KEY];
+
     public function __construct(private CategoryRepositoryInterface $repository) {}
 
     public function getAll(): Collection
     {
-        // Intentionally not cached: PHP database-cache serializes Eloquent models,
-        // which breaks with __PHP_Incomplete_Class whenever models change.
-        return $this->repository->getAll();
+        return ModelCache::rememberMany(self::CACHE_KEY, 300, fn () => $this->repository->getAll());
     }
 
     public function getBySlug(string $slug): ?Category
     {
         return $this->repository->findBySlug($slug);
-    }
-
-    public function getSubcategoryBySlug(string $slug): ?Subcategory
-    {
-        return $this->repository->findSubcategoryBySlug($slug);
     }
 }

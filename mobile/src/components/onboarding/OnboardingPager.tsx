@@ -1,17 +1,19 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Image, Text, View } from 'react-native';
+import { Animated, Easing, Image, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import OnbBgVector from '@/assets/figma/onb1-bg.svg';
 import TickIcon from '@/assets/figma/tick.svg';
 import { PatternedBackground } from '@/components/layout/PatternedBackground';
 import { FigmaTopBar } from '@/components/layout/FigmaTopBar';
 import { useLanguage } from '@/context/LanguageContext';
-import { onboardingPagerStyles as s } from './OnboardingPager.styles';
+import { useStyles } from '@/hooks/common/useStyles';
+import { createStyles } from './OnboardingPager.styles';
 
 type Props = { onComplete: () => void };
 
 const SLIDE_MS = 4200;
 const SLIDE_COUNT = 4;
+const DOT_ANIM_MS = 350;
 
 const SLIDE_ILLUSTRATIONS = [
   require('../../../assets/figma/onb1-illo.png'),
@@ -22,7 +24,12 @@ const SLIDE_ILLUSTRATIONS = [
 
 export function OnboardingPager({ onComplete }: Props) {
   const { t } = useLanguage();
+  const s = useStyles(createStyles);
   const [index, setIndex] = useState(0);
+  const [dotAnims] = useState(() =>
+    Array.from({ length: SLIDE_COUNT }, (_, i) => new Animated.Value(i === SLIDE_COUNT - 1 ? 1 : 0))
+  );
+  const [progress] = useState(() => new Animated.Value(0));
 
   const finish = useCallback(() => onComplete(), [onComplete]);
 
@@ -38,6 +45,32 @@ export function OnboardingPager({ onComplete }: Props) {
     }, SLIDE_MS);
     return () => clearTimeout(id);
   }, [index, finish]);
+
+  // Smoothly grow the current dot instead of snapping to the active state.
+  useEffect(() => {
+    dotAnims.forEach((anim, i) => {
+      const isActive = SLIDE_COUNT - 1 - i === index;
+      Animated.timing(anim, {
+        toValue: isActive ? 1 : 0,
+        duration: DOT_ANIM_MS,
+        useNativeDriver: false,
+      }).start();
+    });
+  }, [index, dotAnims]);
+
+  // The active pill fills like a progress bar over the slide's full duration,
+  // in sync with the auto-advance timer above.
+  useEffect(() => {
+    progress.setValue(0);
+    const fill = Animated.timing(progress, {
+      toValue: 1,
+      duration: SLIDE_MS,
+      easing: Easing.linear,
+      useNativeDriver: false,
+    });
+    fill.start();
+    return () => fill.stop();
+  }, [index, progress]);
 
   return (
     <View style={s.root}>
@@ -61,10 +94,30 @@ export function OnboardingPager({ onComplete }: Props) {
 
         <View style={s.bottom}>
           <View style={s.dots}>
-            {Array.from({ length: SLIDE_COUNT }).map((_, i) => {
+            {dotAnims.map((anim, i) => {
               const isActive = SLIDE_COUNT - 1 - i === index;
               return (
-                <View key={i} style={isActive ? s.dotActive : s.dotInactive} />
+                <Animated.View
+                  key={i}
+                  style={[
+                    s.dot,
+                    { width: anim.interpolate({ inputRange: [0, 1], outputRange: [12, 24] }) },
+                  ]}
+                >
+                  {isActive && (
+                    <Animated.View
+                      style={[
+                        s.dotFill,
+                        {
+                          width: progress.interpolate({
+                            inputRange: [0, 1],
+                            outputRange: ['0%', '100%'],
+                          }),
+                        },
+                      ]}
+                    />
+                  )}
+                </Animated.View>
               );
             })}
           </View>

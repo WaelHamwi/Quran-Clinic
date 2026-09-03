@@ -2,13 +2,20 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\InvalidatesCache;
 use App\Services\FeatureFlagService;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\Cache;
 
 class FeatureFlag extends Model
 {
+    use InvalidatesCache;
+
     protected $fillable = ['feature_key', 'is_visible'];
+
+    protected function cacheKeysToForget(): array
+    {
+        return FeatureFlagService::CACHE_KEYS;
+    }
 
     /**
      * Parent feature → its nested child features. The "Clinic" (المشفى) screen
@@ -52,8 +59,8 @@ class FeatureFlag extends Model
     }
 
     /**
-     * - Cascade: turning a parent off forces all its children off immediately.
-     * - Bust the cached feature map so the mobile app reflects changes right away.
+     * Cascade: turning a parent off forces all its children off immediately.
+     * (Cache busting is handled by the InvalidatesCache trait.)
      */
     protected static function booted(): void
     {
@@ -63,17 +70,13 @@ class FeatureFlag extends Model
 
                 if ($children !== []) {
                     // Mass update intentionally skips model events (no recursion);
-                    // the cache is flushed below for the whole operation.
+                    // InvalidatesCache busts the feature map on this parent save.
                     static::query()
                         ->whereIn('feature_key', $children)
                         ->where('is_visible', true)
                         ->update(['is_visible' => false]);
                 }
             }
-
-            Cache::forget(FeatureFlagService::CACHE_KEY);
         });
-
-        static::deleted(fn () => Cache::forget(FeatureFlagService::CACHE_KEY));
     }
 }

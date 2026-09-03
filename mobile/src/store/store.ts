@@ -16,8 +16,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { rootReducer, type RootState } from '@/store/rootReducer';
 import type { CompletedDownload } from '@/store/slices/downloadsSlice';
 import { clearAuth } from '@/store/slices/authSlice';
-import { setUnauthorizedHandler } from '@/services/apiClient';
+import { migrations, PERSIST_VERSION } from '@/store/migrations';
+import { setUnauthorizedHandler } from '@/services/common/apiClient';
 import { playCountListener } from '@/store/middleware/playCountListener';
+import { recordingHistoryListener } from '@/store/middleware/recordingHistoryListener';
 
 type DownloadsSlice = RootState['downloads'];
 type DownloadsPersisted = Pick<DownloadsSlice, 'completed' | 'wifiOnly' | 'tasks'>;
@@ -43,6 +45,8 @@ const downloadsTransform = createTransform<DownloadsSlice, DownloadsPersisted>(
     return {
       tasks: persisted.tasks ?? {},
       completed,
+      // Not persisted — re-discovered from the filesystem on Downloads screen focus.
+      otherDownloads: {},
       wifiOnly: persisted.wifiOnly ?? true,
       storageUsed,
     };
@@ -64,46 +68,15 @@ const onboardingTransform = createTransform<OnboardingSlice, OnboardingPersisted
   { whitelist: ['onboarding'] },
 );
 
-// v2: reset hasCompletedOnboarding so all existing devices see onboarding on next launch.
-// v3: favorites moved from numeric ids to composite `${kind}:${id}` keys + carry a route.
-const migrations = {
-  2: (state: any) => ({
-    ...state,
-    onboarding: {
-      hasCompletedOnboarding: false,
-      sponsorShownThisSession: false,
-      currentStep: 0,
-    },
-  }),
-  3: (state: any) => {
-    const oldItems = state?.favorites?.items ?? {};
-    const items: Record<string, any> = {};
-    for (const [key, value] of Object.entries<any>(oldItems)) {
-      // Skip entries already migrated (composite string keys).
-      if (key.includes(':')) {
-        items[key] = value;
-        continue;
-      }
-      const id = value?.id ?? Number(key);
-      items[`disease:${id}`] = {
-        ...value,
-        favoriteKind: 'disease',
-        route: `/hospital/disease/${value?.slug ?? ''}`,
-      };
-    }
-    return { ...state, favorites: { ...state?.favorites, items } };
-  },
-};
-
 const persistConfig: PersistConfig<RootState> = {
   key: 'root',
-  version: 3,
+  version: PERSIST_VERSION,
   storage: AsyncStorage,
   // Batch writes: download progress dispatches many times/sec; cap persistence to ~1 write/s.
   throttle: 1000,
   migrate: createMigrate(migrations as any, { debug: false }),
   // `player` and `ui` are intentionally ephemeral.
-  whitelist: ['auth', 'favorites', 'readings', 'features', 'onboarding', 'notifications', 'notificationInbox', 'downloads', 'offlineQueue'],
+  whitelist: ['auth', 'favorites', 'features', 'onboarding', 'notifications', 'notificationInbox', 'downloads', 'offlineQueue', 'recordingHistory'],
   transforms: [downloadsTransform, onboardingTransform],
 };
 
@@ -117,7 +90,7 @@ export const store = configureStore({
       serializableCheck: {
         ignoredActions: [FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER],
       },
-    }).prepend(playCountListener.middleware),
+    }).prepend(playCountListener.middleware, recordingHistoryListener.middleware),
 });
 
 export const persistor = persistStore(store);

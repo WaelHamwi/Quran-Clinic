@@ -3,13 +3,14 @@
 namespace App\Models;
 
 use App\Models\Concerns\HasTranslations;
+use App\Models\Concerns\InvalidatesCache;
 use App\Services\SponsorService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
 class Sponsor extends Model
 {
-    use HasTranslations;
+    use HasTranslations, InvalidatesCache;
 
     protected $fillable = [
         'name', 'logo_path', 'website_url', 'target_all_countries', 'target_countries',
@@ -18,12 +19,10 @@ class Sponsor extends Model
 
     public array $translatable = ['name'];
 
-    protected static function booted(): void
+    /** Editing a sponsor must invalidate the cached sponsor payloads. */
+    protected function cacheKeysToForget(): array
     {
-        // Editing a sponsor (incl. the one shown on the splash) must invalidate
-        // the cached API payloads so changes appear on the next request.
-        static::saved(fn () => SponsorService::flushCache());
-        static::deleted(fn () => SponsorService::flushCache());
+        return SponsorService::CACHE_KEYS;
     }
 
     protected function casts(): array

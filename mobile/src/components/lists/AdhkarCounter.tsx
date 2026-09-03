@@ -3,8 +3,10 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle, G } from 'react-native-svg';
 import { palette } from '@/theme/colors';
 import { useLanguage } from '@/context/LanguageContext';
+import { useTheme } from '@/context/ThemeContext';
+import { useStyles } from '@/hooks/common/useStyles';
 import {
-  adhkarCounterStyles as s,
+  createStyles,
   RING_SIZE,
   RING_CX,
   RING_CY,
@@ -21,6 +23,8 @@ interface AdhkarCounterProps {
 
 export function AdhkarCounter({ count, total, onPress }: AdhkarCounterProps) {
   const { isArabic } = useLanguage();
+  const { theme } = useTheme();
+  const s = useStyles(createStyles);
   const progress = total > 0 ? Math.min(count / total, 1) : 0;
   const strokeDashoffset = RING_CIRCUMFERENCE * (1 - progress);
   const totalLabel = isArabic ? `من ${total}` : `of ${total}`;
@@ -30,7 +34,7 @@ export function AdhkarCounter({ count, total, onPress }: AdhkarCounterProps) {
       {/* SVG ring: white fill + track + progress arc, rotated so arc starts at 12 o'clock */}
       <Svg width={RING_SIZE} height={RING_SIZE} style={StyleSheet.absoluteFill}>
         <G rotation={-90} origin={`${RING_CX}, ${RING_CY}`}>
-          <Circle cx={RING_CX} cy={RING_CY} r={RING_R_FILL} fill={palette.white} />
+          <Circle cx={RING_CX} cy={RING_CY} r={RING_R_FILL} fill={theme.card} />
           <Circle
             cx={RING_CX}
             cy={RING_CY}
@@ -45,7 +49,7 @@ export function AdhkarCounter({ count, total, onPress }: AdhkarCounterProps) {
               cy={RING_CY}
               r={RING_R}
               strokeWidth={4}
-              stroke={palette.brand[500]}
+              stroke={theme.primary}
               fill="none"
               strokeDasharray={`${RING_CIRCUMFERENCE}`}
               strokeDashoffset={`${strokeDashoffset}`}

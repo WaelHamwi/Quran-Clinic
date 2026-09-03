@@ -10,7 +10,10 @@ NOT CACHED:
 User-specific endpoints (favorites, notifications), POST/PUT/DELETE
 
 BACKEND CACHE PATTERN:
-Cache::remember($key, 300, fn() => $this->repository->findAll());
+For Eloquent data, use App\Support\ModelCache ONLY — see caching.md (MANDATORY).
+ModelCache::rememberMany($key, 300, fn() => $this->repository->findAll());
+Never cache live models directly (500s on cache hit). Plain scalars/arrays may
+use Cache::remember directly.
 
 BACKEND INVALIDATION PATTERN:
 protected static function booted()

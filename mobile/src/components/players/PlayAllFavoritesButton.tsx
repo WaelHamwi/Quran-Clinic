@@ -2,13 +2,17 @@ import React, { useCallback } from 'react';
 import { ActivityIndicator, Pressable, Text } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useLanguage } from '@/context/LanguageContext';
-import { usePlayFavorites } from '@/hooks/usePlayFavorites';
-import { playAllFavoritesBtnStyles as s, ON_BRAND } from './PlayAllFavoritesButton.styles';
+import { useTheme } from '@/context/ThemeContext';
+import { useStyles } from '@/hooks/common/useStyles';
+import { usePlayFavorites } from '@/hooks/player/usePlayFavorites';
+import { createStyles } from './PlayAllFavoritesButton.styles';
 
 /** Favorites-screen CTA (Figma 18284:3424): plays every favorited disease's
  *  ruqyah one by one through the shared player queue. */
 function PlayAllFavoritesButtonBase() {
   const { t, isArabic } = useLanguage();
+  const { theme } = useTheme();
+  const s = useStyles(createStyles);
   const { playFavorites, isLoading } = usePlayFavorites();
   const onPress = useCallback(() => playFavorites(), [playFavorites]);
 
@@ -23,9 +27,9 @@ function PlayAllFavoritesButtonBase() {
       ]}
     >
       {isLoading ? (
-        <ActivityIndicator color={ON_BRAND} size="small" />
+        <ActivityIndicator color={theme.textOnBrand} size="small" />
       ) : (
-        <Ionicons name="play" size={16} color={ON_BRAND} />
+        <Ionicons name="play" size={16} color={theme.textOnBrand} />
       )}
       <Text style={s.playAllBtn__label} numberOfLines={1}>
         {t.favorites.playAll}

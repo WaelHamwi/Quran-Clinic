@@ -1,0 +1,40 @@
+#!/usr/bin/env sh
+# Pre-commit secret scanner — blocks commits that stage credentials.
+# Installed via: git config core.hooksPath .githooks
+# False positive? Bypass ONCE with: git commit --no-verify
+
+staged=$(git diff --cached --name-only --diff-filter=ACM)
+[ -z "$staged" ] && exit 0
+
+# --- 1) Never allow real .env files (templates like .env.example are fine) --
+blocked_env=$(printf '%s\n' "$staged" | grep -E '(^|/)\.env(\..+)?$' | grep -v '\.example$')
+if [ -n "$blocked_env" ]; then
+    echo "COMMIT BLOCKED: .env file staged (holds credentials, must stay untracked):" >&2
+    printf '%s\n' "$blocked_env" >&2
+    echo "Unstage it with: git restore --staged <file>" >&2
+    exit 1
+fi
+
+# --- 2) Scan staged CONTENT (the index, not the working tree) for secrets ---
+patterns='GOCSPX-[A-Za-z0-9_-]{10,}|AIza[0-9A-Za-z_-]{30,}|sk-(ant-)?[A-Za-z0-9_-]{20,}|gh[pousr]_[A-Za-z0-9]{20,}|xox[baprs]-[A-Za-z0-9-]{10,}|AKIA[0-9A-Z]{16}|-----BEGIN [A-Z ]*PRIVATE KEY-----|EXPO_TOKEN['"'"'"=: ]+[A-Za-z0-9_-]{16,}|(PASSWORD|SECRET|API_KEY|ACCESS_TOKEN|AUTH_TOKEN)=[^[:space:]<$"'"'"'`]{8,}'
+
+fail=0
+printf '%s\n' "$staged" | while IFS= read -r f; do
+    case "$f" in
+        *.png|*.jpg|*.jpeg|*.gif|*.webp|*.ico|*.svg|*.ttf|*.otf|*.eot|*.woff|*.woff2|\
+        *.pdf|*.zip|*.jar|*.mp3|*.mp4|*-lock.json|*.lock|*.min.js|*.min.css) continue ;;
+    esac
+    hits=$(git show ":$f" 2>/dev/null | grep -nE "$patterns" | head -5)
+    if [ -n "$hits" ]; then
+        echo "COMMIT BLOCKED: possible secret in staged file '$f':" >&2
+        printf '%s\n' "$hits" >&2
+        echo 1 > "${TMPDIR:-/tmp}/.secret-hook-fail.$$"
+    fi
+done
+if [ -f "${TMPDIR:-/tmp}/.secret-hook-fail.$$" ]; then
+    rm -f "${TMPDIR:-/tmp}/.secret-hook-fail.$$"
+    echo "" >&2
+    echo "Rotate the value if it is real. False positive? Use: git commit --no-verify" >&2
+    exit 1
+fi
+exit 0

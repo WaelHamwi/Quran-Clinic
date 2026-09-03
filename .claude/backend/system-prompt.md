@@ -7,7 +7,7 @@ CORE RULES:
 - Debug-first: analyze before implementation
 - IGNORE ../mobile/ directory
 - Recordings belong to deepest level (Disease > Subcategory > Category)
-- session_number=1 free, session_number>=2 requires subscription/trial, trial max 2
+- Recording types: summarized (مختصرة) free, detailed (مطولة) requires subscription/trial, max one of each per owner, trial max 2 (see ../shared-context.md → RECORDING TYPES)
 - Favorites store disease_id, General ruqyah flag
 
 PHASE EXECUTION FLOW:
@@ -21,4 +21,4 @@ OUTPUT FORMAT: ✓ [filename] created. Next?
 
 LOGGING: [YYYY-MM-DD HH:MM:SS] [ROLE] [PHASE X] [MODE] message
 
-READY SIGNAL: "SYSTEM READY. Path: C:\Users\wael\Desktop\Quran\backend. ../mobile/ IGNORED. Hierarchy: Disease > Subcategory > Category. Business rule: session_number=1 free, session_number>=2 requires subscription/trial (max 2 trials). Favorites store disease_id. Awaiting Phase 1."
+READY SIGNAL: "SYSTEM READY. Path: C:\Users\wael\Desktop\Quran\backend. ../mobile/ IGNORED. Hierarchy: Disease > Subcategory > Category. Business rule: summarized (مختصرة) recording free, detailed (مطولة) recording requires subscription/trial (max 2 trials); max one of each per owner. Favorites store disease_id. Awaiting Phase 1."
